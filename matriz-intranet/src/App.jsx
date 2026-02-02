@@ -2035,20 +2035,28 @@ export default function MatrizIntranet() {
                     <p className="text-xs text-neutral-500 mt-0.5">{proyecto.cliente}</p>
                   </div>
                   
-                  <button 
-                    onClick={() => { setTempDate(dashboardStartDate); setEditDateOpen(true); }} 
-                    className="flex items-center gap-1 px-2 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 rounded text-xs text-neutral-600 transition-colors shrink-0"
-                  >
-                    <Calendar className="w-3 h-3" />
-                    <span className="hidden sm:inline">Inicio:</span>
-                    <span>{dashboardStartDate.split('-').reverse().join('/')}</span>
-                    <Pencil className="w-3 h-3 ml-1" />
-                  </button>
+                  {currentUser?.rol === 'admin' ? (
+                    <button
+                      onClick={() => { setTempDate(dashboardStartDate); setEditDateOpen(true); }}
+                      className="flex items-center gap-1 px-2 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 rounded text-xs text-neutral-600 transition-colors shrink-0"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      <span className="hidden sm:inline">Inicio:</span>
+                      <span>{dashboardStartDate.split('-').reverse().join('/')}</span>
+                      <Pencil className="w-3 h-3 ml-1" />
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1 px-2 py-2 bg-neutral-100 rounded text-xs text-neutral-600 shrink-0">
+                      <Calendar className="w-3 h-3" />
+                      <span className="hidden sm:inline">Inicio:</span>
+                      <span>{dashboardStartDate.split('-').reverse().join('/')}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               
-              {/* Tabs */}
-              <div className="grid grid-cols-4 gap-1 bg-neutral-100 p-1 rounded-lg">
+              {/* Tabs - Control solo visible para admin */}
+              <div className={`grid gap-1 bg-neutral-100 p-1 rounded-lg ${currentUser?.rol === 'admin' ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <button
                   onClick={() => setDashboardTab('resumen')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
@@ -2058,15 +2066,18 @@ export default function MatrizIntranet() {
                   <BarChart3 className="w-4 h-4" />
                   <span>Resumen</span>
                 </button>
-                <button
-                  onClick={() => setDashboardTab('control')}
-                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
-                    dashboardTab === 'control' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Control</span>
-                </button>
+                {/* Pestaña Control - Solo admin puede marcar avances */}
+                {currentUser?.rol === 'admin' && (
+                  <button
+                    onClick={() => setDashboardTab('control')}
+                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
+                      dashboardTab === 'control' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Control</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setDashboardTab('log')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
@@ -2173,9 +2184,9 @@ export default function MatrizIntranet() {
                           <p className="text-neutral-500 text-xs mb-3">Comparación avance proyectado vs real</p>
                           {(() => {
                             const weeksToShow = 20;
-                            const chartWidth = 500;
-                            const chartHeight = 150;
-                            const padding = { top: 20, right: 80, bottom: 35, left: 45 };
+                            const chartWidth = 400;
+                            const chartHeight = 120;
+                            const padding = { top: 15, right: 70, bottom: 30, left: 35 };
                             
                             // Calcular avance proyectado (curva S típica)
                             const projectedData = [];
@@ -2234,35 +2245,35 @@ export default function MatrizIntranet() {
                                   {[0, 25, 50, 75, 100].map(v => (
                                     <g key={v}>
                                       <line x1={padding.left} y1={yScale(v)} x2={chartWidth - padding.right} y2={yScale(v)} stroke="#e5e7eb" strokeWidth="1" />
-                                      <text x={padding.left - 10} y={yScale(v) + 4} textAnchor="end" fontSize="10" fill="#6b7280">{v}%</text>
+                                      <text x={padding.left - 8} y={yScale(v) + 3} textAnchor="end" fontSize="8" fill="#6b7280">{v}%</text>
                                     </g>
                                   ))}
-                                  
+
                                   {/* Etiquetas semanas */}
                                   {Array.from({ length: Math.floor(weeksToShow / 2) + 1 }, (_, i) => i * 2).filter(w => w <= weeksToShow).map(w => (
-                                    <text key={w} x={xScale(w)} y={chartHeight - 18} textAnchor="middle" fontSize="10" fill="#6b7280">S{w}</text>
+                                    <text key={w} x={xScale(w)} y={chartHeight - 16} textAnchor="middle" fontSize="8" fill="#6b7280">S{w}</text>
                                   ))}
-                                  
+
                                   {/* Línea vertical HOY */}
                                   {currentWeek > 0 && currentWeek <= weeksToShow && (
                                     <>
-                                      <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" />
-                                      <text x={xScale(currentWeek)} y={padding.top - 8} textAnchor="middle" fontSize="10" fill="#ef4444" fontWeight="600">HOY</text>
+                                      <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="2" strokeDasharray="4,3" />
+                                      <text x={xScale(currentWeek)} y={padding.top - 5} textAnchor="middle" fontSize="8" fill="#ef4444" fontWeight="600">HOY</text>
                                     </>
                                   )}
                                   
                                   {/* Curva proyectada */}
-                                  <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="3" />
-                                  
+                                  <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="2" />
+
                                   {/* Curva real */}
-                                  {realPath && currentWeek > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="3" />}
+                                  {realPath && currentWeek > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="2" />}
                                   
                                   {/* Leyenda */}
-                                  <g transform={`translate(${chartWidth - padding.right + 12}, ${padding.top + 15})`}>
-                                    <line x1="0" y1="0" x2="18" y2="0" stroke="#f97316" strokeWidth="3" />
-                                    <text x="24" y="4" fontSize="11" fill="#374151">Proyectado</text>
-                                    <line x1="0" y1="22" x2="18" y2="22" stroke="#22c55e" strokeWidth="3" />
-                                    <text x="24" y="26" fontSize="11" fill="#374151">Real</text>
+                                  <g transform={`translate(${chartWidth - padding.right + 8}, ${padding.top + 10})`}>
+                                    <line x1="0" y1="0" x2="14" y2="0" stroke="#f97316" strokeWidth="2" />
+                                    <text x="18" y="3" fontSize="9" fill="#374151">Proyectado</text>
+                                    <line x1="0" y1="16" x2="14" y2="16" stroke="#22c55e" strokeWidth="2" />
+                                    <text x="18" y="19" fontSize="9" fill="#374151">Real</text>
                                   </g>
                                 </svg>
                                 

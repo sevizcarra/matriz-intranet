@@ -425,7 +425,7 @@ export default function MatrizIntranet() {
       setLoginEmail('');
       setLoginPassword('');
       setLoginError('');
-      if (user.rol === 'admin') setEdpUnlocked(true);
+      // EDP siempre requiere clave, incluso para admin
     } else {
       setLoginError('Email o contraseña incorrectos');
       setTimeout(() => setLoginError(''), 3000);

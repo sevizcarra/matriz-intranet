@@ -110,41 +110,41 @@ const COLABORADORES_INICIAL = [
 
 // Entregables del proyecto (35 documentos)
 const ENTREGABLES_PROYECTO = [
-  { id: 1, name: "CRITERIOS DE DISEÑO", weekStart: 2 },
-  { id: 2, name: "PLANTA DISPOSICIÓN GENERAL", weekStart: 2 },
-  { id: 3, name: "PLANTA DEMOLICIÓN 1 DE 2", weekStart: 3 },
-  { id: 4, name: "PLANTA DEMOLICIÓN 2 DE 2", weekStart: 3 },
-  { id: 5, name: "EETT DEMOLICIONES", weekStart: 4 },
-  { id: 6, name: "PLANTA TERMINACIONES 1", weekStart: 5 },
-  { id: 7, name: "PLANTA TERMINACIONES 2", weekStart: 5 },
-  { id: 8, name: "PLANTA PAVIMENTOS 1", weekStart: 5 },
-  { id: 9, name: "PLANTA PAVIMENTOS 2", weekStart: 6 },
-  { id: 10, name: "TABIQUES VIDRIADOS 1", weekStart: 6 },
-  { id: 11, name: "TABIQUES VIDRIADOS 2", weekStart: 6 },
-  { id: 12, name: "TABIQUES VIDRIADOS 3", weekStart: 7 },
-  { id: 13, name: "TABIQUES VIDRIADOS 4", weekStart: 7 },
-  { id: 14, name: "CIELOS E ILUMINACIÓN 1", weekStart: 7 },
-  { id: 15, name: "CIELOS E ILUMINACIÓN 2", weekStart: 8 },
-  { id: 16, name: "DETALLES TABIQUES TIPO", weekStart: 8 },
-  { id: 17, name: "DETALLES REVESTIMIENTOS 1", weekStart: 8 },
-  { id: 18, name: "DETALLES REVESTIMIENTOS 2", weekStart: 9 },
-  { id: 19, name: "DETALLES PAVIMENTOS", weekStart: 9 },
-  { id: 20, name: "PUERTAS Y QUINCALLERÍA", weekStart: 9 },
-  { id: 21, name: "DETALLES COCINA", weekStart: 10 },
-  { id: 22, name: "DETALLES CAFETERÍA", weekStart: 10 },
-  { id: 23, name: "DETALLES SALA CONTROL", weekStart: 10 },
-  { id: 24, name: "ACCESIBILIDAD Y RAMPA", weekStart: 11 },
-  { id: 25, name: "PLANTA SEÑALÉTICA", weekStart: 11 },
-  { id: 26, name: "DETALLES SEÑALÉTICA", weekStart: 11 },
-  { id: 27, name: "EETT GENERALES", weekStart: 12 },
-  { id: 28, name: "MTO (MATERIALES)", weekStart: 13 },
-  { id: 29, name: "MOBILIARIO 1", weekStart: 14 },
-  { id: 30, name: "MOBILIARIO 2", weekStart: 14 },
-  { id: 31, name: "ELEVACIÓN INT. NORTE/SUR", weekStart: 15 },
-  { id: 32, name: "ELEVACIÓN INT. ORIE/PON", weekStart: 15 },
-  { id: 33, name: "SECCIÓN A-A / B-B", weekStart: 16 },
-  { id: 34, name: "SECCIÓN C-C / D-D", weekStart: 16 },
-  { id: 35, name: "IMÁGENES OBJETIVO", weekStart: 17 },
+  { id: 1, codigo: "", name: "CRITERIOS DE DISEÑO", weekStart: 2 },
+  { id: 2, codigo: "", name: "PLANTA DISPOSICIÓN GENERAL", weekStart: 2 },
+  { id: 3, codigo: "", name: "PLANTA DEMOLICIÓN 1 DE 2", weekStart: 3 },
+  { id: 4, codigo: "", name: "PLANTA DEMOLICIÓN 2 DE 2", weekStart: 3 },
+  { id: 5, codigo: "", name: "EETT DEMOLICIONES", weekStart: 4 },
+  { id: 6, codigo: "", name: "PLANTA TERMINACIONES 1", weekStart: 5 },
+  { id: 7, codigo: "", name: "PLANTA TERMINACIONES 2", weekStart: 5 },
+  { id: 8, codigo: "", name: "PLANTA PAVIMENTOS 1", weekStart: 5 },
+  { id: 9, codigo: "", name: "PLANTA PAVIMENTOS 2", weekStart: 6 },
+  { id: 10, codigo: "", name: "TABIQUES VIDRIADOS 1", weekStart: 6 },
+  { id: 11, codigo: "", name: "TABIQUES VIDRIADOS 2", weekStart: 6 },
+  { id: 12, codigo: "", name: "TABIQUES VIDRIADOS 3", weekStart: 7 },
+  { id: 13, codigo: "", name: "TABIQUES VIDRIADOS 4", weekStart: 7 },
+  { id: 14, codigo: "", name: "CIELOS E ILUMINACIÓN 1", weekStart: 7 },
+  { id: 15, codigo: "", name: "CIELOS E ILUMINACIÓN 2", weekStart: 8 },
+  { id: 16, codigo: "", name: "DETALLES TABIQUES TIPO", weekStart: 8 },
+  { id: 17, codigo: "", name: "DETALLES REVESTIMIENTOS 1", weekStart: 8 },
+  { id: 18, codigo: "", name: "DETALLES REVESTIMIENTOS 2", weekStart: 9 },
+  { id: 19, codigo: "", name: "DETALLES PAVIMENTOS", weekStart: 9 },
+  { id: 20, codigo: "", name: "PUERTAS Y QUINCALLERÍA", weekStart: 9 },
+  { id: 21, codigo: "", name: "DETALLES COCINA", weekStart: 10 },
+  { id: 22, codigo: "", name: "DETALLES CAFETERÍA", weekStart: 10 },
+  { id: 23, codigo: "", name: "DETALLES SALA CONTROL", weekStart: 10 },
+  { id: 24, codigo: "", name: "ACCESIBILIDAD Y RAMPA", weekStart: 11 },
+  { id: 25, codigo: "", name: "PLANTA SEÑALÉTICA", weekStart: 11 },
+  { id: 26, codigo: "", name: "DETALLES SEÑALÉTICA", weekStart: 11 },
+  { id: 27, codigo: "", name: "EETT GENERALES", weekStart: 12 },
+  { id: 28, codigo: "", name: "MTO (MATERIALES)", weekStart: 13 },
+  { id: 29, codigo: "", name: "MOBILIARIO 1", weekStart: 14 },
+  { id: 30, codigo: "", name: "MOBILIARIO 2", weekStart: 14 },
+  { id: 31, codigo: "", name: "ELEVACIÓN INT. NORTE/SUR", weekStart: 15 },
+  { id: 32, codigo: "", name: "ELEVACIÓN INT. ORIE/PON", weekStart: 15 },
+  { id: 33, codigo: "", name: "SECCIÓN A-A / B-B", weekStart: 16 },
+  { id: 34, codigo: "", name: "SECCIÓN C-C / D-D", weekStart: 16 },
+  { id: 35, codigo: "", name: "IMÁGENES OBJETIVO", weekStart: 17 },
 ];
 
 const PROYECTOS_INICIALES = [
@@ -2078,8 +2078,8 @@ export default function MatrizIntranet() {
                           {(() => {
                             const weeksToShow = 20;
                             const chartWidth = 500;
-                            const chartHeight = 200;
-                            const padding = { top: 30, right: 80, bottom: 40, left: 50 };
+                            const chartHeight = 150;
+                            const padding = { top: 20, right: 80, bottom: 35, left: 45 };
                             
                             // Calcular avance proyectado (curva S típica)
                             const projectedData = [];
@@ -2238,7 +2238,8 @@ export default function MatrizIntranet() {
                             <thead>
                               <tr className="bg-neutral-100 text-neutral-500 uppercase tracking-wider">
                                 <th className="p-2 text-center font-medium">#</th>
-                                <th className="p-2 text-left font-medium min-w-[120px]">Entregable</th>
+                                <th className="p-2 text-left font-medium">Código</th>
+                                <th className="p-2 text-left font-medium min-w-[120px]">Descripción</th>
                                 <th className="p-2 text-center font-medium">Sem</th>
                                 <th className="p-2 text-center font-medium">Ini</th>
                                 <th className="p-2 text-center font-medium">A</th>
@@ -2256,6 +2257,7 @@ export default function MatrizIntranet() {
                               {deliverables.map((d, i) => (
                                 <tr key={d.id} className={`border-b border-neutral-200 ${i % 2 === 0 ? 'bg-neutral-50' : 'bg-white'}`}>
                                   <td className="p-2 text-center text-neutral-500">{d.id}</td>
+                                  <td className="p-2 text-neutral-600 font-mono text-xs">{d.codigo || '-'}</td>
                                   <td className="p-2 text-neutral-800 font-medium text-xs">{d.name}</td>
                                   <td className="p-2 text-center text-neutral-500">S{d.weekStart}</td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status.sentIniciado} onChange={v => handleCheck(d.id, 'sentIniciado', v)} /></td>
@@ -2301,7 +2303,8 @@ export default function MatrizIntranet() {
                             <thead>
                               <tr className="bg-neutral-100 text-neutral-500 uppercase tracking-wider">
                                 <th className="p-2 text-center font-medium">#</th>
-                                <th className="p-2 text-left font-medium">Entregable</th>
+                                <th className="p-2 text-left font-medium">Código</th>
+                                <th className="p-2 text-left font-medium">Descripción</th>
                                 <th className="p-2 text-center font-medium">REV_A</th>
                                 <th className="p-2 text-center font-medium">REV_B</th>
                                 <th className="p-2 text-center font-medium">REV_0</th>
@@ -2312,6 +2315,7 @@ export default function MatrizIntranet() {
                               {deliverables.map((d, i) => (
                                 <tr key={d.id} className={`border-b border-neutral-200 ${i % 2 === 0 ? 'bg-neutral-50' : ''}`}>
                                   <td className="p-2 text-center text-neutral-500">{d.id}</td>
+                                  <td className="p-2 text-neutral-600 font-mono text-xs">{d.codigo || '-'}</td>
                                   <td className="p-2 text-neutral-800">{d.name}</td>
                                   <td className={`p-2 text-center ${d.status.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
                                     {d.status.sentRevADate ? formatDateFull(d.status.sentRevADate) : '-'}
@@ -2712,7 +2716,8 @@ export default function MatrizIntranet() {
                 <thead>
                   <tr className="bg-neutral-800 text-white">
                     <th className="border border-neutral-600 px-1 py-0.5 text-center w-5">#</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Entregable</th>
+                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Código</th>
+                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
                     <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_A</th>
                     <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_B</th>
                     <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_0</th>
@@ -2727,6 +2732,7 @@ export default function MatrizIntranet() {
                     return (
                       <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
                         <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
+                        <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
                         <td className="border border-neutral-300 px-1 py-0.5">{d.name}</td>
                         <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
                           {status?.sentRevADate || '-'}
@@ -2782,7 +2788,8 @@ export default function MatrizIntranet() {
                 <thead>
                   <tr className="bg-neutral-800 text-white">
                     <th className="border border-neutral-600 px-1 py-0.5 text-center w-5">#</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Entregable</th>
+                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Código</th>
+                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
                     <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_A</th>
                     <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_B</th>
                     <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_0</th>
@@ -2797,6 +2804,7 @@ export default function MatrizIntranet() {
                     return (
                       <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
                         <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
+                        <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
                         <td className="border border-neutral-300 px-1 py-0.5">{d.name}</td>
                         <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
                           {status?.sentRevADate || '-'}

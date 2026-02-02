@@ -2179,14 +2179,14 @@ export default function MatrizIntranet() {
                         </Card>
                         
                         {/* Curva S */}
-                        <Card className="p-3 sm:p-4">
-                          <h3 className="text-neutral-800 text-sm mb-1">Curva S - Avance del Proyecto</h3>
-                          <p className="text-neutral-500 text-xs mb-3">Comparación avance proyectado vs real</p>
+                        <Card className="p-2 sm:p-3">
+                          <h3 className="text-neutral-800 text-xs mb-0.5">Curva S - Avance del Proyecto</h3>
+                          <p className="text-neutral-500 text-[10px] mb-2">Comparación avance proyectado vs real</p>
                           {(() => {
                             const weeksToShow = 20;
-                            const chartWidth = 400;
-                            const chartHeight = 120;
-                            const padding = { top: 15, right: 70, bottom: 30, left: 35 };
+                            const chartWidth = 320;
+                            const chartHeight = 90;
+                            const padding = { top: 12, right: 55, bottom: 22, left: 28 };
                             
                             // Calcular avance proyectado (curva S típica)
                             const projectedData = [];
@@ -2240,56 +2240,56 @@ export default function MatrizIntranet() {
                             
                             return (
                               <div>
-                                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto">
+                                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto max-w-md mx-auto">
                                   {/* Grid horizontal */}
-                                  {[0, 25, 50, 75, 100].map(v => (
+                                  {[0, 50, 100].map(v => (
                                     <g key={v}>
                                       <line x1={padding.left} y1={yScale(v)} x2={chartWidth - padding.right} y2={yScale(v)} stroke="#e5e7eb" strokeWidth="1" />
-                                      <text x={padding.left - 8} y={yScale(v) + 3} textAnchor="end" fontSize="8" fill="#6b7280">{v}%</text>
+                                      <text x={padding.left - 5} y={yScale(v) + 3} textAnchor="end" fontSize="7" fill="#6b7280">{v}%</text>
                                     </g>
                                   ))}
 
-                                  {/* Etiquetas semanas */}
-                                  {Array.from({ length: Math.floor(weeksToShow / 2) + 1 }, (_, i) => i * 2).filter(w => w <= weeksToShow).map(w => (
-                                    <text key={w} x={xScale(w)} y={chartHeight - 16} textAnchor="middle" fontSize="8" fill="#6b7280">S{w}</text>
+                                  {/* Etiquetas semanas - cada 4 */}
+                                  {[0, 4, 8, 12, 16, 20].map(w => (
+                                    <text key={w} x={xScale(w)} y={chartHeight - 10} textAnchor="middle" fontSize="7" fill="#6b7280">S{w}</text>
                                   ))}
 
                                   {/* Línea vertical HOY */}
                                   {currentWeek > 0 && currentWeek <= weeksToShow && (
                                     <>
-                                      <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="2" strokeDasharray="4,3" />
-                                      <text x={xScale(currentWeek)} y={padding.top - 5} textAnchor="middle" fontSize="8" fill="#ef4444" fontWeight="600">HOY</text>
+                                      <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="3,2" />
+                                      <text x={xScale(currentWeek)} y={padding.top - 3} textAnchor="middle" fontSize="6" fill="#ef4444" fontWeight="600">HOY</text>
                                     </>
                                   )}
-                                  
+
                                   {/* Curva proyectada */}
-                                  <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="2" />
+                                  <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="1.5" />
 
                                   {/* Curva real */}
-                                  {realPath && currentWeek > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="2" />}
-                                  
+                                  {realPath && currentWeek > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="1.5" />}
+
                                   {/* Leyenda */}
-                                  <g transform={`translate(${chartWidth - padding.right + 8}, ${padding.top + 10})`}>
-                                    <line x1="0" y1="0" x2="14" y2="0" stroke="#f97316" strokeWidth="2" />
-                                    <text x="18" y="3" fontSize="9" fill="#374151">Proyectado</text>
-                                    <line x1="0" y1="16" x2="14" y2="16" stroke="#22c55e" strokeWidth="2" />
-                                    <text x="18" y="19" fontSize="9" fill="#374151">Real</text>
+                                  <g transform={`translate(${chartWidth - padding.right + 5}, ${padding.top + 5})`}>
+                                    <line x1="0" y1="0" x2="10" y2="0" stroke="#f97316" strokeWidth="1.5" />
+                                    <text x="13" y="3" fontSize="7" fill="#374151">Proyectado</text>
+                                    <line x1="0" y1="12" x2="10" y2="12" stroke="#22c55e" strokeWidth="1.5" />
+                                    <text x="13" y="15" fontSize="7" fill="#374151">Real</text>
                                   </g>
                                 </svg>
-                                
+
                                 {/* Resumen numérico */}
-                                <div className="flex justify-center gap-8 mt-4 pt-4 border-t border-neutral-200">
+                                <div className="flex justify-center gap-6 mt-2 pt-2 border-t border-neutral-200">
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 uppercase">Proyectado</div>
-                                    <div className="text-xl font-bold text-orange-500">{projectedAtCurrentWeek.toFixed(1)}%</div>
+                                    <div className="text-[10px] text-neutral-500 uppercase">Proyectado</div>
+                                    <div className="text-base font-bold text-orange-500">{projectedAtCurrentWeek.toFixed(1)}%</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 uppercase">Real</div>
-                                    <div className="text-xl font-bold text-green-500">{realFinal.toFixed(1)}%</div>
+                                    <div className="text-[10px] text-neutral-500 uppercase">Real</div>
+                                    <div className="text-base font-bold text-green-500">{realFinal.toFixed(1)}%</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 uppercase">Diferencia</div>
-                                    <div className={`text-xl font-bold ${difference >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <div className="text-[10px] text-neutral-500 uppercase">Diferencia</div>
+                                    <div className={`text-base font-bold ${difference >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                       {difference >= 0 ? '+' : ''}{difference.toFixed(1)}%
                                     </div>
                                   </div>

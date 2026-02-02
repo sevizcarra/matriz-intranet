@@ -1331,81 +1331,7 @@ export default function MatrizIntranet() {
   };
 
 
-  // ============================================
-  // MODAL: NUEVO PROYECTO
-  // ============================================
-  const NewProjectModal = () => (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4">
-      <Card className="w-full max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-neutral-800 text-base sm:text-lg font-medium">Nuevo Proyecto</h2>
-          <button 
-            onClick={() => setShowNewProject(false)}
-            className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-neutral-500" />
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          <Input 
-            label="Código de Proyecto"
-            placeholder="Ej: P2602"
-            value={newProject.id}
-            onChange={e => setNewProject({ ...newProject, id: e.target.value.toUpperCase() })}
-          />
-          
-          <Input 
-            label="Nombre del Proyecto"
-            placeholder="Ej: Escondida - Fase 3"
-            value={newProject.nombre}
-            onChange={e => setNewProject({ ...newProject, nombre: e.target.value })}
-          />
-          
-          <Input 
-            label="Cliente"
-            placeholder="Ej: BHP Billiton"
-            value={newProject.cliente}
-            onChange={e => setNewProject({ ...newProject, cliente: e.target.value })}
-          />
-          
-          <Input 
-            label="Tarifa de Venta (UF/Hr)"
-            type="number"
-            step="0.1"
-            value={newProject.tarifaVenta}
-            onChange={e => setNewProject({ ...newProject, tarifaVenta: parseFloat(e.target.value) || 0 })}
-          />
-          
-          <div className="flex gap-2 sm:gap-3 pt-2">
-            <button 
-              onClick={() => setShowNewProject(false)}
-              className="flex-1 px-4 py-3 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded font-medium text-sm transition-colors"
-            >
-              Cancelar
-            </button>
-            <button 
-              className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium text-sm transition-colors"
-              onClick={() => {
-                if (newProject.id && newProject.nombre) {
-                  setProyectos([...proyectos, {
-                    ...newProject,
-                    estado: 'Activo',
-                    inicio: new Date().toISOString().split('T')[0],
-                    avance: 0,
-                  }]);
-                  setNewProject({ id: '', nombre: '', cliente: '', tarifaVenta: 1.2 });
-                  setShowNewProject(false);
-                }
-              }}
-            >
-              Crear Proyecto
-            </button>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
+  // Modal Nuevo Proyecto se renderiza inline (ver abajo)
 
   // ============================================
   // PANTALLA DE LOGIN (si no está autenticado)
@@ -2591,8 +2517,79 @@ export default function MatrizIntranet() {
         })()}
       </main>
 
-      {/* Modal Nuevo Proyecto */}
-      {showNewProject && <NewProjectModal />}
+      {/* Modal Nuevo Proyecto - Inline para evitar pérdida de foco */}
+      {showNewProject && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4">
+          <Card className="w-full max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-neutral-800 text-base sm:text-lg font-medium">Nuevo Proyecto</h2>
+              <button
+                onClick={() => setShowNewProject(false)}
+                className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-neutral-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <Input
+                label="Código de Proyecto"
+                placeholder="Ej: P2602"
+                value={newProject.id}
+                onChange={e => setNewProject(prev => ({ ...prev, id: e.target.value.toUpperCase() }))}
+              />
+
+              <Input
+                label="Nombre del Proyecto"
+                placeholder="Ej: Escondida - Fase 3"
+                value={newProject.nombre}
+                onChange={e => setNewProject(prev => ({ ...prev, nombre: e.target.value }))}
+              />
+
+              <Input
+                label="Cliente"
+                placeholder="Ej: BHP Billiton"
+                value={newProject.cliente}
+                onChange={e => setNewProject(prev => ({ ...prev, cliente: e.target.value }))}
+              />
+
+              <Input
+                label="Tarifa de Venta (UF/Hr)"
+                type="number"
+                step="0.1"
+                value={newProject.tarifaVenta}
+                onChange={e => setNewProject(prev => ({ ...prev, tarifaVenta: parseFloat(e.target.value) || 0 }))}
+              />
+
+              <div className="flex gap-2 sm:gap-3 pt-2">
+                <button
+                  onClick={() => setShowNewProject(false)}
+                  className="flex-1 px-4 py-3 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded font-medium text-sm transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium text-sm transition-colors"
+                  onClick={() => {
+                    if (newProject.id && newProject.nombre) {
+                      setProyectos([...proyectos, {
+                        ...newProject,
+                        estado: 'Activo',
+                        inicio: new Date().toISOString().split('T')[0],
+                        avance: 0,
+                      }]);
+                      setNewProject({ id: '', nombre: '', cliente: '', tarifaVenta: 1.2 });
+                      setShowNewProject(false);
+                    }
+                  }}
+                >
+                  Crear Proyecto
+                </button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Modal Editar Fecha de Inicio */}
       {editDateOpen && (

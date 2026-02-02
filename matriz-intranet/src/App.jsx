@@ -466,7 +466,96 @@ export default function MatrizIntranet() {
   
   // Estados para formularios
   const [showNewProject, setShowNewProject] = useState(false);
-  const [newProject, setNewProject] = useState({ id: '', nombre: '', cliente: '', tarifaVenta: 1.2 });
+  const [newProject, setNewProject] = useState({
+    id: '',
+    nombre: '',
+    cliente: '',
+    tarifaVenta: 1.2,
+    entregables: [] // Array de { id, codigo, nombre, secuencia, valorRevA, valorRevB, valorRev0 }
+  });
+  const [excelFileName, setExcelFileName] = useState('');
+  const [excelError, setExcelError] = useState('');
+
+  // Función para parsear Excel de entregables
+  const parseExcelFile = async (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          // Cargar xlsx dinámicamente si no está cargado
+          if (!window.XLSX) {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+            script.onload = () => processExcel(e.target.result, resolve, reject);
+            script.onerror = () => reject('Error cargando librería Excel');
+            document.head.appendChild(script);
+          } else {
+            processExcel(e.target.result, resolve, reject);
+          }
+        } catch (error) {
+          reject('Error procesando archivo: ' + error.message);
+        }
+      };
+      reader.onerror = () => reject('Error leyendo archivo');
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const processExcel = (data, resolve, reject) => {
+    try {
+      const workbook = window.XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = window.XLSX.utils.sheet_to_json(worksheet);
+
+      // Validar columnas requeridas
+      if (jsonData.length === 0) {
+        reject('El archivo está vacío');
+        return;
+      }
+
+      const firstRow = jsonData[0];
+      const requiredCols = ['Código', 'Descripción', 'Secuencia'];
+      const missingCols = requiredCols.filter(col => !(col in firstRow) && !(col.toLowerCase() in firstRow));
+
+      if (missingCols.length > 0) {
+        reject(`Faltan columnas: ${missingCols.join(', ')}`);
+        return;
+      }
+
+      // Parsear datos
+      const entregables = jsonData.map((row, index) => ({
+        id: index + 1,
+        codigo: row['Código'] || row['codigo'] || '',
+        nombre: row['Descripción'] || row['descripción'] || row['Nombre'] || row['nombre'] || '',
+        secuencia: parseInt(row['Secuencia'] || row['secuencia']) || 1,
+        valorRevA: parseFloat(row['REV_A (UF)'] || row['REV_A'] || row['revA'] || 0) || 0,
+        valorRevB: parseFloat(row['REV_B (UF)'] || row['REV_B'] || row['revB'] || 0) || 0,
+        valorRev0: parseFloat(row['REV_0 (UF)'] || row['REV_0'] || row['rev0'] || 0) || 0,
+      }));
+
+      resolve(entregables);
+    } catch (error) {
+      reject('Error procesando Excel: ' + error.message);
+    }
+  };
+
+  // Manejar carga de archivo Excel
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setExcelFileName(file.name);
+    setExcelError('');
+
+    try {
+      const entregables = await parseExcelFile(file);
+      setNewProject(prev => ({ ...prev, entregables }));
+    } catch (error) {
+      setExcelError(error);
+      setNewProject(prev => ({ ...prev, entregables: [] }));
+    }
+  };
   
   // Estados para eliminar proyectos
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -2000,12 +2089,19 @@ export default function MatrizIntranet() {
               
               {/* Contenido de tabs */}
               {(() => {
+                // Obtener entregables del proyecto específico o usar los por defecto
+                const proyectoActual = proyectos.find(p => p.id === selectedProject);
+                const entregablesProyecto = proyectoActual?.entregables || ENTREGABLES_PROYECTO;
+                const usaEntregablesPersonalizados = proyectoActual?.entregables?.length > 0;
+
                 // Calcular deliverables y stats
-                const deliverables = ENTREGABLES_PROYECTO.map(d => {
-                  const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart);
-                  const status = statusData[d.id];
+                const deliverables = entregablesProyecto.map(d => {
+                  const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
+                  // Usar clave compuesta para proyectos con entregables personalizados
+                  const statusKey = usaEntregablesPersonalizados ? `${selectedProject}_${d.id}` : d.id;
+                  const status = statusData[statusKey];
                   const statusInfo = calculateStatus(status, deadlines);
-                  return { ...d, ...deadlines, status, statusInfo };
+                  return { ...d, ...deadlines, status, statusInfo, statusKey };
                 });
                 
                 const stats = {
@@ -2197,7 +2293,7 @@ export default function MatrizIntranet() {
                           <Accordion title="Completados" count={stats.completed} color="bg-green-500">
                             {deliverables.filter(d => d.statusInfo.status === 'TERMINADO').map(d => (
                               <div key={d.id} className="py-1 text-neutral-600 flex justify-between">
-                                <span>{d.name}<span className="text-green-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
+                                <span>{d.nombre || d.name}<span className="text-green-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
                                 <span className="text-green-600 text-xs">✓ Completado</span>
                               </div>
                             ))}
@@ -2206,7 +2302,7 @@ export default function MatrizIntranet() {
                           <Accordion title="En Proceso" count={stats.inProgress} color="bg-orange-500">
                             {deliverables.filter(d => d.statusInfo.status === 'En Proceso').map(d => (
                               <div key={d.id} className="py-1 text-neutral-600 flex justify-between">
-                                <span>{d.name}<span className="text-orange-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
+                                <span>{d.nombre || d.name}<span className="text-orange-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
                                 <span className="text-orange-600 text-xs">En proceso</span>
                               </div>
                             ))}
@@ -2215,7 +2311,7 @@ export default function MatrizIntranet() {
                           <Accordion title="Atrasados" count={stats.delayed} color="bg-red-500">
                             {deliverables.filter(d => d.statusInfo.status === 'ATRASADO').map(d => (
                               <div key={d.id} className="py-1 text-neutral-600 flex justify-between">
-                                <span>{d.name}<span className="text-red-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
+                                <span>{d.nombre || d.name}<span className="text-red-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
                                 <span className="text-red-600 text-xs">⚠ Atrasado</span>
                               </div>
                             ))}
@@ -2258,16 +2354,16 @@ export default function MatrizIntranet() {
                                 <tr key={d.id} className={`border-b border-neutral-200 ${i % 2 === 0 ? 'bg-neutral-50' : 'bg-white'}`}>
                                   <td className="p-2 text-center text-neutral-500">{d.id}</td>
                                   <td className="p-2 text-neutral-600 font-mono text-xs">{d.codigo || '-'}</td>
-                                  <td className="p-2 text-neutral-800 font-medium text-xs">{d.name}</td>
-                                  <td className="p-2 text-center text-neutral-500">S{d.weekStart}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status.sentIniciado} onChange={v => handleCheck(d.id, 'sentIniciado', v)} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status.sentRevA} onChange={v => handleCheck(d.id, 'sentRevA', v)} /></td>
+                                  <td className="p-2 text-neutral-800 font-medium text-xs">{d.nombre || d.name}</td>
+                                  <td className="p-2 text-center text-neutral-500">S{d.weekStart || d.secuencia}</td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} /></td>
                                   <td className="p-2 text-center text-neutral-500">{formatDateShort(d.deadlineRevA)}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status.comentariosARecibidos} onChange={v => handleCheck(d.id, 'comentariosARecibidos', v)} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status.sentRevB} onChange={v => handleCheck(d.id, 'sentRevB', v)} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosARecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosARecibidos', v)} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevB} onChange={v => handleCheck(d.statusKey, 'sentRevB', v)} /></td>
                                   <td className="p-2 text-center text-neutral-500">{formatDateShort(d.deadlineRevB)}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status.comentariosBRecibidos} onChange={v => handleCheck(d.id, 'comentariosBRecibidos', v)} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status.sentRev0} onChange={v => handleCheck(d.id, 'sentRev0', v)} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosBRecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosBRecibidos', v)} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRev0} onChange={v => handleCheck(d.statusKey, 'sentRev0', v)} /></td>
                                   <td className="p-2 text-center text-neutral-500">{formatDateShort(d.deadlineRev0)}</td>
                                   <td className="p-2 text-center">
                                     <DashboardBadge variant={d.statusInfo.status === 'TERMINADO' ? 'success' : d.statusInfo.status === 'ATRASADO' ? 'danger' : d.statusInfo.status === 'En Proceso' ? 'warning' : 'default'}>
@@ -2316,7 +2412,7 @@ export default function MatrizIntranet() {
                                 <tr key={d.id} className={`border-b border-neutral-200 ${i % 2 === 0 ? 'bg-neutral-50' : ''}`}>
                                   <td className="p-2 text-center text-neutral-500">{d.id}</td>
                                   <td className="p-2 text-neutral-600 font-mono text-xs">{d.codigo || '-'}</td>
-                                  <td className="p-2 text-neutral-800">{d.name}</td>
+                                  <td className="p-2 text-neutral-800">{d.nombre || d.name}</td>
                                   <td className={`p-2 text-center ${d.status.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
                                     {d.status.sentRevADate ? formatDateFull(d.status.sentRevADate) : '-'}
                                   </td>
@@ -2434,7 +2530,7 @@ export default function MatrizIntranet() {
                                       <div key={d.id} className={`flex border-b border-neutral-100 ${i % 2 === 0 ? 'bg-neutral-50' : 'bg-white'}`}>
                                         <div style={{ width: labelWidth, minWidth: labelWidth }} className="p-2 text-[10px] text-neutral-700 truncate flex items-center gap-1">
                                           <div className={`w-2 h-2 rounded-full ${d.statusInfo.color}`} />
-                                          {d.name}
+                                          {d.nombre || d.name}
                                         </div>
                                         <div className="flex relative" style={{ height: rowHeight }}>
                                           {/* Grid de semanas */}
@@ -2565,24 +2661,101 @@ export default function MatrizIntranet() {
                 onChange={e => setNewProject(prev => ({ ...prev, tarifaVenta: parseFloat(e.target.value) || 0 }))}
               />
 
+              {/* Campo de carga de Excel */}
+              <div className="space-y-2">
+                <label className="block text-neutral-600 font-medium text-xs uppercase tracking-wider">
+                  Entregables (Excel) *
+                </label>
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center hover:border-orange-400 transition-colors">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleExcelUpload}
+                    className="hidden"
+                    id="excel-upload"
+                  />
+                  <label htmlFor="excel-upload" className="cursor-pointer">
+                    <FileSpreadsheet className="w-8 h-8 mx-auto text-neutral-400 mb-2" />
+                    {excelFileName ? (
+                      <p className="text-sm text-green-600 font-medium">{excelFileName}</p>
+                    ) : (
+                      <p className="text-sm text-neutral-500">Click para subir Excel</p>
+                    )}
+                    <p className="text-xs text-neutral-400 mt-1">
+                      Columnas: Código, Descripción, Secuencia, REV_A (UF), REV_B (UF), REV_0 (UF)
+                    </p>
+                  </label>
+                </div>
+                {excelError && (
+                  <p className="text-xs text-red-500">{excelError}</p>
+                )}
+                {newProject.entregables.length > 0 && (
+                  <p className="text-xs text-green-600">
+                    ✓ {newProject.entregables.length} entregables cargados
+                  </p>
+                )}
+              </div>
+
               <div className="flex gap-2 sm:gap-3 pt-2">
                 <button
-                  onClick={() => setShowNewProject(false)}
+                  onClick={() => {
+                    setShowNewProject(false);
+                    setExcelFileName('');
+                    setExcelError('');
+                  }}
                   className="flex-1 px-4 py-3 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded font-medium text-sm transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
-                  className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium text-sm transition-colors"
+                  className={`flex-1 px-4 py-3 rounded font-medium text-sm transition-colors ${
+                    newProject.id && newProject.nombre && newProject.entregables.length > 0
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                      : 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
+                  }`}
+                  disabled={!newProject.id || !newProject.nombre || newProject.entregables.length === 0}
                   onClick={() => {
-                    if (newProject.id && newProject.nombre) {
-                      setProyectos([...proyectos, {
-                        ...newProject,
+                    if (newProject.id && newProject.nombre && newProject.entregables.length > 0) {
+                      // Crear proyecto con sus entregables personalizados
+                      const nuevoProyecto = {
+                        id: newProject.id,
+                        nombre: newProject.nombre,
+                        cliente: newProject.cliente,
+                        tarifaVenta: newProject.tarifaVenta,
                         estado: 'Activo',
                         inicio: new Date().toISOString().split('T')[0],
                         avance: 0,
-                      }]);
-                      setNewProject({ id: '', nombre: '', cliente: '', tarifaVenta: 1.2 });
+                        entregables: newProject.entregables.map(e => ({
+                          ...e,
+                          weekStart: e.secuencia // Usar secuencia como weekStart
+                        }))
+                      };
+                      setProyectos([...proyectos, nuevoProyecto]);
+
+                      // Inicializar statusData para los nuevos entregables
+                      const newStatusData = { ...statusData };
+                      newProject.entregables.forEach(ent => {
+                        const key = `${newProject.id}_${ent.id}`;
+                        newStatusData[key] = {
+                          sentIniciado: false,
+                          sentRevA: false,
+                          sentRevADate: null,
+                          comentariosARecibidos: false,
+                          comentariosARecibidosDate: null,
+                          sentRevB: false,
+                          sentRevBDate: null,
+                          comentariosBRecibidos: false,
+                          comentariosBRecibidosDate: null,
+                          sentRev0: false,
+                          sentRev0Date: null,
+                        };
+                      });
+                      setStatusData(newStatusData);
+
+                      // Limpiar formulario
+                      setNewProject({ id: '', nombre: '', cliente: '', tarifaVenta: 1.2, entregables: [] });
+                      setExcelFileName('');
+                      setExcelError('');
                       setShowNewProject(false);
                     }
                   }}
@@ -2684,84 +2857,96 @@ export default function MatrizIntranet() {
                   </div>
                   
                   {/* Resumen */}
-                  <div className="grid grid-cols-5 gap-1 mb-3">
-                    <div className="text-center p-1.5 bg-neutral-100 rounded">
-                      <p className="text-base font-bold text-neutral-800">{ENTREGABLES_PROYECTO.length}</p>
-                  <p className="text-[7px] text-neutral-500">TOTAL</p>
-                </div>
-                <div className="text-center p-1.5 bg-green-50 rounded border border-green-200">
-                  <p className="text-base font-bold text-green-600">{ENTREGABLES_PROYECTO.filter(d => statusData[d.id]?.sentRev0).length}</p>
-                  <p className="text-[7px] text-green-600">LISTOS</p>
-                </div>
-                <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
-                  <p className="text-base font-bold text-orange-500">{ENTREGABLES_PROYECTO.filter(d => statusData[d.id]?.sentIniciado && !statusData[d.id]?.sentRev0).length}</p>
-                  <p className="text-[7px] text-orange-500">PROCESO</p>
-                </div>
-                <div className="text-center p-1.5 bg-red-50 rounded border border-red-200">
-                  <p className="text-base font-bold text-red-500">{ENTREGABLES_PROYECTO.filter(d => {
-                    const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart);
-                    return !statusData[d.id]?.sentRev0 && new Date() > deadlines.deadlineRevA;
-                  }).length}</p>
-                  <p className="text-[7px] text-red-500">ATRASO</p>
-                </div>
-                <div className="text-center p-1.5 bg-blue-50 rounded border border-blue-200">
-                  <p className="text-base font-bold text-blue-600">{((ENTREGABLES_PROYECTO.filter(d => statusData[d.id]?.sentRev0).length / ENTREGABLES_PROYECTO.length) * 100).toFixed(0)}%</p>
-                  <p className="text-[7px] text-blue-600">AVANCE</p>
-                </div>
-              </div>
-              
-              {/* Tabla Página 1 - Entregables 1-18 */}
-              <p className="text-[8px] font-semibold text-neutral-400 uppercase mb-1">Entregables 1-18</p>
-              <table className="w-full text-[8px] border-collapse mb-3">
-                <thead>
-                  <tr className="bg-neutral-800 text-white">
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-5">#</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Código</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_A</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_B</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_0</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-14">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ENTREGABLES_PROYECTO.slice(0, 18).map((d, i) => {
-                    const status = statusData[d.id];
-                    const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart);
-                    const info = calculateStatus(status, deadlines);
+                  {(() => {
+                    // Obtener entregables del proyecto específico para impresión
+                    const proyectoImpr = proyectos.find(p => p.id === selectedProject);
+                    const entregablesImpr = proyectoImpr?.entregables || ENTREGABLES_PROYECTO;
+                    const usaPersonalizados = proyectoImpr?.entregables?.length > 0;
+                    const getStatusKey = (d) => usaPersonalizados ? `${selectedProject}_${d.id}` : d.id;
+
                     return (
-                      <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
-                        <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
-                        <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
-                        <td className="border border-neutral-300 px-1 py-0.5">{d.name}</td>
-                        <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
-                          {status?.sentRevADate || '-'}
-                        </td>
-                        <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400'}`}>
-                          {status?.sentRevBDate || '-'}
-                        </td>
-                        <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400'}`}>
-                          {status?.sentRev0Date || '-'}
-                        </td>
-                        <td className="border border-neutral-300 px-1 py-0.5 text-center">
-                          <span className={`px-1 rounded text-[6px] ${
-                            info.status === 'TERMINADO' ? 'bg-green-100 text-green-700' :
-                            info.status === 'ATRASADO' ? 'bg-red-100 text-red-700' :
-                            info.status === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
-                            'bg-neutral-100 text-neutral-600'
-                          }`}>{info.status === 'En Proceso' ? 'Proceso' : info.status}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      <>
+                        <div className="grid grid-cols-5 gap-1 mb-3">
+                          <div className="text-center p-1.5 bg-neutral-100 rounded">
+                            <p className="text-base font-bold text-neutral-800">{entregablesImpr.length}</p>
+                            <p className="text-[7px] text-neutral-500">TOTAL</p>
+                          </div>
+                          <div className="text-center p-1.5 bg-green-50 rounded border border-green-200">
+                            <p className="text-base font-bold text-green-600">{entregablesImpr.filter(d => statusData[getStatusKey(d)]?.sentRev0).length}</p>
+                            <p className="text-[7px] text-green-600">LISTOS</p>
+                          </div>
+                          <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
+                            <p className="text-base font-bold text-orange-500">{entregablesImpr.filter(d => statusData[getStatusKey(d)]?.sentIniciado && !statusData[getStatusKey(d)]?.sentRev0).length}</p>
+                            <p className="text-[7px] text-orange-500">PROCESO</p>
+                          </div>
+                          <div className="text-center p-1.5 bg-red-50 rounded border border-red-200">
+                            <p className="text-base font-bold text-red-500">{entregablesImpr.filter(d => {
+                              const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
+                              return !statusData[getStatusKey(d)]?.sentRev0 && new Date() > deadlines.deadlineRevA;
+                            }).length}</p>
+                            <p className="text-[7px] text-red-500">ATRASO</p>
+                          </div>
+                          <div className="text-center p-1.5 bg-blue-50 rounded border border-blue-200">
+                            <p className="text-base font-bold text-blue-600">{((entregablesImpr.filter(d => statusData[getStatusKey(d)]?.sentRev0).length / entregablesImpr.length) * 100).toFixed(0)}%</p>
+                            <p className="text-[7px] text-blue-600">AVANCE</p>
+                          </div>
+                        </div>
               
-              <div className="flex justify-between text-[7px] text-neutral-400 pt-2 border-t border-neutral-200">
-                <span>MATRIZ © 2026</span>
-                <span>Página 1 de 2</span>
-              </div>
-            </div>
+              {/* Tabla Página 1 - Primera mitad */}
+                        <p className="text-[8px] font-semibold text-neutral-400 uppercase mb-1">Entregables 1-{Math.ceil(entregablesImpr.length / 2)}</p>
+                        <table className="w-full text-[8px] border-collapse mb-3">
+                          <thead>
+                            <tr className="bg-neutral-800 text-white">
+                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-5">#</th>
+                              <th className="border border-neutral-600 px-1 py-0.5 text-left">Código</th>
+                              <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
+                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_A</th>
+                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_B</th>
+                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_0</th>
+                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-14">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entregablesImpr.slice(0, Math.ceil(entregablesImpr.length / 2)).map((d, i) => {
+                              const status = statusData[getStatusKey(d)];
+                              const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
+                              const info = calculateStatus(status, deadlines);
+                              return (
+                                <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
+                                  <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
+                                  <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
+                                  <td className="border border-neutral-300 px-1 py-0.5">{d.nombre || d.name}</td>
+                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
+                                    {status?.sentRevADate || '-'}
+                                  </td>
+                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400'}`}>
+                                    {status?.sentRevBDate || '-'}
+                                  </td>
+                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400'}`}>
+                                    {status?.sentRev0Date || '-'}
+                                  </td>
+                                  <td className="border border-neutral-300 px-1 py-0.5 text-center">
+                                    <span className={`px-1 rounded text-[6px] ${
+                                      info.status === 'TERMINADO' ? 'bg-green-100 text-green-700' :
+                                      info.status === 'ATRASADO' ? 'bg-red-100 text-red-700' :
+                                      info.status === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
+                                      'bg-neutral-100 text-neutral-600'
+                                    }`}>{info.status === 'En Proceso' ? 'Proceso' : info.status}</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+
+                        <div className="flex justify-between text-[7px] text-neutral-400 pt-2 border-t border-neutral-200">
+                          <span>MATRIZ © 2026</span>
+                          <span>Página 1 de 2</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
             
             {/* Separador entre páginas - NO IMPRIMIR */}
             <div className="no-print h-4 w-full max-w-2xl bg-neutral-500 flex items-center justify-center">
@@ -2782,52 +2967,64 @@ export default function MatrizIntranet() {
                 </div>
               </div>
               
-              {/* Tabla Página 2 - Entregables 19-35 */}
-              <p className="text-[8px] font-semibold text-neutral-400 uppercase mb-1">Entregables 19-35</p>
-              <table className="w-full text-[8px] border-collapse mb-4">
-                <thead>
-                  <tr className="bg-neutral-800 text-white">
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-5">#</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Código</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_A</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_B</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_0</th>
-                    <th className="border border-neutral-600 px-1 py-0.5 text-center w-14">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ENTREGABLES_PROYECTO.slice(18).map((d, i) => {
-                    const status = statusData[d.id];
-                    const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart);
-                    const info = calculateStatus(status, deadlines);
-                    return (
-                      <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
-                        <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
-                        <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
-                        <td className="border border-neutral-300 px-1 py-0.5">{d.name}</td>
-                        <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
-                          {status?.sentRevADate || '-'}
-                        </td>
-                        <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400'}`}>
-                          {status?.sentRevBDate || '-'}
-                        </td>
-                        <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400'}`}>
-                          {status?.sentRev0Date || '-'}
-                        </td>
-                        <td className="border border-neutral-300 px-1 py-0.5 text-center">
-                          <span className={`px-1 rounded text-[6px] ${
-                            info.status === 'TERMINADO' ? 'bg-green-100 text-green-700' :
-                            info.status === 'ATRASADO' ? 'bg-red-100 text-red-700' :
-                            info.status === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
-                            'bg-neutral-100 text-neutral-600'
-                          }`}>{info.status === 'En Proceso' ? 'Proceso' : info.status}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              {/* Tabla Página 2 - Segunda mitad */}
+              {(() => {
+                const proyectoImpr2 = proyectos.find(p => p.id === selectedProject);
+                const entregablesImpr2 = proyectoImpr2?.entregables || ENTREGABLES_PROYECTO;
+                const usaPersonalizados2 = proyectoImpr2?.entregables?.length > 0;
+                const getStatusKey2 = (d) => usaPersonalizados2 ? `${selectedProject}_${d.id}` : d.id;
+                const mitad = Math.ceil(entregablesImpr2.length / 2);
+
+                return (
+                  <>
+                    <p className="text-[8px] font-semibold text-neutral-400 uppercase mb-1">Entregables {mitad + 1}-{entregablesImpr2.length}</p>
+                    <table className="w-full text-[8px] border-collapse mb-4">
+                      <thead>
+                        <tr className="bg-neutral-800 text-white">
+                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-5">#</th>
+                          <th className="border border-neutral-600 px-1 py-0.5 text-left">Código</th>
+                          <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
+                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_A</th>
+                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_B</th>
+                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_0</th>
+                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-14">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entregablesImpr2.slice(mitad).map((d, i) => {
+                          const status = statusData[getStatusKey2(d)];
+                          const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
+                          const info = calculateStatus(status, deadlines);
+                          return (
+                            <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
+                              <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
+                              <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
+                              <td className="border border-neutral-300 px-1 py-0.5">{d.nombre || d.name}</td>
+                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
+                                {status?.sentRevADate || '-'}
+                              </td>
+                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400'}`}>
+                                {status?.sentRevBDate || '-'}
+                              </td>
+                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400'}`}>
+                                {status?.sentRev0Date || '-'}
+                              </td>
+                              <td className="border border-neutral-300 px-1 py-0.5 text-center">
+                                <span className={`px-1 rounded text-[6px] ${
+                                  info.status === 'TERMINADO' ? 'bg-green-100 text-green-700' :
+                                  info.status === 'ATRASADO' ? 'bg-red-100 text-red-700' :
+                                  info.status === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
+                                  'bg-neutral-100 text-neutral-600'
+                                }`}>{info.status === 'En Proceso' ? 'Proceso' : info.status}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </>
+                );
+              })()}
               
               {/* Leyenda */}
               <div className="mb-4 p-2 bg-neutral-50 rounded">

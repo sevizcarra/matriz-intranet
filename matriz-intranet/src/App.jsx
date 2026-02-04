@@ -2035,28 +2035,20 @@ export default function MatrizIntranet() {
                     <p className="text-xs text-neutral-500 mt-0.5">{proyecto.cliente}</p>
                   </div>
                   
-                  {currentUser?.rol === 'admin' ? (
-                    <button
-                      onClick={() => { setTempDate(dashboardStartDate); setEditDateOpen(true); }}
-                      className="flex items-center gap-1 px-2 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 rounded text-xs text-neutral-600 transition-colors shrink-0"
-                    >
-                      <Calendar className="w-3 h-3" />
-                      <span className="hidden sm:inline">Inicio:</span>
-                      <span>{dashboardStartDate.split('-').reverse().join('/')}</span>
-                      <Pencil className="w-3 h-3 ml-1" />
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-1 px-2 py-2 bg-neutral-100 rounded text-xs text-neutral-600 shrink-0">
-                      <Calendar className="w-3 h-3" />
-                      <span className="hidden sm:inline">Inicio:</span>
-                      <span>{dashboardStartDate.split('-').reverse().join('/')}</span>
-                    </div>
-                  )}
+                  <button 
+                    onClick={() => { setTempDate(dashboardStartDate); setEditDateOpen(true); }} 
+                    className="flex items-center gap-1 px-2 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 rounded text-xs text-neutral-600 transition-colors shrink-0"
+                  >
+                    <Calendar className="w-3 h-3" />
+                    <span className="hidden sm:inline">Inicio:</span>
+                    <span>{dashboardStartDate.split('-').reverse().join('/')}</span>
+                    <Pencil className="w-3 h-3 ml-1" />
+                  </button>
                 </div>
               </div>
               
-              {/* Tabs - Control solo visible para admin */}
-              <div className={`grid gap-1 bg-neutral-100 p-1 rounded-lg ${currentUser?.rol === 'admin' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              {/* Tabs */}
+              <div className="grid grid-cols-4 gap-1 bg-neutral-100 p-1 rounded-lg">
                 <button
                   onClick={() => setDashboardTab('resumen')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
@@ -2066,18 +2058,15 @@ export default function MatrizIntranet() {
                   <BarChart3 className="w-4 h-4" />
                   <span>Resumen</span>
                 </button>
-                {/* Pestaña Control - Solo admin puede marcar avances */}
-                {currentUser?.rol === 'admin' && (
-                  <button
-                    onClick={() => setDashboardTab('control')}
-                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
-                      dashboardTab === 'control' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white'
-                    }`}
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>Control</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => setDashboardTab('control')}
+                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
+                    dashboardTab === 'control' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Control</span>
+                </button>
                 <button
                   onClick={() => setDashboardTab('log')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
@@ -2179,14 +2168,14 @@ export default function MatrizIntranet() {
                         </Card>
                         
                         {/* Curva S */}
-                        <Card className="p-2 sm:p-3">
-                          <h3 className="text-neutral-800 text-xs mb-0.5">Curva S - Avance del Proyecto</h3>
-                          <p className="text-neutral-500 text-[10px] mb-2">Comparación avance proyectado vs real</p>
+                        <Card className="p-3 sm:p-4">
+                          <h3 className="text-neutral-800 text-sm mb-1">Curva S - Avance del Proyecto</h3>
+                          <p className="text-neutral-500 text-xs mb-3">Comparación avance proyectado vs real</p>
                           {(() => {
                             const weeksToShow = 20;
-                            const chartWidth = 320;
-                            const chartHeight = 90;
-                            const padding = { top: 12, right: 55, bottom: 22, left: 28 };
+                            const chartWidth = 500;
+                            const chartHeight = 150;
+                            const padding = { top: 20, right: 80, bottom: 35, left: 45 };
                             
                             // Calcular avance proyectado (curva S típica)
                             const projectedData = [];
@@ -2240,56 +2229,56 @@ export default function MatrizIntranet() {
                             
                             return (
                               <div>
-                                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto max-w-md mx-auto">
+                                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto">
                                   {/* Grid horizontal */}
-                                  {[0, 50, 100].map(v => (
+                                  {[0, 25, 50, 75, 100].map(v => (
                                     <g key={v}>
                                       <line x1={padding.left} y1={yScale(v)} x2={chartWidth - padding.right} y2={yScale(v)} stroke="#e5e7eb" strokeWidth="1" />
-                                      <text x={padding.left - 5} y={yScale(v) + 3} textAnchor="end" fontSize="7" fill="#6b7280">{v}%</text>
+                                      <text x={padding.left - 10} y={yScale(v) + 4} textAnchor="end" fontSize="10" fill="#6b7280">{v}%</text>
                                     </g>
                                   ))}
-
-                                  {/* Etiquetas semanas - cada 4 */}
-                                  {[0, 4, 8, 12, 16, 20].map(w => (
-                                    <text key={w} x={xScale(w)} y={chartHeight - 10} textAnchor="middle" fontSize="7" fill="#6b7280">S{w}</text>
+                                  
+                                  {/* Etiquetas semanas */}
+                                  {Array.from({ length: Math.floor(weeksToShow / 2) + 1 }, (_, i) => i * 2).filter(w => w <= weeksToShow).map(w => (
+                                    <text key={w} x={xScale(w)} y={chartHeight - 18} textAnchor="middle" fontSize="10" fill="#6b7280">S{w}</text>
                                   ))}
-
+                                  
                                   {/* Línea vertical HOY */}
                                   {currentWeek > 0 && currentWeek <= weeksToShow && (
                                     <>
-                                      <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="3,2" />
-                                      <text x={xScale(currentWeek)} y={padding.top - 3} textAnchor="middle" fontSize="6" fill="#ef4444" fontWeight="600">HOY</text>
+                                      <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" />
+                                      <text x={xScale(currentWeek)} y={padding.top - 8} textAnchor="middle" fontSize="10" fill="#ef4444" fontWeight="600">HOY</text>
                                     </>
                                   )}
-
+                                  
                                   {/* Curva proyectada */}
-                                  <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="1.5" />
-
+                                  <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="3" />
+                                  
                                   {/* Curva real */}
-                                  {realPath && currentWeek > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="1.5" />}
-
+                                  {realPath && currentWeek > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="3" />}
+                                  
                                   {/* Leyenda */}
-                                  <g transform={`translate(${chartWidth - padding.right + 5}, ${padding.top + 5})`}>
-                                    <line x1="0" y1="0" x2="10" y2="0" stroke="#f97316" strokeWidth="1.5" />
-                                    <text x="13" y="3" fontSize="7" fill="#374151">Proyectado</text>
-                                    <line x1="0" y1="12" x2="10" y2="12" stroke="#22c55e" strokeWidth="1.5" />
-                                    <text x="13" y="15" fontSize="7" fill="#374151">Real</text>
+                                  <g transform={`translate(${chartWidth - padding.right + 12}, ${padding.top + 15})`}>
+                                    <line x1="0" y1="0" x2="18" y2="0" stroke="#f97316" strokeWidth="3" />
+                                    <text x="24" y="4" fontSize="11" fill="#374151">Proyectado</text>
+                                    <line x1="0" y1="22" x2="18" y2="22" stroke="#22c55e" strokeWidth="3" />
+                                    <text x="24" y="26" fontSize="11" fill="#374151">Real</text>
                                   </g>
                                 </svg>
-
+                                
                                 {/* Resumen numérico */}
-                                <div className="flex justify-center gap-6 mt-2 pt-2 border-t border-neutral-200">
+                                <div className="flex justify-center gap-8 mt-4 pt-4 border-t border-neutral-200">
                                   <div className="text-center">
-                                    <div className="text-[10px] text-neutral-500 uppercase">Proyectado</div>
-                                    <div className="text-base font-bold text-orange-500">{projectedAtCurrentWeek.toFixed(1)}%</div>
+                                    <div className="text-xs text-neutral-500 uppercase">Proyectado</div>
+                                    <div className="text-xl font-bold text-orange-500">{projectedAtCurrentWeek.toFixed(1)}%</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-[10px] text-neutral-500 uppercase">Real</div>
-                                    <div className="text-base font-bold text-green-500">{realFinal.toFixed(1)}%</div>
+                                    <div className="text-xs text-neutral-500 uppercase">Real</div>
+                                    <div className="text-xl font-bold text-green-500">{realFinal.toFixed(1)}%</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-[10px] text-neutral-500 uppercase">Diferencia</div>
-                                    <div className={`text-base font-bold ${difference >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <div className="text-xs text-neutral-500 uppercase">Diferencia</div>
+                                    <div className={`text-xl font-bold ${difference >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                       {difference >= 0 ? '+' : ''}{difference.toFixed(1)}%
                                     </div>
                                   </div>
@@ -2674,9 +2663,19 @@ export default function MatrizIntranet() {
 
               {/* Campo de carga de Excel */}
               <div className="space-y-2">
-                <label className="block text-neutral-600 font-medium text-xs uppercase tracking-wider">
-                  Entregables (Excel) *
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-neutral-600 font-medium text-xs uppercase tracking-wider">
+                    Entregables (Excel) *
+                  </label>
+                  <a
+                    href="/Entregables_Ejemplo.xlsx"
+                    download="Entregables_Plantilla.xlsx"
+                    className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-medium"
+                  >
+                    <FileDown className="w-3 h-3" />
+                    Descargar plantilla
+                  </a>
+                </div>
                 <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center hover:border-orange-400 transition-colors">
                   <input
                     type="file"

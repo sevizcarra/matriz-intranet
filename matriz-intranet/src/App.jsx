@@ -1427,19 +1427,19 @@ export default function MatrizIntranet() {
   // ============================================
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-neutral-100 to-orange-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'radial-gradient(ellipse at center, #ea580c 0%, #c2410c 25%, #431407 60%, #0a0a0a 100%)'}}>
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="text-4xl font-light tracking-widest mb-2">
-              <span className="text-neutral-800">M</span>
-              <span className="text-orange-500">A</span>
-              <span className="text-neutral-800">TRIZ</span>
+              <span className="text-white">M</span>
+              <span className="text-orange-300">A</span>
+              <span className="text-white">TRIZ</span>
             </div>
-            <p className="text-neutral-400 text-xs tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
-            <h1 className="text-xl text-neutral-700 font-medium mt-4">Intranet</h1>
+            <p className="text-orange-200/60 text-xs tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
+            <h1 className="text-xl text-white font-medium mt-4">Intranet</h1>
           </div>
 
-          <div className="bg-white border border-neutral-200 rounded-lg shadow-sm p-6">
+          <div className="bg-white/95 backdrop-blur border border-white/20 rounded-lg shadow-2xl p-6">
             {loginError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
                 <X className="w-4 h-4" />
@@ -1490,11 +1490,11 @@ export default function MatrizIntranet() {
             </div>
           </div>
 
-          <div className="mt-6 p-4 bg-white/50 rounded-lg border border-neutral-200">
-            <p className="text-xs text-neutral-500 text-center mb-2">Usuarios de prueba:</p>
-            <div className="space-y-1 text-xs text-neutral-600">
-              <p><strong>Admin:</strong> sebastianvizcarra@gmail.com / admin123</p>
-              <p><strong>Colaborador:</strong> cristobal@matriz.cl / crios123</p>
+          <div className="mt-6 p-4 bg-black/30 backdrop-blur rounded-lg border border-white/10">
+            <p className="text-xs text-orange-200/70 text-center mb-2">Usuarios de prueba:</p>
+            <div className="space-y-1 text-xs text-white/80">
+              <p><strong className="text-orange-300">Admin:</strong> sebastianvizcarra@gmail.com / admin123</p>
+              <p><strong className="text-orange-300">Colaborador:</strong> cristobal@matriz.cl / crios123</p>
             </div>
           </div>
         </div>

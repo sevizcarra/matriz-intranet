@@ -1,10 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Home, FolderKanban, Clock, FileSpreadsheet, Users, Plus,
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
   Building2, User, DollarSign, FileText, Check, X, Pencil, Trash2, Settings,
-  BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut
+  BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2
 } from 'lucide-react';
+import {
+  subscribeToProyectos,
+  subscribeToColaboradores,
+  subscribeToHoras,
+  subscribeToStatusData,
+  saveProyecto,
+  deleteProyecto as deleteProyectoFS,
+  saveColaborador,
+  deleteColaborador as deleteColaboradorFS,
+  saveHora,
+  deleteHora as deleteHoraFS,
+  saveStatusData,
+  saveAllProyectos,
+  saveAllColaboradores
+} from './firestoreService';
 
 // ============================================
 // SISTEMA DE USUARIOS Y ROLES
@@ -439,22 +454,58 @@ export default function MatrizIntranet() {
   };
 
   // ============================================
-  // ESTADOS DE LA APP (con persistencia localStorage)
+  // ESTADOS DE LA APP (con persistencia Firestore)
   // ============================================
   const [currentPage, setCurrentPage] = useState('home');
-  const [proyectos, setProyectos] = useState(() => {
-    const saved = localStorage.getItem('matriz_proyectos');
-    return saved ? JSON.parse(saved) : PROYECTOS_INICIALES;
-  });
-  const [colaboradores, setColaboradores] = useState(() => {
-    const saved = localStorage.getItem('matriz_colaboradores');
-    return saved ? JSON.parse(saved) : COLABORADORES_INICIAL;
-  });
-  const [horasRegistradas, setHorasRegistradas] = useState(() => {
-    const saved = localStorage.getItem('matriz_horas');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [proyectos, setProyectos] = useState([]);
+  const [colaboradores, setColaboradores] = useState([]);
+  const [horasRegistradas, setHorasRegistradas] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [firestoreReady, setFirestoreReady] = useState(false);
+
+  // ============================================
+  // FIRESTORE SUBSCRIPTIONS
+  // ============================================
+  useEffect(() => {
+    // Subscribe to Firestore collections
+    const unsubProyectos = subscribeToProyectos((data) => {
+      if (data.length > 0) {
+        setProyectos(data);
+      } else {
+        // Si no hay datos en Firestore, usar datos iniciales y guardarlos
+        setProyectos(PROYECTOS_INICIALES);
+        saveAllProyectos(PROYECTOS_INICIALES);
+      }
+    });
+
+    const unsubColaboradores = subscribeToColaboradores((data) => {
+      if (data.length > 0) {
+        setColaboradores(data);
+      } else {
+        // Si no hay datos en Firestore, usar datos iniciales y guardarlos
+        setColaboradores(COLABORADORES_INICIAL);
+        saveAllColaboradores(COLABORADORES_INICIAL);
+      }
+    });
+
+    const unsubHoras = subscribeToHoras((data) => {
+      setHorasRegistradas(data);
+    });
+
+    // Marcar como listo después de un momento
+    setTimeout(() => {
+      setIsLoading(false);
+      setFirestoreReady(true);
+    }, 1500);
+
+    // Cleanup
+    return () => {
+      unsubProyectos();
+      unsubColaboradores();
+      unsubHoras();
+    };
+  }, []);
 
   // Estados para EDP
   const [edpUnlocked, setEdpUnlocked] = useState(false);
@@ -585,8 +636,6 @@ export default function MatrizIntranet() {
   const [dashboardTab, setDashboardTab] = useState('resumen');
   const [dashboardStartDate, setDashboardStartDate] = useState('2026-01-05');
   const [statusData, setStatusData] = useState(() => {
-    const saved = localStorage.getItem('matriz_statusData');
-    if (saved) return JSON.parse(saved);
     // Datos iniciales de ejemplo
     const status = {};
     ENTREGABLES_PROYECTO.forEach(d => {
@@ -611,23 +660,30 @@ export default function MatrizIntranet() {
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
 
   // ============================================
-  // PERSISTENCIA - Guardar datos en localStorage
+  // FIRESTORE SUBSCRIPTION para statusData
   // ============================================
   useEffect(() => {
-    localStorage.setItem('matriz_proyectos', JSON.stringify(proyectos));
-  }, [proyectos]);
+    const unsubStatusData = subscribeToStatusData((data) => {
+      if (data && Object.keys(data).length > 0) {
+        setStatusData(data);
+      }
+    });
 
-  useEffect(() => {
-    localStorage.setItem('matriz_colaboradores', JSON.stringify(colaboradores));
-  }, [colaboradores]);
+    return () => unsubStatusData();
+  }, []);
 
+  // ============================================
+  // PERSISTENCIA - Guardar datos en Firestore (debounced)
+  // ============================================
+  // Guardar statusData cuando cambie
   useEffect(() => {
-    localStorage.setItem('matriz_horas', JSON.stringify(horasRegistradas));
-  }, [horasRegistradas]);
-
-  useEffect(() => {
-    localStorage.setItem('matriz_statusData', JSON.stringify(statusData));
-  }, [statusData]);
+    if (firestoreReady && Object.keys(statusData).length > 0) {
+      const timer = setTimeout(() => {
+        saveStatusData(statusData);
+      }, 1000); // Debounce de 1 segundo
+      return () => clearTimeout(timer);
+    }
+  }, [statusData, firestoreReady]);
 
   // Función para manejar checkboxes del dashboard
   const handleCheck = (id, field, value) => {
@@ -658,17 +714,27 @@ export default function MatrizIntranet() {
   }, [selectedProject]);
 
   // Función para eliminar proyecto
-  const handleDeleteProject = () => {
+  const handleDeleteProject = async () => {
     if (projectToDelete) {
-      setProyectos(prev => prev.filter(p => p.id !== projectToDelete.id));
+      // Eliminar de Firestore
+      await deleteProyectoFS(projectToDelete.id);
+
+      // También eliminar horas registradas de ese proyecto de Firestore
+      const horasDelProyecto = horasRegistradas.filter(h => h.proyecto === projectToDelete.id);
+      for (const hora of horasDelProyecto) {
+        if (hora._docId) {
+          await deleteHoraFS(hora._docId);
+        }
+      }
+
       // Si el proyecto eliminado era el seleccionado, deseleccionar
       if (selectedProject === projectToDelete.id) {
         setSelectedProject(null);
       }
-      // También eliminar horas registradas de ese proyecto
-      setHorasRegistradas(prev => prev.filter(h => h.proyecto !== projectToDelete.id));
+
       setDeleteConfirmOpen(false);
       setProjectToDelete(null);
+      showNotification('success', 'Proyecto eliminado');
     }
   };
 
@@ -685,32 +751,46 @@ export default function MatrizIntranet() {
   };
 
   // Función para guardar cambios del proyecto
-  const handleSaveProject = () => {
+  const handleSaveProject = async () => {
     if (projectToEdit && editProjectData.nombre.trim() && editProjectData.id.trim()) {
       const oldId = projectToEdit.id;
       const newId = editProjectData.id.trim().toUpperCase();
-      
-      // Actualizar proyecto
-      setProyectos(prev => prev.map(p => 
-        p.id === oldId 
-          ? { ...p, id: newId, nombre: editProjectData.nombre.trim(), cliente: editProjectData.cliente.trim(), estado: editProjectData.estado }
-          : p
-      ));
-      
+
+      // Si cambió el ID, eliminar el documento viejo
+      if (oldId !== newId) {
+        await deleteProyectoFS(oldId);
+      }
+
+      // Buscar el proyecto actual para preservar sus datos
+      const proyectoActual = proyectos.find(p => p.id === oldId);
+      const proyectoActualizado = {
+        ...proyectoActual,
+        id: newId,
+        nombre: editProjectData.nombre.trim(),
+        cliente: editProjectData.cliente.trim(),
+        estado: editProjectData.estado
+      };
+
+      // Guardar en Firestore
+      await saveProyecto(proyectoActualizado);
+
       // Si cambió el id, actualizar referencias en horas registradas
       if (oldId !== newId) {
-        setHorasRegistradas(prev => prev.map(h => 
-          h.proyecto === oldId ? { ...h, proyecto: newId } : h
-        ));
-        
+        const horasActualizadas = horasRegistradas.filter(h => h.proyecto === oldId);
+        for (const hora of horasActualizadas) {
+          const horaActualizada = { ...hora, proyecto: newId };
+          await saveHora(horaActualizada);
+        }
+
         // Si era el proyecto seleccionado, actualizar selección
         if (selectedProject === oldId) {
           setSelectedProject(newId);
         }
       }
-      
+
       setEditProjectOpen(false);
       setProjectToEdit(null);
+      showNotification('success', 'Proyecto actualizado');
     }
   };
 
@@ -723,47 +803,52 @@ export default function MatrizIntranet() {
   };
   
   // Funciones para gestión de colaboradores
-  const handleAddColaborador = () => {
+  const handleAddColaborador = async () => {
     if (newColaborador.nombre.trim() && newColaborador.cargo.trim()) {
       const newId = Math.max(...colaboradores.map(c => c.id), 0) + 1;
-      setColaboradores(prev => [...prev, {
+      const nuevoColaborador = {
         id: newId,
         nombre: newColaborador.nombre.trim(),
         cargo: newColaborador.cargo.trim(),
         categoria: newColaborador.categoria,
         tarifaInterna: parseFloat(newColaborador.tarifaInterna) || 0.5,
         iniciales: getIniciales(newColaborador.nombre.trim())
-      }]);
+      };
+
+      // Guardar en Firestore
+      await saveColaborador(nuevoColaborador);
+
       setNewColaborador({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
       setShowNewColaborador(false);
       showNotification('success', 'Colaborador agregado');
     }
   };
-  
-  const handleDeleteColaborador = (id) => {
+
+  const handleDeleteColaborador = async (id) => {
     const tieneHoras = horasRegistradas.some(h => h.colaboradorId === id);
     if (tieneHoras) {
       showNotification('error', 'No se puede eliminar: este colaborador tiene horas registradas.');
       return;
     }
-    setColaboradores(prev => prev.filter(c => c.id !== id));
+    // Eliminar de Firestore
+    await deleteColaboradorFS(id);
     showNotification('success', 'Colaborador eliminado');
   };
   
-  const handleSaveColaborador = () => {
+  const handleSaveColaborador = async () => {
     if (colaboradorToEdit) {
-      setColaboradores(prev => prev.map(c => 
-        c.id === colaboradorToEdit.id 
-          ? { 
-              ...c, 
-              nombre: colaboradorToEdit.nombre,
-              cargo: colaboradorToEdit.cargo,
-              categoria: colaboradorToEdit.categoria,
-              tarifaInterna: parseFloat(colaboradorToEdit.tarifaInterna) || 0.5,
-              iniciales: getIniciales(colaboradorToEdit.nombre)
-            }
-          : c
-      ));
+      const colaboradorActualizado = {
+        ...colaboradorToEdit,
+        nombre: colaboradorToEdit.nombre,
+        cargo: colaboradorToEdit.cargo,
+        categoria: colaboradorToEdit.categoria,
+        tarifaInterna: parseFloat(colaboradorToEdit.tarifaInterna) || 0.5,
+        iniciales: getIniciales(colaboradorToEdit.nombre)
+      };
+
+      // Guardar en Firestore
+      await saveColaborador(colaboradorActualizado);
+
       setEditColaboradorOpen(false);
       setColaboradorToEdit(null);
       showNotification('success', 'Colaborador actualizado');
@@ -1043,7 +1128,7 @@ export default function MatrizIntranet() {
       'Memoria Descriptiva',
     ];
     
-    const registrarHoras = () => {
+    const registrarHoras = async () => {
       if (!colaborador || !proyecto || !semana || !entregable || !horas) {
         showNotification('error', 'Por favor completa todos los campos');
         return;
@@ -1058,7 +1143,10 @@ export default function MatrizIntranet() {
         horas: parseFloat(horas),
         fecha: new Date().toISOString(),
       };
-      setHorasRegistradas(prev => [...prev, nuevoRegistro]);
+
+      // Guardar en Firestore
+      await saveHora(nuevoRegistro);
+
       setHoras('');
       setEntregable('');
       setSemana('');
@@ -1299,15 +1387,16 @@ export default function MatrizIntranet() {
                 <span className="text-neutral-800 flex-1">{p.nombre}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-neutral-500 text-sm">Tarifa venta:</span>
-                  <input 
+                  <input
                     type="number"
                     step="0.1"
                     className="w-20 bg-white border border-neutral-300 rounded px-2 py-1 text-neutral-800 text-sm"
                     value={p.tarifaVenta}
                     onChange={e => {
-                      setProyectos(proyectos.map(pr => 
-                        pr.id === p.id ? { ...pr, tarifaVenta: parseFloat(e.target.value) || 0 } : pr
-                      ));
+                      const nuevaTarifa = parseFloat(e.target.value) || 0;
+                      const proyectoActualizado = { ...p, tarifaVenta: nuevaTarifa };
+                      // Guardar en Firestore
+                      saveProyecto(proyectoActualizado);
                     }}
                   />
                   <span className="text-neutral-500 text-sm">UF/Hr</span>
@@ -1421,6 +1510,25 @@ export default function MatrizIntranet() {
 
 
   // Modal Nuevo Proyecto se renderiza inline (ver abajo)
+
+  // ============================================
+  // PANTALLA DE CARGA (mientras se conecta a Firestore)
+  // ============================================
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'radial-gradient(ellipse at center, #ea580c 0%, #c2410c 25%, #431407 60%, #0a0a0a 100%)'}}>
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-orange-300 animate-spin mx-auto mb-4" />
+          <div className="text-4xl font-light tracking-widest mb-2">
+            <span className="text-white">M</span>
+            <span className="text-orange-300">A</span>
+            <span className="text-white">TRIZ</span>
+          </div>
+          <p className="text-orange-200/60 text-sm">Conectando con la base de datos...</p>
+        </div>
+      </div>
+    );
+  }
 
   // ============================================
   // PANTALLA DE LOGIN (si no está autenticado)
@@ -2724,7 +2832,7 @@ export default function MatrizIntranet() {
                       : 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
                   }`}
                   disabled={!newProject.id || !newProject.nombre || newProject.entregables.length === 0}
-                  onClick={() => {
+                  onClick={async () => {
                     if (newProject.id && newProject.nombre && newProject.entregables.length > 0) {
                       // Crear proyecto con sus entregables personalizados
                       const nuevoProyecto = {
@@ -2740,7 +2848,9 @@ export default function MatrizIntranet() {
                           weekStart: e.secuencia // Usar secuencia como weekStart
                         }))
                       };
-                      setProyectos([...proyectos, nuevoProyecto]);
+
+                      // Guardar en Firestore
+                      await saveProyecto(nuevoProyecto);
 
                       // Inicializar statusData para los nuevos entregables
                       const newStatusData = { ...statusData };
@@ -2767,6 +2877,7 @@ export default function MatrizIntranet() {
                       setExcelFileName('');
                       setExcelError('');
                       setShowNewProject(false);
+                      showNotification('success', 'Proyecto creado correctamente');
                     }
                   }}
                 >

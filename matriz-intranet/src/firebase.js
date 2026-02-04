@@ -9,12 +9,13 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  projectId: "TU_PROYECTO",
-  storageBucket: "TU_PROYECTO.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyDgBZEoRxd6TcTxfEDDs_60cj_Hq9mreJE",
+  authDomain: "matriz-intranet.firebaseapp.com",
+  projectId: "matriz-intranet",
+  storageBucket: "matriz-intranet.firebasestorage.app",
+  messagingSenderId: "454436525624",
+  appId: "1:454436525624:web:037a178feb09de3f0138cd",
+  measurementId: "G-9P4Y9XWG7X"
 };
 
 // Inicializar Firebase

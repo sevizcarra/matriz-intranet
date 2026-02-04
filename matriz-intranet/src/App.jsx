@@ -3,7 +3,8 @@ import {
   Home, FolderKanban, Clock, FileSpreadsheet, Users, Plus,
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
   Building2, User, DollarSign, FileText, Check, X, Pencil, Trash2, Settings,
-  BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2
+  BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2,
+  Moon, Sun
 } from 'lucide-react';
 import {
   subscribeToProyectos,
@@ -220,8 +221,8 @@ const getWeeksOfMonth = () => {
 // ============================================
 
 const Card = ({ children, className = '', onClick }) => (
-  <div 
-    className={`bg-white border border-neutral-200 rounded-lg shadow-sm ${onClick ? 'cursor-pointer hover:border-orange-400 hover:shadow-md active:bg-neutral-50 active:scale-[0.98] transition-all touch-manipulation select-none' : ''} ${className}`}
+  <div
+    className={`bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm ${onClick ? 'cursor-pointer hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-md active:bg-neutral-50 dark:bg-neutral-800/50 dark:active:bg-neutral-700 active:scale-[0.98] transition-all touch-manipulation select-none' : ''} ${className}`}
     onClick={onClick}
   >
     {children}
@@ -231,8 +232,8 @@ const Card = ({ children, className = '', onClick }) => (
 const Button = ({ children, variant = 'primary', size = 'md', className = '', ...props }) => {
   const variants = {
     primary: 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white',
-    secondary: 'bg-neutral-200 hover:bg-neutral-300 active:bg-neutral-400 text-neutral-700',
-    ghost: 'bg-transparent hover:bg-neutral-100 active:bg-neutral-200 text-neutral-600',
+    secondary: 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 active:bg-neutral-400 dark:active:bg-neutral-50 dark:bg-neutral-800/500 text-neutral-700 dark:text-neutral-200 dark:text-neutral-200',
+    ghost: 'bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-700 active:bg-neutral-200 dark:active:bg-neutral-600 dark:active:bg-neutral-600 text-neutral-600 dark:text-neutral-300',
     danger: 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white',
   };
   const sizes = {
@@ -249,9 +250,9 @@ const Button = ({ children, variant = 'primary', size = 'md', className = '', ..
 
 const Input = ({ label, ...props }) => (
   <div className="space-y-1">
-    {label && <label className="text-xs text-neutral-600 font-medium">{label}</label>}
-    <input 
-      className="w-full bg-white border border-neutral-300 rounded px-3 py-2.5 sm:py-2 text-neutral-800 text-base sm:text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+    {label && <label className="text-xs text-neutral-600 dark:text-neutral-300 dark:text-neutral-400 font-medium">{label}</label>}
+    <input
+      className="w-full bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2.5 sm:py-2 text-neutral-800 dark:text-neutral-100 text-base sm:text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
       {...props}
     />
   </div>
@@ -259,9 +260,9 @@ const Input = ({ label, ...props }) => (
 
 const Select = ({ label, children, ...props }) => (
   <div className="space-y-1">
-    {label && <label className="text-xs text-neutral-600 font-medium">{label}</label>}
-    <select 
-      className="w-full bg-white border border-neutral-300 rounded px-3 py-2.5 sm:py-2 text-neutral-800 text-base sm:text-sm focus:outline-none focus:border-orange-500 appearance-none"
+    {label && <label className="text-xs text-neutral-600 dark:text-neutral-300 dark:text-neutral-400 font-medium">{label}</label>}
+    <select
+      className="w-full bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2.5 sm:py-2 text-neutral-800 dark:text-neutral-100 text-base sm:text-sm focus:outline-none focus:border-orange-500 appearance-none"
       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '20px', paddingRight: '36px' }}
       {...props}
     >
@@ -272,10 +273,10 @@ const Select = ({ label, children, ...props }) => (
 
 const Badge = ({ children, variant = 'default' }) => {
   const variants = {
-    default: 'bg-neutral-100 text-neutral-600',
-    success: 'bg-green-100 text-green-700',
-    warning: 'bg-orange-100 text-orange-700',
-    danger: 'bg-red-100 text-red-700',
+    default: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
+    success: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400',
+    warning: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400',
+    danger: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400',
   };
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-medium ${variants[variant]}`}>
@@ -291,7 +292,7 @@ const DashboardCheckbox = ({ checked, onChange, disabled }) => (
     onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
     disabled={disabled}
     className={`w-6 h-6 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center transition-all ${
-      checked ? 'bg-orange-500 border-orange-500' : 'border-neutral-300 hover:border-orange-400 active:border-orange-500'
+      checked ? 'bg-orange-500 border-orange-500' : 'border-neutral-300 dark:border-neutral-600 hover:border-orange-400 active:border-orange-500'
     } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
   >
     {checked && <Check className="w-4 h-4 sm:w-3 sm:h-3 text-white" />}
@@ -300,7 +301,7 @@ const DashboardCheckbox = ({ checked, onChange, disabled }) => (
 
 const DashboardBadge = ({ children, variant = 'default' }) => {
   const variants = {
-    default: 'bg-neutral-100 text-neutral-600',
+    default: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
     success: 'bg-green-100 text-green-700 border border-green-200',
     danger: 'bg-red-100 text-red-700 border border-red-200',
     warning: 'bg-orange-100 text-orange-700 border border-orange-200',
@@ -313,10 +314,10 @@ const ProgressBar = ({ label, value, total, color }) => {
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
-        <span className="text-neutral-500">{label}</span>
-        <span className="text-neutral-800">{value} / {total} ({percentage.toFixed(1)}%)</span>
+        <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
+        <span className="text-neutral-800 dark:text-neutral-100">{value} / {total} ({percentage.toFixed(1)}%)</span>
       </div>
-      <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+      <div className="h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${percentage}%` }} />
       </div>
     </div>
@@ -326,20 +327,20 @@ const ProgressBar = ({ label, value, total, color }) => {
 const Accordion = ({ title, count, color, children }) => {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-neutral-200 rounded-lg overflow-hidden">
+    <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-3 bg-neutral-50 hover:bg-neutral-100 transition-colors"
+        className="w-full flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
       >
         <div className="flex items-center gap-2">
           <div className={`w-3 h-3 rounded ${color}`} />
-          <span className="text-neutral-800 text-sm">{title}</span>
-          <span className="text-neutral-500 text-xs">({count})</span>
+          <span className="text-neutral-800 dark:text-neutral-100 text-sm">{title}</span>
+          <span className="text-neutral-500 dark:text-neutral-400 text-xs">({count})</span>
         </div>
-        <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 text-neutral-500 dark:text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div className="p-3 bg-white text-sm">{children}</div>}
+      {open && <div className="p-3 bg-white dark:bg-neutral-800 text-sm">{children}</div>}
     </div>
   );
 };
@@ -387,7 +388,7 @@ const calculateStatus = (status, deadlines) => {
     return { status: 'En Proceso', color: 'bg-orange-500' };
   }
   if (today > deadlines.deadlineRevA) return { status: 'ATRASADO', color: 'bg-red-500' };
-  return { status: 'Pendiente', color: 'bg-neutral-500' };
+  return { status: 'Pendiente', color: 'bg-neutral-50 dark:bg-neutral-800/500' };
 };
 
 const getDocumentSuffix = (status) => {
@@ -402,9 +403,9 @@ const MatrizLogo = ({ size = 'md' }) => {
   const sizes = { sm: 'text-xl', md: 'text-2xl', lg: 'text-3xl' };
   return (
     <div className={`font-light tracking-widest ${sizes[size]}`}>
-      <span className="text-neutral-800">M</span>
+      <span className="text-neutral-800 dark:text-neutral-100">M</span>
       <span className="text-orange-500">A</span>
-      <span className="text-neutral-800">TRIZ</span>
+      <span className="text-neutral-800 dark:text-neutral-100">TRIZ</span>
     </div>
   );
 };
@@ -414,6 +415,26 @@ const MatrizLogo = ({ size = 'md' }) => {
 // ============================================
 
 export default function MatrizIntranet() {
+  // ============================================
+  // ESTADO DE MODO OSCURO
+  // ============================================
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('matriz_darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Aplicar clase dark al documento
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('matriz_darkMode', JSON.stringify(darkMode));
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode(!darkMode);
+
   // ============================================
   // ESTADOS DE AUTENTICACIÓN
   // ============================================
@@ -890,8 +911,8 @@ export default function MatrizIntranet() {
   const HomePage = () => (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl sm:text-2xl text-neutral-800 font-light mb-1">Bienvenido, {currentUser?.nombre}</h1>
-        <p className="text-neutral-500 text-sm">{isAdmin ? 'Administrador • Acceso completo' : 'Colaborador • Carga de horas'}</p>
+        <h1 className="text-xl sm:text-2xl text-neutral-800 dark:text-neutral-100 font-light mb-1">Bienvenido, {currentUser?.nombre}</h1>
+        <p className="text-neutral-500 dark:text-neutral-400 text-sm">{isAdmin ? 'Administrador • Acceso completo' : 'Colaborador • Carga de horas'}</p>
       </div>
 
       {/* KPIs Rápidos */}
@@ -902,8 +923,8 @@ export default function MatrizIntranet() {
               <FolderKanban className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-800">{proyectos.filter(p => p.estado === 'Activo').length}</p>
-              <p className="text-[10px] sm:text-xs text-neutral-500">Proyectos</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{proyectos.filter(p => p.estado === 'Activo').length}</p>
+              <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Proyectos</p>
             </div>
           </div>
         </Card>
@@ -914,8 +935,8 @@ export default function MatrizIntranet() {
               <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-800">{colaboradores.length}</p>
-              <p className="text-[10px] sm:text-xs text-neutral-500">Colaboradores</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{colaboradores.length}</p>
+              <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Colaboradores</p>
             </div>
           </div>
         </Card>
@@ -926,8 +947,8 @@ export default function MatrizIntranet() {
               <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-800">{resumen.totalHoras}</p>
-              <p className="text-[10px] sm:text-xs text-neutral-500">Horas mes</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{resumen.totalHoras}</p>
+              <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Horas mes</p>
             </div>
           </div>
         </Card>
@@ -936,7 +957,7 @@ export default function MatrizIntranet() {
       {/* Proyectos Activos */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-neutral-800 text-sm font-medium">Proyectos Activos</h2>
+          <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Proyectos Activos</h2>
           <Button variant="ghost" size="sm" onClick={() => setCurrentPage('proyectos')}>
             Ver todos <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
@@ -958,13 +979,13 @@ export default function MatrizIntranet() {
                     <span className="text-orange-500 font-mono text-xs sm:text-sm">{proyecto.id}</span>
                     <Badge variant="success">Activo</Badge>
                   </div>
-                  <h3 className="text-neutral-800 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre}</h3>
-                  <p className="text-neutral-500 text-xs mt-0.5">{proyecto.cliente}</p>
+                  <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre}</h3>
+                  <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente}</p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-neutral-400 shrink-0 ml-2" />
+                <ChevronRight className="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0 ml-2" />
               </div>
               
-              <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500">
+              <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500 dark:text-neutral-400">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   {new Date(proyecto.inicio).toLocaleDateString('es-CL')}
@@ -976,7 +997,7 @@ export default function MatrizIntranet() {
               </div>
               
               {/* Barra de avance */}
-              <div className="mt-2 sm:mt-3 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+              <div className="mt-2 sm:mt-3 h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-orange-500 rounded-full transition-all"
                   style={{ width: `${proyecto.avance}%` }}
@@ -989,14 +1010,14 @@ export default function MatrizIntranet() {
 
       {/* Accesos Rápidos */}
       <div>
-        <h2 className="text-neutral-700 text-sm font-medium mb-3">Accesos Rápidos</h2>
+        <h2 className="text-neutral-700 dark:text-neutral-200 text-sm font-medium mb-3">Accesos Rápidos</h2>
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card 
             className="p-3 sm:p-4 text-center"
             onClick={() => setCurrentPage('horas')}
           >
             <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500 mx-auto mb-1 sm:mb-2" />
-            <p className="text-neutral-800 text-xs sm:text-sm">Cargar Horas</p>
+            <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Cargar Horas</p>
           </Card>
           
           <Card 
@@ -1004,7 +1025,7 @@ export default function MatrizIntranet() {
             onClick={() => setShowNewProject(true)}
           >
             <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 mx-auto mb-1 sm:mb-2" />
-            <p className="text-neutral-800 text-xs sm:text-sm">Nuevo Proyecto</p>
+            <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Nuevo Proyecto</p>
           </Card>
           
           <Card 
@@ -1012,7 +1033,7 @@ export default function MatrizIntranet() {
             onClick={() => setCurrentPage('edp')}
           >
             <FileSpreadsheet className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500 mx-auto mb-1 sm:mb-2" />
-            <p className="text-neutral-800 text-xs sm:text-sm">Generar EDP</p>
+            <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Generar EDP</p>
           </Card>
         </div>
       </div>
@@ -1026,8 +1047,8 @@ export default function MatrizIntranet() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl text-neutral-800 font-light">Proyectos</h1>
-          <p className="text-neutral-500 text-sm">Gestión de proyectos activos e históricos</p>
+          <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Proyectos</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm">Gestión de proyectos activos e históricos</p>
         </div>
         <Button onClick={() => setShowNewProject(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -1057,17 +1078,17 @@ export default function MatrizIntranet() {
                       {proyecto.estado}
                     </Badge>
                   </div>
-                  <h3 className="text-neutral-800 font-medium">{proyecto.nombre}</h3>
-                  <p className="text-neutral-500 text-xs">{proyecto.cliente}</p>
+                  <h3 className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.nombre}</h3>
+                  <p className="text-neutral-500 dark:text-neutral-400 text-xs">{proyecto.cliente}</p>
                 </div>
               </div>
               
               <div className="flex items-center gap-4">
                 <div className="text-right hidden sm:block">
-                  <p className="text-neutral-800 font-medium">{proyecto.avance.toFixed(1)}%</p>
-                  <p className="text-neutral-500 text-xs">Avance</p>
+                  <p className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.avance.toFixed(1)}%</p>
+                  <p className="text-neutral-500 dark:text-neutral-400 text-xs">Avance</p>
                 </div>
-                <div className="w-24 sm:w-32 h-2 bg-neutral-100 rounded-full overflow-hidden hidden sm:block">
+                <div className="w-24 sm:w-32 h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden hidden sm:block">
                   <div 
                     className="h-full bg-orange-500 rounded-full"
                     style={{ width: `${proyecto.avance}%` }}
@@ -1082,7 +1103,7 @@ export default function MatrizIntranet() {
                   className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
                   title="Editar proyecto"
                 >
-                  <Pencil className="w-4 h-4 text-neutral-400 group-hover:text-blue-500" />
+                  <Pencil className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-blue-500" />
                 </button>
                 <button
                   type="button"
@@ -1094,9 +1115,9 @@ export default function MatrizIntranet() {
                   className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
                   title="Eliminar proyecto"
                 >
-                  <Trash2 className="w-4 h-4 text-neutral-400 group-hover:text-red-500" />
+                  <Trash2 className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-red-500" />
                 </button>
-                <ChevronRight className="w-5 h-5 text-neutral-500" />
+                <ChevronRight className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
               </div>
             </div>
           </Card>
@@ -1162,14 +1183,14 @@ export default function MatrizIntranet() {
     return (
       <div className="space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-lg sm:text-xl text-neutral-800 font-medium">Carga de Horas</h1>
-          <p className="text-neutral-500 text-sm">Registro semanal por proyecto</p>
+          <h1 className="text-lg sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium">Carga de Horas</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm">Registro semanal por proyecto</p>
         </div>
 
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
           {/* Formulario */}
-          <div className="bg-white border border-neutral-200 rounded-lg shadow-sm p-3 sm:p-4 lg:col-span-1">
-            <h2 className="text-neutral-800 text-sm font-medium mb-3 sm:mb-4">Registrar Horas</h2>
+          <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm p-3 sm:p-4 lg:col-span-1">
+            <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">Registrar Horas</h2>
             <div className="space-y-3 sm:space-y-4">
               <Select label="Colaborador" value={colaborador} onChange={e => setColaborador(e.target.value)}>
                 <option value="">Seleccionar...</option>
@@ -1231,12 +1252,12 @@ export default function MatrizIntranet() {
           
           {/* Resumen del mes */}
           <Card className="p-3 sm:p-4 lg:col-span-2">
-            <h2 className="text-neutral-800 text-sm font-medium mb-3 sm:mb-4">
+            <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">
               Horas - {new Date().toLocaleDateString('es-CL', { month: 'short', year: 'numeric' })}
             </h2>
             
             {horasDelMes.length === 0 ? (
-              <div className="text-center py-6 sm:py-8 text-neutral-500">
+              <div className="text-center py-6 sm:py-8 text-neutral-500 dark:text-neutral-400">
                 <Clock className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 opacity-50" />
                 <p className="text-sm">No hay horas registradas</p>
               </div>
@@ -1244,7 +1265,7 @@ export default function MatrizIntranet() {
               <div className="overflow-x-auto -mx-3 sm:mx-0">
                 <table className="w-full text-xs sm:text-sm" style={{ minWidth: '500px' }}>
                   <thead>
-                    <tr className="text-neutral-500 text-xs uppercase border-b border-neutral-200">
+                    <tr className="text-neutral-500 dark:text-neutral-400 text-xs uppercase border-b border-neutral-200 dark:border-neutral-700">
                       <th className="text-left p-2">Col</th>
                       <th className="text-left p-2">Proy</th>
                       <th className="text-left p-2">Entregable</th>
@@ -1258,22 +1279,22 @@ export default function MatrizIntranet() {
                     {horasDelMes.map(h => {
                       const col = colaboradores.find(c => c.id === h.colaboradorId);
                       return (
-                        <tr key={h.id} className="border-b border-neutral-200 hover:bg-neutral-50">
-                          <td className="p-2 text-neutral-800">{col?.iniciales}</td>
+                        <tr key={h.id} className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:bg-neutral-800/50">
+                          <td className="p-2 text-neutral-800 dark:text-neutral-100">{col?.iniciales}</td>
                           <td className="p-2 text-orange-600 font-mono text-xs">{h.proyectoId}</td>
-                          <td className="p-2 text-neutral-600 truncate max-w-[120px]">{h.entregable}</td>
+                          <td className="p-2 text-neutral-600 dark:text-neutral-300 truncate max-w-[120px]">{h.entregable}</td>
                           <td className="p-2 text-center"><Badge>{h.revision}</Badge></td>
-                          <td className="p-2 text-center text-neutral-500">S{h.semana}</td>
-                          <td className="p-2 text-right text-neutral-800">{h.horas}</td>
+                          <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{h.semana}</td>
+                          <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{h.horas}</td>
                           <td className="p-2 text-right text-green-600">{(h.horas * (col?.tarifaInterna || 0)).toFixed(2)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-neutral-300 font-medium bg-neutral-50">
-                      <td colSpan={5} className="p-2 text-right text-neutral-500">Total:</td>
-                      <td className="p-2 text-right text-neutral-800">{horasDelMes.reduce((s, h) => s + h.horas, 0)}</td>
+                    <tr className="border-t border-neutral-300 font-medium bg-neutral-50 dark:bg-neutral-800/50">
+                      <td colSpan={5} className="p-2 text-right text-neutral-500 dark:text-neutral-400">Total:</td>
+                      <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{horasDelMes.reduce((s, h) => s + h.horas, 0)}</td>
                       <td className="p-2 text-right text-green-600">
                         {horasDelMes.reduce((s, h) => {
                           const col = colaboradores.find(c => c.id === h.colaboradorId);
@@ -1290,7 +1311,7 @@ export default function MatrizIntranet() {
         
         {/* Resumen por colaborador */}
         <Card className="p-3 sm:p-4">
-          <h2 className="text-neutral-800 text-sm font-medium mb-3 sm:mb-4">Resumen por Colaborador</h2>
+          <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">Resumen por Colaborador</h2>
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             {colaboradores.map(col => {
               const horasCol = horasDelMes.filter(h => h.colaboradorId === col.id);
@@ -1298,16 +1319,16 @@ export default function MatrizIntranet() {
               const totalCosto = totalHoras * col.tarifaInterna;
               
               return (
-                <div key={col.id} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
+                <div key={col.id} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-100 dark:border-neutral-700">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500/20 rounded-full flex items-center justify-center shrink-0">
                     <span className="text-orange-500 font-bold text-sm sm:text-base">{col.iniciales}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-neutral-800 font-medium text-sm truncate">{col.nombre}</p>
-                    <p className="text-neutral-500 text-xs">{col.categoria}</p>
+                    <p className="text-neutral-800 dark:text-neutral-100 font-medium text-sm truncate">{col.nombre}</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs">{col.categoria}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-neutral-800 font-medium text-sm">{totalHoras} hrs</p>
+                    <p className="text-neutral-800 dark:text-neutral-100 font-medium text-sm">{totalHoras} hrs</p>
                     <p className="text-green-600 text-xs">{totalCosto.toFixed(2)} UF</p>
                   </div>
                 </div>
@@ -1352,8 +1373,8 @@ export default function MatrizIntranet() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl text-neutral-800 font-light">Estados de Pago (EDP)</h1>
-            <p className="text-neutral-500 text-sm">Generación automática de estados de pago mensuales</p>
+            <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Estados de Pago (EDP)</h1>
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm">Generación automática de estados de pago mensuales</p>
           </div>
           <Button variant="ghost" onClick={() => setEdpUnlocked(false)}>
             <Lock className="w-4 h-4 mr-2" />
@@ -1379,18 +1400,18 @@ export default function MatrizIntranet() {
 
         {/* Configuración de tarifas */}
         <Card className="p-4">
-          <h2 className="text-neutral-800 text-sm font-medium mb-4">Tarifas de Venta por Proyecto</h2>
+          <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-4">Tarifas de Venta por Proyecto</h2>
           <div className="space-y-3">
             {proyectos.map(p => (
-              <div key={p.id} className="flex items-center gap-4 p-3 bg-neutral-100 rounded-lg">
+              <div key={p.id} className="flex items-center gap-4 p-3 bg-neutral-100 dark:bg-neutral-700 rounded-lg">
                 <span className="text-orange-500 font-mono">{p.id}</span>
-                <span className="text-neutral-800 flex-1">{p.nombre}</span>
+                <span className="text-neutral-800 dark:text-neutral-100 flex-1">{p.nombre}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-neutral-500 text-sm">Tarifa venta:</span>
+                  <span className="text-neutral-500 dark:text-neutral-400 text-sm">Tarifa venta:</span>
                   <input
                     type="number"
                     step="0.1"
-                    className="w-20 bg-white border border-neutral-300 rounded px-2 py-1 text-neutral-800 text-sm"
+                    className="w-20 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-neutral-800 dark:text-neutral-100 text-sm"
                     value={p.tarifaVenta}
                     onChange={e => {
                       const nuevaTarifa = parseFloat(e.target.value) || 0;
@@ -1399,7 +1420,7 @@ export default function MatrizIntranet() {
                       saveProyecto(proyectoActualizado);
                     }}
                   />
-                  <span className="text-neutral-500 text-sm">UF/Hr</span>
+                  <span className="text-neutral-500 dark:text-neutral-400 text-sm">UF/Hr</span>
                 </div>
               </div>
             ))}
@@ -1408,12 +1429,12 @@ export default function MatrizIntranet() {
 
         {/* Resumen EDP */}
         <Card className="p-4">
-          <h2 className="text-neutral-800 text-sm font-medium mb-4">
+          <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-4">
             Resumen EDP - {new Date(selectedMonth + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
           </h2>
           
           {Object.keys(edpData).length === 0 ? (
-            <div className="text-center py-8 text-neutral-500">
+            <div className="text-center py-8 text-neutral-500 dark:text-neutral-400">
               <FileSpreadsheet className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No hay horas registradas para este período</p>
             </div>
@@ -1430,11 +1451,11 @@ export default function MatrizIntranet() {
                 const margen = montoVenta - costoInterno;
                 
                 return (
-                  <div key={proyectoId} className="p-4 bg-neutral-100 rounded-lg">
+                  <div key={proyectoId} className="p-4 bg-neutral-100 dark:bg-neutral-700 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <span className="text-orange-500 font-mono">{proyectoId}</span>
-                        <span className="text-neutral-800 ml-2">{proyecto?.nombre}</span>
+                        <span className="text-neutral-800 dark:text-neutral-100 ml-2">{proyecto?.nombre}</span>
                       </div>
                       <Badge variant={margen > 0 ? 'success' : 'danger'}>
                         Margen: {((margen / montoVenta) * 100).toFixed(1)}%
@@ -1443,19 +1464,19 @@ export default function MatrizIntranet() {
                     
                     <div className="grid grid-cols-4 gap-4 text-sm">
                       <div>
-                        <p className="text-neutral-500">Horas</p>
-                        <p className="text-neutral-800 font-medium">{totalHoras}</p>
+                        <p className="text-neutral-500 dark:text-neutral-400">Horas</p>
+                        <p className="text-neutral-800 dark:text-neutral-100 font-medium">{totalHoras}</p>
                       </div>
                       <div>
-                        <p className="text-neutral-500">Venta (UF)</p>
+                        <p className="text-neutral-500 dark:text-neutral-400">Venta (UF)</p>
                         <p className="text-green-600 font-medium">{montoVenta.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p className="text-neutral-500">Costo (UF)</p>
+                        <p className="text-neutral-500 dark:text-neutral-400">Costo (UF)</p>
                         <p className="text-red-600 font-medium">{costoInterno.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p className="text-neutral-500">Margen (UF)</p>
+                        <p className="text-neutral-500 dark:text-neutral-400">Margen (UF)</p>
                         <p className={`font-medium ${margen > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {margen.toFixed(2)}
                         </p>
@@ -1463,17 +1484,17 @@ export default function MatrizIntranet() {
                     </div>
                     
                     {/* Detalle por entregable */}
-                    <div className="mt-3 pt-3 border-t border-neutral-200">
-                      <p className="text-neutral-500 text-xs mb-2">Detalle:</p>
+                    <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+                      <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-2">Detalle:</p>
                       <div className="space-y-1">
                         {horas.map(h => {
                           const col = colaboradores.find(c => c.id === h.colaboradorId);
                           return (
                             <div key={h.id} className="flex justify-between text-xs">
-                              <span className="text-neutral-600">
+                              <span className="text-neutral-600 dark:text-neutral-300">
                                 {h.entregable} {h.revision} ({col?.iniciales})
                               </span>
-                              <span className="text-neutral-800">{h.horas} hrs • {(h.horas * (proyecto?.tarifaVenta || 0)).toFixed(2)} UF</span>
+                              <span className="text-neutral-800 dark:text-neutral-100">{h.horas} hrs • {(h.horas * (proyecto?.tarifaVenta || 0)).toFixed(2)} UF</span>
                             </div>
                           );
                         })}
@@ -1486,7 +1507,7 @@ export default function MatrizIntranet() {
               {/* Total general */}
               <div className="p-4 bg-orange-500/20 rounded-lg border border-orange-500/30">
                 <div className="flex items-center justify-between">
-                  <span className="text-neutral-800 font-medium">TOTAL EDP</span>
+                  <span className="text-neutral-800 dark:text-neutral-100 font-medium">TOTAL EDP</span>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-orange-500">
                       {Object.entries(edpData).reduce((total, [proyectoId, horas]) => {
@@ -1495,7 +1516,7 @@ export default function MatrizIntranet() {
                         return total + (totalHoras * (proyecto?.tarifaVenta || 0));
                       }, 0).toFixed(2)} UF
                     </p>
-                    <p className="text-neutral-500 text-sm">
+                    <p className="text-neutral-500 dark:text-neutral-400 text-sm">
                       {Object.values(edpData).flat().reduce((s, h) => s + h.horas, 0)} horas totales
                     </p>
                   </div>
@@ -1547,7 +1568,7 @@ export default function MatrizIntranet() {
             <h1 className="text-xl text-white font-medium mt-4">Intranet</h1>
           </div>
 
-          <div className="bg-white/95 backdrop-blur border border-white/20 rounded-lg shadow-2xl p-6">
+          <div className="bg-white/95 dark:bg-neutral-800/95 backdrop-blur border border-white/20 dark:border-neutral-700 rounded-lg shadow-2xl p-6">
             {loginError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
                 <X className="w-4 h-4" />
@@ -1557,18 +1578,18 @@ export default function MatrizIntranet() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-neutral-600 font-medium block mb-1">Email</label>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300 font-medium block mb-1">Email</label>
                 <input
                   type="email"
                   value={loginEmail}
                   onChange={e => setLoginEmail(e.target.value)}
                   placeholder="tu@email.com"
-                  className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-3 text-neutral-800 focus:outline-none focus:border-orange-500"
+                  className="w-full bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg px-4 py-3 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:border-orange-500"
                 />
               </div>
 
               <div>
-                <label className="text-sm text-neutral-600 font-medium block mb-1">Contraseña</label>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300 font-medium block mb-1">Contraseña</label>
                 <div className="relative">
                   <input
                     type={showLoginPassword ? 'text' : 'password'}
@@ -1576,12 +1597,12 @@ export default function MatrizIntranet() {
                     onChange={e => setLoginPassword(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleLogin(); }}
                     placeholder="••••••••"
-                    className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-3 text-neutral-800 focus:outline-none focus:border-orange-500 pr-12"
+                    className="w-full bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg px-4 py-3 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:border-orange-500 pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-neutral-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:text-neutral-300"
                   >
                     {showLoginPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -1614,7 +1635,7 @@ export default function MatrizIntranet() {
   // RENDER PRINCIPAL (usuario autenticado)
   // ============================================
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-800/50 dark:bg-neutral-900 transition-colors duration-300">
       {/* Notificación Toast */}
       {notification && (
         <div className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-pulse ${
@@ -1628,15 +1649,15 @@ export default function MatrizIntranet() {
           <span className="text-sm font-medium">{notification.message}</span>
         </div>
       )}
-      
+
       {/* Header */}
-      <header className="bg-white border-b border-neutral-200 px-3 sm:px-4 py-3 shadow-sm sticky top-0 z-40">
+      <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-3 sm:px-4 py-3 shadow-sm sticky top-0 z-40 transition-colors duration-300">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MatrizLogo />
-            <span className="text-neutral-400 text-xs hidden sm:block">INTRANET</span>
+            <span className="text-neutral-400 dark:text-neutral-500 dark:text-neutral-500 dark:text-neutral-400 text-xs hidden sm:block">INTRANET</span>
           </div>
-          
+
           <nav className="flex items-center gap-0.5 sm:gap-1">
             {navItems.map(item => (
               <button
@@ -1645,7 +1666,7 @@ export default function MatrizIntranet() {
                 className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 sm:py-2 rounded text-xs sm:text-sm transition-colors touch-manipulation ${
                   currentPage === item.id || (item.id === 'proyectos' && currentPage === 'proyecto-detail')
                     ? 'bg-orange-600 text-white active:bg-orange-700'
-                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 active:bg-neutral-200'
+                    : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 active:bg-neutral-200 dark:active:bg-neutral-600'
                 }`}
               >
                 <item.icon className="w-4 h-4" />
@@ -1653,11 +1674,20 @@ export default function MatrizIntranet() {
                 {item.locked && <Lock className="w-3 h-3" />}
               </button>
             ))}
+            {/* Botón de modo oscuro */}
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 sm:py-2 rounded text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 ml-1 transition-colors"
+              title={darkMode ? 'Modo claro' : 'Modo oscuro'}
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             {/* Botón de logout */}
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 sm:py-2 rounded text-xs sm:text-sm text-red-600 hover:bg-red-50 ml-2 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 sm:py-2 rounded text-xs sm:text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 ml-1 transition-colors"
               title="Cerrar sesión"
             >
               <LogOut className="w-4 h-4" />
@@ -1674,18 +1704,18 @@ export default function MatrizIntranet() {
         {currentPage === 'horas' && <HorasPage />}
         {currentPage === 'edp' && !edpUnlocked && (
           <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="bg-white border border-neutral-200 rounded-lg shadow-sm p-6 sm:p-8 max-w-sm w-full">
+            <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm p-6 sm:p-8 max-w-sm w-full">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Lock className="w-8 h-8 text-orange-500" />
                 </div>
-                <h2 className="text-neutral-800 text-lg font-medium">Acceso Restringido</h2>
-                <p className="text-neutral-500 text-sm mt-1">Esta sección requiere autenticación</p>
+                <h2 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium">Acceso Restringido</h2>
+                <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Esta sección requiere autenticación</p>
               </div>
               
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 font-medium">Contraseña</label>
+                  <label className="text-xs text-neutral-600 dark:text-neutral-300 font-medium">Contraseña</label>
                   <div className="relative">
                     <input 
                       type={showPassword ? 'text' : 'password'}
@@ -1703,12 +1733,12 @@ export default function MatrizIntranet() {
                       }}
                       placeholder="Ingresa la contraseña"
                       autoComplete="off"
-                      className="w-full bg-white border border-neutral-300 rounded px-3 py-2.5 text-neutral-800 text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 pr-10"
+                      className="w-full bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2.5 text-neutral-800 dark:text-neutral-100 text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 pr-10"
                     />
                     <button 
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-800 p-1"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:text-neutral-100 p-1"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -1741,13 +1771,13 @@ export default function MatrizIntranet() {
                 <Settings className="w-6 h-6 text-orange-500" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-neutral-800">Configuración</h1>
-                <p className="text-neutral-500 text-sm">Administra colaboradores y ajustes del sistema</p>
+                <h1 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100">Configuración</h1>
+                <p className="text-neutral-500 dark:text-neutral-400 text-sm">Administra colaboradores y ajustes del sistema</p>
               </div>
             </div>
             
             {/* Tabs de configuración */}
-            <div className="flex gap-2 mb-6 border-b border-neutral-200 overflow-x-auto">
+            <div className="flex gap-2 mb-6 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto">
               {[
                 { id: 'colaboradores', label: 'Colaboradores', icon: Users },
                 { id: 'seguridad', label: 'Seguridad', icon: Lock },
@@ -1759,7 +1789,7 @@ export default function MatrizIntranet() {
                   className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                     configTab === tab.id 
                       ? 'border-orange-500 text-orange-600' 
-                      : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                      : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:text-neutral-200'
                   }`}
                 >
                   <tab.icon className="w-4 h-4" />
@@ -1772,7 +1802,7 @@ export default function MatrizIntranet() {
             {configTab === 'colaboradores' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-neutral-600 text-sm">
+                  <p className="text-neutral-600 dark:text-neutral-300 text-sm">
                     {colaboradores.length} colaborador{colaboradores.length !== 1 ? 'es' : ''} registrado{colaboradores.length !== 1 ? 's' : ''}
                   </p>
                   <Button onClick={() => setShowNewColaborador(true)}>
@@ -1784,10 +1814,10 @@ export default function MatrizIntranet() {
                 {/* Formulario nuevo colaborador */}
                 {showNewColaborador && (
                   <Card className="p-4 border-2 border-orange-200 bg-orange-50/50">
-                    <h3 className="font-medium text-neutral-800 mb-3">Nuevo Colaborador</h3>
+                    <h3 className="font-medium text-neutral-800 dark:text-neutral-100 mb-3">Nuevo Colaborador</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre Completo</label>
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Nombre Completo</label>
                         <input
                           type="text"
                           placeholder="Ej: Juan Pérez"
@@ -1797,7 +1827,7 @@ export default function MatrizIntranet() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">Cargo</label>
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Cargo</label>
                         <input
                           type="text"
                           placeholder="Ej: Arquitecto"
@@ -1807,7 +1837,7 @@ export default function MatrizIntranet() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">Categoría</label>
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Categoría</label>
                         <select
                           value={newColaborador.categoria}
                           onChange={e => setNewColaborador(prev => ({ ...prev, categoria: e.target.value }))}
@@ -1819,7 +1849,7 @@ export default function MatrizIntranet() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">Tarifa Interna (UF/hr)</label>
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Tarifa Interna (UF/hr)</label>
                         <input
                           type="number"
                           step="0.05"
@@ -1852,12 +1882,12 @@ export default function MatrizIntranet() {
                             <span className="text-orange-600 font-medium text-sm">{col.iniciales}</span>
                           </div>
                           <div>
-                            <p className="font-medium text-neutral-800">{col.nombre}</p>
-                            <p className="text-sm text-neutral-500">{col.cargo} • {col.categoria}</p>
+                            <p className="font-medium text-neutral-800 dark:text-neutral-100">{col.nombre}</p>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400">{col.cargo} • {col.categoria}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-neutral-500 hidden sm:block">
+                          <span className="text-sm text-neutral-500 dark:text-neutral-400 hidden sm:block">
                             {col.tarifaInterna} UF/hr
                           </span>
                           <button
@@ -1868,14 +1898,14 @@ export default function MatrizIntranet() {
                             className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Editar"
                           >
-                            <Pencil className="w-4 h-4 text-neutral-400 hover:text-blue-500" />
+                            <Pencil className="w-4 h-4 text-neutral-400 dark:text-neutral-500 hover:text-blue-500" />
                           </button>
                           <button
                             onClick={() => handleDeleteColaborador(col.id)}
                             className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                             title="Eliminar"
                           >
-                            <Trash2 className="w-4 h-4 text-neutral-400 hover:text-red-500" />
+                            <Trash2 className="w-4 h-4 text-neutral-400 dark:text-neutral-500 hover:text-red-500" />
                           </button>
                         </div>
                       </div>
@@ -1889,16 +1919,16 @@ export default function MatrizIntranet() {
             {configTab === 'seguridad' && (
               <div className="space-y-4">
                 <Card className="p-4">
-                  <h3 className="font-medium text-neutral-800 mb-3 flex items-center gap-2">
+                  <h3 className="font-medium text-neutral-800 dark:text-neutral-100 mb-3 flex items-center gap-2">
                     <Lock className="w-4 h-4" />
                     Cambiar Contraseña EDP
                   </h3>
-                  <p className="text-sm text-neutral-500 mb-4">
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
                     Para cambiar la contraseña del módulo EDP, ingresa tu contraseña actual.
                   </p>
                   <div className="space-y-3 max-w-sm">
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Contraseña Actual</label>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Contraseña Actual</label>
                       <input
                         type="password"
                         placeholder="••••••••"
@@ -1908,7 +1938,7 @@ export default function MatrizIntranet() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Nueva Contraseña</label>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Nueva Contraseña</label>
                       <input
                         type="password"
                         placeholder="••••••••"
@@ -1946,27 +1976,27 @@ export default function MatrizIntranet() {
             {configTab === 'sistema' && (
               <div className="space-y-4">
                 <Card className="p-4">
-                  <h3 className="font-medium text-neutral-800 mb-3">Información del Sistema</h3>
+                  <h3 className="font-medium text-neutral-800 dark:text-neutral-100 mb-3">Información del Sistema</h3>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between py-2 border-b border-neutral-100">
-                      <span className="text-neutral-500">Versión</span>
-                      <span className="text-neutral-800 font-mono">MATRIZ v1.0</span>
+                    <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
+                      <span className="text-neutral-500 dark:text-neutral-400">Versión</span>
+                      <span className="text-neutral-800 dark:text-neutral-100 font-mono">MATRIZ v1.0</span>
                     </div>
-                    <div className="flex justify-between py-2 border-b border-neutral-100">
-                      <span className="text-neutral-500">Proyectos</span>
-                      <span className="text-neutral-800">{proyectos.length}</span>
+                    <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
+                      <span className="text-neutral-500 dark:text-neutral-400">Proyectos</span>
+                      <span className="text-neutral-800 dark:text-neutral-100">{proyectos.length}</span>
                     </div>
-                    <div className="flex justify-between py-2 border-b border-neutral-100">
-                      <span className="text-neutral-500">Colaboradores</span>
-                      <span className="text-neutral-800">{colaboradores.length}</span>
+                    <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
+                      <span className="text-neutral-500 dark:text-neutral-400">Colaboradores</span>
+                      <span className="text-neutral-800 dark:text-neutral-100">{colaboradores.length}</span>
                     </div>
-                    <div className="flex justify-between py-2 border-b border-neutral-100">
-                      <span className="text-neutral-500">Horas Registradas</span>
-                      <span className="text-neutral-800">{horasRegistradas.length}</span>
+                    <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
+                      <span className="text-neutral-500 dark:text-neutral-400">Horas Registradas</span>
+                      <span className="text-neutral-800 dark:text-neutral-100">{horasRegistradas.length}</span>
                     </div>
                     <div className="flex justify-between py-2">
-                      <span className="text-neutral-500">Última actualización</span>
-                      <span className="text-neutral-800">{new Date().toLocaleDateString('es-CL')}</span>
+                      <span className="text-neutral-500 dark:text-neutral-400">Última actualización</span>
+                      <span className="text-neutral-800 dark:text-neutral-100">{new Date().toLocaleDateString('es-CL')}</span>
                     </div>
                   </div>
                 </Card>
@@ -1995,12 +2025,12 @@ export default function MatrizIntranet() {
                     <div className="p-2 bg-blue-100 rounded-full">
                       <Pencil className="w-5 h-5 text-blue-500" />
                     </div>
-                    <h2 className="text-lg font-semibold text-neutral-800">Editar Colaborador</h2>
+                    <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Editar Colaborador</h2>
                   </div>
                   
                   <div className="space-y-3 mb-6">
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre Completo</label>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Nombre Completo</label>
                       <input
                         type="text"
                         value={colaboradorToEdit.nombre}
@@ -2009,7 +2039,7 @@ export default function MatrizIntranet() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Cargo</label>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Cargo</label>
                       <input
                         type="text"
                         value={colaboradorToEdit.cargo}
@@ -2018,7 +2048,7 @@ export default function MatrizIntranet() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Categoría</label>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Categoría</label>
                       <select
                         value={colaboradorToEdit.categoria}
                         onChange={e => setColaboradorToEdit(prev => ({ ...prev, categoria: e.target.value }))}
@@ -2030,7 +2060,7 @@ export default function MatrizIntranet() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Tarifa Interna (UF/hr)</label>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Tarifa Interna (UF/hr)</label>
                       <input
                         type="number"
                         step="0.05"
@@ -2066,8 +2096,8 @@ export default function MatrizIntranet() {
                       <AlertTriangle className="w-6 h-6 text-red-500" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-semibold text-neutral-800">¿Reiniciar todos los datos?</h2>
-                      <p className="text-sm text-neutral-500">Esta acción no se puede deshacer</p>
+                      <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">¿Reiniciar todos los datos?</h2>
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer</p>
                     </div>
                   </div>
                   
@@ -2114,8 +2144,8 @@ export default function MatrizIntranet() {
           if (!proyecto) {
             return (
               <div className="text-center py-12">
-                <p className="text-neutral-500">Proyecto no encontrado</p>
-                <button onClick={() => setCurrentPage('home')} className="mt-4 px-4 py-2 text-neutral-600 hover:bg-neutral-100 rounded">
+                <p className="text-neutral-500 dark:text-neutral-400">Proyecto no encontrado</p>
+                <button onClick={() => setCurrentPage('home')} className="mt-4 px-4 py-2 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded">
                   ← Volver al inicio
                 </button>
               </div>
@@ -2127,7 +2157,7 @@ export default function MatrizIntranet() {
               <div className="space-y-3">
                 <button 
                   onClick={() => setCurrentPage('home')} 
-                  className="flex items-center gap-1 px-3 py-2.5 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 rounded text-sm text-neutral-700 transition-colors"
+                  className="flex items-center gap-1 px-3 py-2.5 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 active:bg-neutral-300 dark:active:bg-neutral-500 rounded text-sm text-neutral-700 dark:text-neutral-200 transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span>Volver</span>
@@ -2139,13 +2169,13 @@ export default function MatrizIntranet() {
                       <span className="text-orange-500 font-mono text-sm sm:text-lg font-semibold">{proyecto.id}</span>
                       <Badge variant="success">{proyecto.estado}</Badge>
                     </div>
-                    <h1 className="text-sm sm:text-xl text-neutral-800 font-medium mt-1">{proyecto.nombre}</h1>
-                    <p className="text-xs text-neutral-500 mt-0.5">{proyecto.cliente}</p>
+                    <h1 className="text-sm sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium mt-1">{proyecto.nombre}</h1>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{proyecto.cliente}</p>
                   </div>
                   
                   <button 
                     onClick={() => { setTempDate(dashboardStartDate); setEditDateOpen(true); }} 
-                    className="flex items-center gap-1 px-2 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 rounded text-xs text-neutral-600 transition-colors shrink-0"
+                    className="flex items-center gap-1 px-2 py-2 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 active:bg-neutral-300 dark:active:bg-neutral-500 rounded text-xs text-neutral-600 dark:text-neutral-300 transition-colors shrink-0"
                   >
                     <Calendar className="w-3 h-3" />
                     <span className="hidden sm:inline">Inicio:</span>
@@ -2156,11 +2186,11 @@ export default function MatrizIntranet() {
               </div>
               
               {/* Tabs */}
-              <div className="grid grid-cols-4 gap-1 bg-neutral-100 p-1 rounded-lg">
+              <div className="grid grid-cols-4 gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
                 <button
                   onClick={() => setDashboardTab('resumen')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
-                    dashboardTab === 'resumen' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white'
+                    dashboardTab === 'resumen' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-700'
                   }`}
                 >
                   <BarChart3 className="w-4 h-4" />
@@ -2169,7 +2199,7 @@ export default function MatrizIntranet() {
                 <button
                   onClick={() => setDashboardTab('control')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
-                    dashboardTab === 'control' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white'
+                    dashboardTab === 'control' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-700'
                   }`}
                 >
                   <FileText className="w-4 h-4" />
@@ -2178,7 +2208,7 @@ export default function MatrizIntranet() {
                 <button
                   onClick={() => setDashboardTab('log')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
-                    dashboardTab === 'log' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white'
+                    dashboardTab === 'log' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-700'
                   }`}
                 >
                   <Clock className="w-4 h-4" />
@@ -2187,7 +2217,7 @@ export default function MatrizIntranet() {
                 <button
                   onClick={() => setDashboardTab('gantt')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
-                    dashboardTab === 'gantt' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 hover:bg-white'
+                    dashboardTab === 'gantt' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-700'
                   }`}
                 >
                   <Calendar className="w-4 h-4" />
@@ -2228,10 +2258,10 @@ export default function MatrizIntranet() {
                         <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
                           <Card className="p-3 sm:p-4">
                             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
-                              <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-neutral-600" />
+                              <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-neutral-600 dark:text-neutral-300" />
                               <div>
-                                <p className="text-xl sm:text-2xl font-bold text-neutral-800">{stats.total}</p>
-                                <p className="text-[10px] sm:text-xs text-neutral-500">Total</p>
+                                <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{stats.total}</p>
+                                <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Total</p>
                               </div>
                             </div>
                           </Card>
@@ -2240,7 +2270,7 @@ export default function MatrizIntranet() {
                               <Check className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
                               <div>
                                 <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.completed}</p>
-                                <p className="text-[10px] sm:text-xs text-neutral-500">Listos</p>
+                                <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Listos</p>
                               </div>
                             </div>
                           </Card>
@@ -2249,7 +2279,7 @@ export default function MatrizIntranet() {
                               <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                               <div>
                                 <p className="text-xl sm:text-2xl font-bold text-orange-500">{stats.inProgress}</p>
-                                <p className="text-[10px] sm:text-xs text-neutral-500">Proceso</p>
+                                <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Proceso</p>
                               </div>
                             </div>
                           </Card>
@@ -2258,15 +2288,15 @@ export default function MatrizIntranet() {
                               <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                               <div>
                                 <p className="text-xl sm:text-2xl font-bold text-red-500">{stats.delayed}</p>
-                                <p className="text-[10px] sm:text-xs text-neutral-500">Atrasados</p>
+                                <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Atrasados</p>
                               </div>
                             </div>
                           </Card>
                         </div>
                         
                         <Card className="p-3 sm:p-4">
-                          <h3 className="text-neutral-800 text-sm mb-1">Progreso General</h3>
-                          <p className="text-neutral-500 text-xs mb-3">Estado de entregables</p>
+                          <h3 className="text-neutral-800 dark:text-neutral-100 text-sm mb-1">Progreso General</h3>
+                          <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-3">Estado de entregables</p>
                           <div className="space-y-2">
                             <ProgressBar label="Completados" value={stats.completed} total={stats.total} color="bg-green-500" />
                             <ProgressBar label="En Proceso" value={stats.inProgress} total={stats.total} color="bg-orange-500" />
@@ -2277,8 +2307,8 @@ export default function MatrizIntranet() {
                         
                         {/* Curva S */}
                         <Card className="p-3 sm:p-4">
-                          <h3 className="text-neutral-800 text-sm mb-1">Curva S - Avance del Proyecto</h3>
-                          <p className="text-neutral-500 text-xs mb-3">Comparación avance proyectado vs real</p>
+                          <h3 className="text-neutral-800 dark:text-neutral-100 text-sm mb-1">Curva S - Avance del Proyecto</h3>
+                          <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-3">Comparación avance proyectado vs real</p>
                           {(() => {
                             const weeksToShow = 20;
                             const chartWidth = 500;
@@ -2375,17 +2405,17 @@ export default function MatrizIntranet() {
                                 </svg>
                                 
                                 {/* Resumen numérico */}
-                                <div className="flex justify-center gap-8 mt-4 pt-4 border-t border-neutral-200">
+                                <div className="flex justify-center gap-8 mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 uppercase">Proyectado</div>
+                                    <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">Proyectado</div>
                                     <div className="text-xl font-bold text-orange-500">{projectedAtCurrentWeek.toFixed(1)}%</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 uppercase">Real</div>
+                                    <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">Real</div>
                                     <div className="text-xl font-bold text-green-500">{realFinal.toFixed(1)}%</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 uppercase">Diferencia</div>
+                                    <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">Diferencia</div>
                                     <div className={`text-xl font-bold ${difference >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                       {difference >= 0 ? '+' : ''}{difference.toFixed(1)}%
                                     </div>
@@ -2397,33 +2427,33 @@ export default function MatrizIntranet() {
                         </Card>
                         
                         <div className="space-y-2">
-                          <h3 className="text-neutral-800 text-sm">Detalle por Estado</h3>
+                          <h3 className="text-neutral-800 dark:text-neutral-100 text-sm">Detalle por Estado</h3>
                           <Accordion title="Completados" count={stats.completed} color="bg-green-500">
                             {deliverables.filter(d => d.statusInfo.status === 'TERMINADO').map(d => (
-                              <div key={d.id} className="py-1 text-neutral-600 flex justify-between">
+                              <div key={d.id} className="py-1 text-neutral-600 dark:text-neutral-300 flex justify-between">
                                 <span>{d.nombre || d.name}<span className="text-green-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
                                 <span className="text-green-600 text-xs">✓ Completado</span>
                               </div>
                             ))}
-                            {stats.completed === 0 && <p className="text-neutral-500">Ninguno</p>}
+                            {stats.completed === 0 && <p className="text-neutral-500 dark:text-neutral-400">Ninguno</p>}
                           </Accordion>
                           <Accordion title="En Proceso" count={stats.inProgress} color="bg-orange-500">
                             {deliverables.filter(d => d.statusInfo.status === 'En Proceso').map(d => (
-                              <div key={d.id} className="py-1 text-neutral-600 flex justify-between">
+                              <div key={d.id} className="py-1 text-neutral-600 dark:text-neutral-300 flex justify-between">
                                 <span>{d.nombre || d.name}<span className="text-orange-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
                                 <span className="text-orange-600 text-xs">En proceso</span>
                               </div>
                             ))}
-                            {stats.inProgress === 0 && <p className="text-neutral-500">Ninguno</p>}
+                            {stats.inProgress === 0 && <p className="text-neutral-500 dark:text-neutral-400">Ninguno</p>}
                           </Accordion>
                           <Accordion title="Atrasados" count={stats.delayed} color="bg-red-500">
                             {deliverables.filter(d => d.statusInfo.status === 'ATRASADO').map(d => (
-                              <div key={d.id} className="py-1 text-neutral-600 flex justify-between">
+                              <div key={d.id} className="py-1 text-neutral-600 dark:text-neutral-300 flex justify-between">
                                 <span>{d.nombre || d.name}<span className="text-red-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
                                 <span className="text-red-600 text-xs">⚠ Atrasado</span>
                               </div>
                             ))}
-                            {stats.delayed === 0 && <p className="text-neutral-500">Ninguno</p>}
+                            {stats.delayed === 0 && <p className="text-neutral-500 dark:text-neutral-400">Ninguno</p>}
                           </Accordion>
                         </div>
                       </div>
@@ -2432,15 +2462,15 @@ export default function MatrizIntranet() {
                     {/* Tab: Control de Avance */}
                     {dashboardTab === 'control' && (
                       <Card className="overflow-hidden">
-                        <div className="p-3 border-b border-neutral-200">
-                          <h3 className="text-neutral-800 text-sm font-medium">Control de Avance</h3>
-                          <p className="text-neutral-500 text-xs">Marca los checkboxes para actualizar estados</p>
+                        <div className="p-3 border-b border-neutral-200 dark:border-neutral-700">
+                          <h3 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Control de Avance</h3>
+                          <p className="text-neutral-500 dark:text-neutral-400 text-xs">Marca los checkboxes para actualizar estados</p>
                           <p className="text-orange-500 text-xs mt-1 sm:hidden">← Desliza para ver más →</p>
                         </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs" style={{ minWidth: '900px' }}>
                             <thead>
-                              <tr className="bg-neutral-100 text-neutral-500 uppercase tracking-wider">
+                              <tr className="bg-neutral-100 text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                                 <th className="p-2 text-center font-medium">#</th>
                                 <th className="p-2 text-left font-medium">Código</th>
                                 <th className="p-2 text-left font-medium min-w-[120px]">Descripción</th>
@@ -2459,20 +2489,20 @@ export default function MatrizIntranet() {
                             </thead>
                             <tbody>
                               {deliverables.map((d, i) => (
-                                <tr key={d.id} className={`border-b border-neutral-200 ${i % 2 === 0 ? 'bg-neutral-50' : 'bg-white'}`}>
-                                  <td className="p-2 text-center text-neutral-500">{d.id}</td>
-                                  <td className="p-2 text-neutral-600 font-mono text-xs">{d.codigo || '-'}</td>
-                                  <td className="p-2 text-neutral-800 font-medium text-xs">{d.nombre || d.name}</td>
-                                  <td className="p-2 text-center text-neutral-500">S{d.weekStart || d.secuencia}</td>
+                                <tr key={d.id} className={`border-b border-neutral-200 dark:border-neutral-700 ${i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white'}`}>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{d.id}</td>
+                                  <td className="p-2 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{d.codigo || '-'}</td>
+                                  <td className="p-2 text-neutral-800 dark:text-neutral-100 font-medium text-xs">{d.nombre || d.name}</td>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{d.weekStart || d.secuencia}</td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} /></td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} /></td>
-                                  <td className="p-2 text-center text-neutral-500">{formatDateShort(d.deadlineRevA)}</td>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevA)}</td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosARecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosARecibidos', v)} /></td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevB} onChange={v => handleCheck(d.statusKey, 'sentRevB', v)} /></td>
-                                  <td className="p-2 text-center text-neutral-500">{formatDateShort(d.deadlineRevB)}</td>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevB)}</td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosBRecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosBRecibidos', v)} /></td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRev0} onChange={v => handleCheck(d.statusKey, 'sentRev0', v)} /></td>
-                                  <td className="p-2 text-center text-neutral-500">{formatDateShort(d.deadlineRev0)}</td>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRev0)}</td>
                                   <td className="p-2 text-center">
                                     <DashboardBadge variant={d.statusInfo.status === 'TERMINADO' ? 'success' : d.statusInfo.status === 'ATRASADO' ? 'danger' : d.statusInfo.status === 'En Proceso' ? 'warning' : 'default'}>
                                       {d.statusInfo.status}
@@ -2489,10 +2519,10 @@ export default function MatrizIntranet() {
                     {/* Tab: Log de Avance */}
                     {dashboardTab === 'log' && (
                       <Card className="overflow-hidden">
-                        <div className="p-3 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="p-3 border-b border-neutral-200 dark:border-neutral-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
-                            <h3 className="text-neutral-800 text-sm font-medium">Log de Avance</h3>
-                            <p className="text-neutral-500 text-xs">Fechas de envío por revisión</p>
+                            <h3 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Log de Avance</h3>
+                            <p className="text-neutral-500 dark:text-neutral-400 text-xs">Fechas de envío por revisión</p>
                           </div>
                           <button 
                             onClick={() => setPdfPreviewOpen(true)}
@@ -2505,7 +2535,7 @@ export default function MatrizIntranet() {
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs">
                             <thead>
-                              <tr className="bg-neutral-100 text-neutral-500 uppercase tracking-wider">
+                              <tr className="bg-neutral-100 text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                                 <th className="p-2 text-center font-medium">#</th>
                                 <th className="p-2 text-left font-medium">Código</th>
                                 <th className="p-2 text-left font-medium">Descripción</th>
@@ -2517,17 +2547,17 @@ export default function MatrizIntranet() {
                             </thead>
                             <tbody>
                               {deliverables.map((d, i) => (
-                                <tr key={d.id} className={`border-b border-neutral-200 ${i % 2 === 0 ? 'bg-neutral-50' : ''}`}>
-                                  <td className="p-2 text-center text-neutral-500">{d.id}</td>
-                                  <td className="p-2 text-neutral-600 font-mono text-xs">{d.codigo || '-'}</td>
-                                  <td className="p-2 text-neutral-800">{d.nombre || d.name}</td>
-                                  <td className={`p-2 text-center ${d.status.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
+                                <tr key={d.id} className={`border-b border-neutral-200 dark:border-neutral-700 ${i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}`}>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{d.id}</td>
+                                  <td className="p-2 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{d.codigo || '-'}</td>
+                                  <td className="p-2 text-neutral-800 dark:text-neutral-100">{d.nombre || d.name}</td>
+                                  <td className={`p-2 text-center ${d.status.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                     {d.status.sentRevADate ? formatDateFull(d.status.sentRevADate) : '-'}
                                   </td>
-                                  <td className={`p-2 text-center ${d.status.sentRevBDate ? 'text-green-600' : 'text-neutral-400'}`}>
+                                  <td className={`p-2 text-center ${d.status.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                     {d.status.sentRevBDate ? formatDateFull(d.status.sentRevBDate) : '-'}
                                   </td>
-                                  <td className={`p-2 text-center ${d.status.sentRev0Date ? 'text-green-600' : 'text-neutral-400'}`}>
+                                  <td className={`p-2 text-center ${d.status.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                     {d.status.sentRev0Date ? formatDateFull(d.status.sentRev0Date) : '-'}
                                   </td>
                                   <td className="p-2 text-center">
@@ -2546,9 +2576,9 @@ export default function MatrizIntranet() {
                     {/* Tab: Gantt */}
                     {dashboardTab === 'gantt' && (
                       <Card className="overflow-hidden">
-                        <div className="p-3 border-b border-neutral-200">
-                          <h3 className="text-neutral-800 text-sm font-medium">Carta Gantt</h3>
-                          <p className="text-neutral-500 text-xs">Visualización temporal del proyecto</p>
+                        <div className="p-3 border-b border-neutral-200 dark:border-neutral-700">
+                          <h3 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Carta Gantt</h3>
+                          <p className="text-neutral-500 dark:text-neutral-400 text-xs">Visualización temporal del proyecto</p>
                           <p className="text-orange-500 text-xs mt-1 sm:hidden">← Desliza para ver más →</p>
                         </div>
                         <div className="overflow-x-auto p-3">
@@ -2619,11 +2649,11 @@ export default function MatrizIntranet() {
                               return (
                                 <div>
                                   {/* Header de semanas */}
-                                  <div className="flex border-b border-neutral-200 bg-neutral-50">
-                                    <div style={{ width: labelWidth, minWidth: labelWidth }} className="p-2 text-xs font-medium text-neutral-600">Entregable</div>
+                                  <div className="flex border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
+                                    <div style={{ width: labelWidth, minWidth: labelWidth }} className="p-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">Entregable</div>
                                     <div className="flex">
                                       {weeks.map(w => (
-                                        <div key={w.num} style={{ width: weekWidth, minWidth: weekWidth }} className="p-1 text-center text-[10px] text-neutral-500 border-l border-neutral-200">
+                                        <div key={w.num} style={{ width: weekWidth, minWidth: weekWidth }} className="p-1 text-center text-[10px] text-neutral-500 dark:text-neutral-400 border-l border-neutral-200 dark:border-neutral-700">
                                           S{w.num}
                                         </div>
                                       ))}
@@ -2635,15 +2665,15 @@ export default function MatrizIntranet() {
                                     const bars = getGanttBars(d);
                                     
                                     return (
-                                      <div key={d.id} className={`flex border-b border-neutral-100 ${i % 2 === 0 ? 'bg-neutral-50' : 'bg-white'}`}>
-                                        <div style={{ width: labelWidth, minWidth: labelWidth }} className="p-2 text-[10px] text-neutral-700 truncate flex items-center gap-1">
+                                      <div key={d.id} className={`flex border-b border-neutral-100 dark:border-neutral-700 ${i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white'}`}>
+                                        <div style={{ width: labelWidth, minWidth: labelWidth }} className="p-2 text-[10px] text-neutral-700 dark:text-neutral-200 truncate flex items-center gap-1">
                                           <div className={`w-2 h-2 rounded-full ${d.statusInfo.color}`} />
                                           {d.nombre || d.name}
                                         </div>
                                         <div className="flex relative" style={{ height: rowHeight }}>
                                           {/* Grid de semanas */}
                                           {weeks.map(w => (
-                                            <div key={w.num} style={{ width: weekWidth, minWidth: weekWidth }} className="border-l border-neutral-100" />
+                                            <div key={w.num} style={{ width: weekWidth, minWidth: weekWidth }} className="border-l border-neutral-100 dark:border-neutral-700" />
                                           ))}
                                           
                                           {/* Barras de progreso */}
@@ -2679,7 +2709,7 @@ export default function MatrizIntranet() {
                                               }}
                                               title="Pendiente"
                                             >
-                                              <span className="text-[8px] text-neutral-500 px-1">Pendiente</span>
+                                              <span className="text-[8px] text-neutral-500 dark:text-neutral-400 px-1">Pendiente</span>
                                             </div>
                                           )}
                                         </div>
@@ -2688,26 +2718,26 @@ export default function MatrizIntranet() {
                                   })}
                                   
                                   {/* Leyenda */}
-                                  <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-neutral-200">
+                                  <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
                                     <div className="flex items-center gap-1">
                                       <div className="w-4 h-3 bg-neutral-200 rounded-sm" />
-                                      <span className="text-xs text-neutral-600">Pendiente</span>
+                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">Pendiente</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <div className="w-4 h-3 bg-orange-400 rounded-sm" />
-                                      <span className="text-xs text-neutral-600">REV_A en proceso</span>
+                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">REV_A en proceso</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <div className="w-4 h-3 bg-blue-400 rounded-sm" />
-                                      <span className="text-xs text-neutral-600">REV_B en proceso</span>
+                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">REV_B en proceso</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <div className="w-4 h-3 bg-purple-400 rounded-sm" />
-                                      <span className="text-xs text-neutral-600">REV_0 en proceso</span>
+                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">REV_0 en proceso</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <div className="w-4 h-3 bg-green-500 rounded-sm" />
-                                      <span className="text-xs text-neutral-600">Completado</span>
+                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">Completado</span>
                                     </div>
                                   </div>
                                 </div>
@@ -2730,12 +2760,12 @@ export default function MatrizIntranet() {
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4">
           <Card className="w-full max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-neutral-800 text-base sm:text-lg font-medium">Nuevo Proyecto</h2>
+              <h2 className="text-neutral-800 dark:text-neutral-100 text-base sm:text-lg font-medium">Nuevo Proyecto</h2>
               <button
                 onClick={() => setShowNewProject(false)}
-                className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
+                className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-neutral-500" />
+                <X className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
               </button>
             </div>
 
@@ -2772,7 +2802,7 @@ export default function MatrizIntranet() {
               {/* Campo de carga de Excel */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="block text-neutral-600 font-medium text-xs uppercase tracking-wider">
+                  <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider">
                     Entregables (Excel) *
                   </label>
                   <a
@@ -2793,13 +2823,13 @@ export default function MatrizIntranet() {
                     id="excel-upload"
                   />
                   <label htmlFor="excel-upload" className="cursor-pointer">
-                    <FileSpreadsheet className="w-8 h-8 mx-auto text-neutral-400 mb-2" />
+                    <FileSpreadsheet className="w-8 h-8 mx-auto text-neutral-400 dark:text-neutral-500 mb-2" />
                     {excelFileName ? (
                       <p className="text-sm text-green-600 font-medium">{excelFileName}</p>
                     ) : (
-                      <p className="text-sm text-neutral-500">Click para subir Excel</p>
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400">Click para subir Excel</p>
                     )}
-                    <p className="text-xs text-neutral-400 mt-1">
+                    <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                       Columnas: Código, Descripción, Secuencia, REV_A (UF), REV_B (UF), REV_0 (UF)
                     </p>
                   </label>
@@ -2821,7 +2851,7 @@ export default function MatrizIntranet() {
                     setExcelFileName('');
                     setExcelError('');
                   }}
-                  className="flex-1 px-4 py-3 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded font-medium text-sm transition-colors"
+                  className="flex-1 px-4 py-3 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 dark:text-neutral-200 rounded font-medium text-sm transition-colors"
                 >
                   Cancelar
                 </button>
@@ -2829,7 +2859,7 @@ export default function MatrizIntranet() {
                   className={`flex-1 px-4 py-3 rounded font-medium text-sm transition-colors ${
                     newProject.id && newProject.nombre && newProject.entregables.length > 0
                       ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                      : 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
+                      : 'bg-neutral-300 text-neutral-500 dark:text-neutral-400 cursor-not-allowed'
                   }`}
                   disabled={!newProject.id || !newProject.nombre || newProject.entregables.length === 0}
                   onClick={async () => {
@@ -2894,9 +2924,9 @@ export default function MatrizIntranet() {
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-neutral-800 text-lg font-medium">Editar Fecha de Inicio</h2>
-              <button onClick={() => setEditDateOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full">
-                <X className="w-5 h-5 text-neutral-500" />
+              <h2 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium">Editar Fecha de Inicio</h2>
+              <button onClick={() => setEditDateOpen(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full">
+                <X className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
               </button>
             </div>
             <Input 
@@ -2927,8 +2957,8 @@ export default function MatrizIntranet() {
           <div className="fixed inset-0 bg-black/80 z-50 overflow-auto p-4">
             <div className="min-h-full flex flex-col items-center py-4">
               {/* Header del modal - sticky - NO IMPRIMIR */}
-              <div className="no-print bg-white w-full max-w-2xl rounded-t-lg border-b border-neutral-200 p-2 flex items-center justify-between sticky top-0 z-10">
-                <h2 className="text-neutral-800 text-sm font-medium">Vista Previa PDF (2 páginas)</h2>
+              <div className="no-print bg-white dark:bg-neutral-800 w-full max-w-2xl rounded-t-lg border-b border-neutral-200 dark:border-neutral-700 p-2 flex items-center justify-between sticky top-0 z-10">
+                <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Vista Previa PDF (2 páginas)</h2>
                 <div className="flex gap-2">
                   <Button onClick={() => window.print()}>
                     <FileDown className="w-4 h-4 mr-1" />
@@ -2939,7 +2969,7 @@ export default function MatrizIntranet() {
                     onClick={() => setPdfPreviewOpen(false)} 
                     className="p-1.5 hover:bg-neutral-200 rounded-full"
                   >
-                    <X className="w-4 h-4 text-neutral-500" />
+                    <X className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                   </button>
                 </div>
               </div>
@@ -2952,28 +2982,28 @@ export default function MatrizIntranet() {
                   <div className="flex justify-between items-start border-b-2 border-orange-500 pb-3 mb-4">
                     <div>
                       <div className="text-xl font-light tracking-widest">
-                        <span className="text-neutral-800">M</span>
+                        <span className="text-neutral-800 dark:text-neutral-100">M</span>
                         <span className="text-orange-500">A</span>
-                        <span className="text-neutral-800">TRIZ</span>
+                        <span className="text-neutral-800 dark:text-neutral-100">TRIZ</span>
                       </div>
-                      <span className="text-[8px] text-neutral-400 tracking-wider">ARCHITECTURE FOR ENGINEERING</span>
+                      <span className="text-[8px] text-neutral-400 dark:text-neutral-500 tracking-wider">ARCHITECTURE FOR ENGINEERING</span>
                     </div>
                     <div className="text-right">
-                      <h1 className="text-sm font-bold text-neutral-800 uppercase">Log de Avance</h1>
-                      <p className="text-[9px] text-neutral-500">Informe de Estado</p>
+                      <h1 className="text-sm font-bold text-neutral-800 dark:text-neutral-100 uppercase">Log de Avance</h1>
+                      <p className="text-[9px] text-neutral-500 dark:text-neutral-400">Informe de Estado</p>
                     </div>
                   </div>
                   
                   {/* Info del proyecto */}
-                  <div className="grid grid-cols-2 gap-3 mb-3 p-2 bg-neutral-50 rounded text-[9px]">
+                  <div className="grid grid-cols-2 gap-3 mb-3 p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded text-[9px]">
                     <div>
-                      <p><span className="text-neutral-500">Código:</span> <span className="font-bold text-orange-600">{selectedProject}</span></p>
-                      <p><span className="text-neutral-500">Nombre:</span> {proyectos.find(p => p.id === selectedProject)?.nombre}</p>
-                      <p><span className="text-neutral-500">Cliente:</span> {proyectos.find(p => p.id === selectedProject)?.cliente}</p>
+                      <p><span className="text-neutral-500 dark:text-neutral-400">Código:</span> <span className="font-bold text-orange-600">{selectedProject}</span></p>
+                      <p><span className="text-neutral-500 dark:text-neutral-400">Nombre:</span> {proyectos.find(p => p.id === selectedProject)?.nombre}</p>
+                      <p><span className="text-neutral-500 dark:text-neutral-400">Cliente:</span> {proyectos.find(p => p.id === selectedProject)?.cliente}</p>
                     </div>
                     <div>
-                      <p><span className="text-neutral-500">Fecha:</span> {new Date().toLocaleDateString('es-CL')}</p>
-                      <p><span className="text-neutral-500">Inicio:</span> {dashboardStartDate.split('-').reverse().join('/')}</p>
+                      <p><span className="text-neutral-500 dark:text-neutral-400">Fecha:</span> {new Date().toLocaleDateString('es-CL')}</p>
+                      <p><span className="text-neutral-500 dark:text-neutral-400">Inicio:</span> {dashboardStartDate.split('-').reverse().join('/')}</p>
                     </div>
                   </div>
                   
@@ -2989,8 +3019,8 @@ export default function MatrizIntranet() {
                       <>
                         <div className="grid grid-cols-5 gap-1 mb-3">
                           <div className="text-center p-1.5 bg-neutral-100 rounded">
-                            <p className="text-base font-bold text-neutral-800">{entregablesImpr.length}</p>
-                            <p className="text-[7px] text-neutral-500">TOTAL</p>
+                            <p className="text-base font-bold text-neutral-800 dark:text-neutral-100">{entregablesImpr.length}</p>
+                            <p className="text-[7px] text-neutral-500 dark:text-neutral-400">TOTAL</p>
                           </div>
                           <div className="text-center p-1.5 bg-green-50 rounded border border-green-200">
                             <p className="text-base font-bold text-green-600">{entregablesImpr.filter(d => statusData[getStatusKey(d)]?.sentRev0).length}</p>
@@ -3014,7 +3044,7 @@ export default function MatrizIntranet() {
                         </div>
               
               {/* Tabla Página 1 - Primera mitad */}
-                        <p className="text-[8px] font-semibold text-neutral-400 uppercase mb-1">Entregables 1-{Math.ceil(entregablesImpr.length / 2)}</p>
+                        <p className="text-[8px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Entregables 1-{Math.ceil(entregablesImpr.length / 2)}</p>
                         <table className="w-full text-[8px] border-collapse mb-3">
                           <thead>
                             <tr className="bg-neutral-800 text-white">
@@ -3033,17 +3063,17 @@ export default function MatrizIntranet() {
                               const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
                               const info = calculateStatus(status, deadlines);
                               return (
-                                <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
+                                <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50 dark:bg-neutral-800/50'}>
                                   <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
                                   <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
                                   <td className="border border-neutral-300 px-1 py-0.5">{d.nombre || d.name}</td>
-                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
+                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                     {status?.sentRevADate || '-'}
                                   </td>
-                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400'}`}>
+                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                     {status?.sentRevBDate || '-'}
                                   </td>
-                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400'}`}>
+                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                     {status?.sentRev0Date || '-'}
                                   </td>
                                   <td className="border border-neutral-300 px-1 py-0.5 text-center">
@@ -3051,7 +3081,7 @@ export default function MatrizIntranet() {
                                       info.status === 'TERMINADO' ? 'bg-green-100 text-green-700' :
                                       info.status === 'ATRASADO' ? 'bg-red-100 text-red-700' :
                                       info.status === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
-                                      'bg-neutral-100 text-neutral-600'
+                                      'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
                                     }`}>{info.status === 'En Proceso' ? 'Proceso' : info.status}</span>
                                   </td>
                                 </tr>
@@ -3060,7 +3090,7 @@ export default function MatrizIntranet() {
                           </tbody>
                         </table>
 
-                        <div className="flex justify-between text-[7px] text-neutral-400 pt-2 border-t border-neutral-200">
+                        <div className="flex justify-between text-[7px] text-neutral-400 dark:text-neutral-500 pt-2 border-t border-neutral-200 dark:border-neutral-700">
                           <span>MATRIZ © 2026</span>
                           <span>Página 1 de 2</span>
                         </div>
@@ -3070,20 +3100,20 @@ export default function MatrizIntranet() {
                 </div>
             
             {/* Separador entre páginas - NO IMPRIMIR */}
-            <div className="no-print h-4 w-full max-w-2xl bg-neutral-500 flex items-center justify-center">
+            <div className="no-print h-4 w-full max-w-2xl bg-neutral-50 dark:bg-neutral-800/500 flex items-center justify-center">
               <span className="text-[8px] text-white">--- Corte de página ---</span>
             </div>
             
             {/* PÁGINA 2 */}
             <div className="print-page-2 bg-white shadow-xl w-full max-w-2xl" style={{ padding: '24px' }}>
               {/* Header Página 2 */}
-              <div className="flex justify-between items-center border-b border-neutral-200 pb-2 mb-3">
+              <div className="flex justify-between items-center border-b border-neutral-200 dark:border-neutral-700 pb-2 mb-3">
                 <div className="text-sm font-light tracking-widest">
-                  <span className="text-neutral-800">M</span>
+                  <span className="text-neutral-800 dark:text-neutral-100">M</span>
                   <span className="text-orange-500">A</span>
-                  <span className="text-neutral-800">TRIZ</span>
+                  <span className="text-neutral-800 dark:text-neutral-100">TRIZ</span>
                 </div>
-                <div className="text-[8px] text-neutral-500">
+                <div className="text-[8px] text-neutral-500 dark:text-neutral-400">
                   {selectedProject} • Log de Avance • {new Date().toLocaleDateString('es-CL')}
                 </div>
               </div>
@@ -3098,7 +3128,7 @@ export default function MatrizIntranet() {
 
                 return (
                   <>
-                    <p className="text-[8px] font-semibold text-neutral-400 uppercase mb-1">Entregables {mitad + 1}-{entregablesImpr2.length}</p>
+                    <p className="text-[8px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Entregables {mitad + 1}-{entregablesImpr2.length}</p>
                     <table className="w-full text-[8px] border-collapse mb-4">
                       <thead>
                         <tr className="bg-neutral-800 text-white">
@@ -3117,17 +3147,17 @@ export default function MatrizIntranet() {
                           const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
                           const info = calculateStatus(status, deadlines);
                           return (
-                            <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
+                            <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50 dark:bg-neutral-800/50'}>
                               <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
                               <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
                               <td className="border border-neutral-300 px-1 py-0.5">{d.nombre || d.name}</td>
-                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
+                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                 {status?.sentRevADate || '-'}
                               </td>
-                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400'}`}>
+                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                 {status?.sentRevBDate || '-'}
                               </td>
-                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400'}`}>
+                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
                                 {status?.sentRev0Date || '-'}
                               </td>
                               <td className="border border-neutral-300 px-1 py-0.5 text-center">
@@ -3135,7 +3165,7 @@ export default function MatrizIntranet() {
                                   info.status === 'TERMINADO' ? 'bg-green-100 text-green-700' :
                                   info.status === 'ATRASADO' ? 'bg-red-100 text-red-700' :
                                   info.status === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
-                                  'bg-neutral-100 text-neutral-600'
+                                  'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
                                 }`}>{info.status === 'En Proceso' ? 'Proceso' : info.status}</span>
                               </td>
                             </tr>
@@ -3148,31 +3178,31 @@ export default function MatrizIntranet() {
               })()}
               
               {/* Leyenda */}
-              <div className="mb-4 p-2 bg-neutral-50 rounded">
-                <p className="text-[8px] font-semibold text-neutral-600 mb-1">Leyenda</p>
+              <div className="mb-4 p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded">
+                <p className="text-[8px] font-semibold text-neutral-600 dark:text-neutral-300 mb-1">Leyenda</p>
                 <div className="flex flex-wrap gap-3 text-[8px]">
                   <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700">TERMINADO</span>
                   <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">Proceso</span>
                   <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700">ATRASADO</span>
-                  <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">Pendiente</span>
+                  <span className="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300">Pendiente</span>
                 </div>
               </div>
               
               {/* Firmas */}
               <div className="grid grid-cols-2 gap-8 mb-4">
                 <div className="border-t border-neutral-300 pt-2 mt-6">
-                  <p className="text-[8px] text-neutral-500 text-center">Preparado por</p>
+                  <p className="text-[8px] text-neutral-500 dark:text-neutral-400 text-center">Preparado por</p>
                 </div>
                 <div className="border-t border-neutral-300 pt-2 mt-6">
-                  <p className="text-[8px] text-neutral-500 text-center">Revisado por</p>
+                  <p className="text-[8px] text-neutral-500 dark:text-neutral-400 text-center">Revisado por</p>
                 </div>
               </div>
               
               {/* Pie Página 2 */}
               <div className="border-t-2 border-orange-500 pt-2">
-                <div className="flex justify-between text-[7px] text-neutral-400">
+                <div className="flex justify-between text-[7px] text-neutral-400 dark:text-neutral-500">
                   <div>
-                    <p className="font-medium text-neutral-600">MATRIZ - Sistema de Gestión de Proyectos</p>
+                    <p className="font-medium text-neutral-600 dark:text-neutral-300">MATRIZ - Sistema de Gestión de Proyectos</p>
                     <p>www.matriz.cl</p>
                   </div>
                   <p>Página 2 de 2</p>
@@ -3182,7 +3212,7 @@ export default function MatrizIntranet() {
             </div>{/* Fin print-content */}
             
             {/* Botón cerrar al final - NO IMPRIMIR */}
-            <div className="no-print bg-white w-full max-w-2xl rounded-b-lg p-2 flex justify-center">
+            <div className="no-print bg-white dark:bg-neutral-800 w-full max-w-2xl rounded-b-lg p-2 flex justify-center">
               <Button variant="secondary" onClick={() => setPdfPreviewOpen(false)}>
                 Cerrar Vista Previa
               </Button>
@@ -3201,13 +3231,13 @@ export default function MatrizIntranet() {
                 <Trash2 className="w-6 h-6 text-red-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-neutral-800">Eliminar Proyecto</h2>
-                <p className="text-sm text-neutral-500">Esta acción no se puede deshacer</p>
+                <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Eliminar Proyecto</h2>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer</p>
               </div>
             </div>
             
-            <div className="mb-6 p-4 bg-neutral-50 rounded-lg">
-              <p className="text-sm text-neutral-600 mb-2">
+            <div className="mb-6 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg">
+              <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-2">
                 ¿Estás seguro de que deseas eliminar el siguiente proyecto?
               </p>
               <div className="flex items-center gap-3">
@@ -3216,8 +3246,8 @@ export default function MatrizIntranet() {
                 </div>
                 <div>
                   <p className="font-mono text-orange-600 font-medium">{projectToDelete.id}</p>
-                  <p className="text-neutral-800">{projectToDelete.nombre}</p>
-                  <p className="text-neutral-500 text-xs">{projectToDelete.cliente}</p>
+                  <p className="text-neutral-800 dark:text-neutral-100">{projectToDelete.nombre}</p>
+                  <p className="text-neutral-500 dark:text-neutral-400 text-xs">{projectToDelete.cliente}</p>
                 </div>
               </div>
             </div>
@@ -3258,13 +3288,13 @@ export default function MatrizIntranet() {
                 <Pencil className="w-6 h-6 text-blue-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-neutral-800">Editar Proyecto</h2>
+                <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Editar Proyecto</h2>
               </div>
             </div>
             
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">
                   Código del Proyecto
                 </label>
                 <input
@@ -3277,7 +3307,7 @@ export default function MatrizIntranet() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">
                   Nombre del Proyecto
                 </label>
                 <input
@@ -3290,7 +3320,7 @@ export default function MatrizIntranet() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">
                   Cliente
                 </label>
                 <input
@@ -3303,7 +3333,7 @@ export default function MatrizIntranet() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">
                   Estado
                 </label>
                 <select
@@ -3343,7 +3373,7 @@ export default function MatrizIntranet() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-neutral-200 py-4 text-center text-neutral-500 text-xs">
+      <footer className="border-t border-neutral-200 dark:border-neutral-700 py-4 text-center text-neutral-500 dark:text-neutral-400 text-xs">
         MATRIZ © 2026 • {currentUser?.nombre} ({isAdmin ? 'Admin' : 'Colaborador'})
       </footer>
     </div>

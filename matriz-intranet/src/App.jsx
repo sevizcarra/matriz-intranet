@@ -1725,11 +1725,11 @@ export default function MatrizIntranet() {
           e.nombre,
           'REV_' + e.revision,
           e.fecha,
-          e.valor.toFixed(2),
+          (e.valor * 1.30).toFixed(2), // HsH × factor = UF
           e.observacion || ''
         ]),
         [''],
-        ['', '', '', '', '', 'TOTAL:', entregables.reduce((s, e) => s + e.valor, 0).toFixed(2) + ' UF', '']
+        ['', '', '', '', '', 'TOTAL:', (entregables.reduce((s, e) => s + e.valor, 0) * 1.30).toFixed(2) + ' UF', '']
       ];
 
       const ws = window.XLSX.utils.aoa_to_sheet(data);
@@ -2225,7 +2225,7 @@ export default function MatrizIntranet() {
                                     </span>
                                   </td>
                                   <td className="py-2 text-center text-neutral-600 dark:text-neutral-300">{e.fecha}</td>
-                                  <td className="py-2 text-right text-green-600 dark:text-green-400 font-medium">{e.valor.toFixed(2)}</td>
+                                  <td className="py-2 text-right text-green-600 dark:text-green-400 font-medium">{(e.valor * 1.30).toFixed(2)}</td>
                                   <td className="py-2">
                                     <input
                                       type="text"
@@ -2262,7 +2262,7 @@ export default function MatrizIntranet() {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-orange-500">
-                          {totalGeneral.toFixed(2)} UF
+                          {(totalGeneral * 1.30).toFixed(2)} UF
                         </p>
                       </div>
                     </div>
@@ -2331,7 +2331,7 @@ export default function MatrizIntranet() {
                           <td className="border border-neutral-300 px-1.5 py-0.5">{e.nombre}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-center">REV_{e.revision}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.fecha}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-right font-medium">{e.valor.toFixed(2)}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 text-right font-medium">{(e.valor * 1.30).toFixed(2)}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-neutral-600">{e.observacion || ''}</td>
                         </tr>
                       ))}
@@ -2339,7 +2339,7 @@ export default function MatrizIntranet() {
                     <tfoot>
                       <tr className="bg-orange-100 font-bold">
                         <td colSpan={6} className="border border-neutral-300 px-1.5 py-1.5 text-right">TOTAL:</td>
-                        <td className="border border-neutral-300 px-1.5 py-1.5 text-right text-orange-600">{totalGeneral.toFixed(2)} UF</td>
+                        <td className="border border-neutral-300 px-1.5 py-1.5 text-right text-orange-600">{(totalGeneral * 1.30).toFixed(2)} UF</td>
                         <td className="border border-neutral-300 px-1.5 py-1.5"></td>
                       </tr>
                     </tfoot>
@@ -2366,7 +2366,7 @@ export default function MatrizIntranet() {
                                 });
                               }
                             });
-                            return (totalProyectoUF / factor).toFixed(1);
+                            return totalProyectoUF.toFixed(1);
                           })()}
                         </p>
                       </div>
@@ -2402,13 +2402,13 @@ export default function MatrizIntranet() {
                                 });
                               });
                             });
-                            return (totalAnterior / factor).toFixed(1);
+                            return totalAnterior.toFixed(1);
                           })()}
                         </p>
                       </div>
                       <div className="text-center p-2 bg-orange-50 rounded border border-orange-200">
                         <p className="text-orange-600 mb-1 font-medium">HsH Mes en Curso</p>
-                        <p className="font-bold text-orange-600 text-lg">{(totalGeneral / 1.30).toFixed(1)}</p>
+                        <p className="font-bold text-orange-600 text-lg">{totalGeneral.toFixed(1)}</p>
                       </div>
                       <div className="text-center p-2 bg-white rounded border">
                         <p className="text-neutral-500 mb-1">HsH Pendientes</p>
@@ -2437,7 +2437,7 @@ export default function MatrizIntranet() {
                                 });
                               }
                             });
-                            return ((totalProyectoUF - totalFacturado) / factor).toFixed(1);
+                            return (totalProyectoUF - totalFacturado).toFixed(1);
                           })()}
                         </p>
                       </div>
@@ -2449,9 +2449,9 @@ export default function MatrizIntranet() {
                     <h3 className="text-sm font-bold mb-2 text-neutral-700">RESUMEN POR PROYECTO</h3>
                     <div className="grid grid-cols-2 gap-3">
                       {Object.entries(porProyecto).map(([pid, pdata]) => {
-                        const hshMes = pdata.totalUF / 1.30;
+                        const hshMes = pdata.totalUF; // Ya está en HsH
                         const factor = 1.30;
-                        const totalBruto = hshMes * factor;
+                        const totalBruto = hshMes * factor; // Multiplicar por factor para obtener UF
                         return (
                           <div key={pid} className="p-3 bg-neutral-100 rounded border border-neutral-200">
                             <div className="flex justify-between items-start mb-2">

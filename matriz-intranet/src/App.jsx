@@ -3472,14 +3472,6 @@ export default function MatrizIntranet() {
                 onChange={e => setNewProject(prev => ({ ...prev, cliente: e.target.value }))}
               />
 
-              <Input
-                label="Tarifa de Venta (UF/Hr)"
-                type="number"
-                step="0.1"
-                value={newProject.tarifaVenta}
-                onChange={e => setNewProject(prev => ({ ...prev, tarifaVenta: parseFloat(e.target.value) || 0 }))}
-              />
-
               {/* Campo de carga de Excel */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

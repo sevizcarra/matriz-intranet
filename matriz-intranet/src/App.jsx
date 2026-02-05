@@ -3605,14 +3605,14 @@ export default function MatrizIntranet() {
                                     {d.frozen && <Snowflake className="w-3 h-3 inline ml-1 text-blue-400" />}
                                   </td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{d.weekStart || d.secuencia}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} disabled={d.frozen} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} disabled={d.frozen || !isAdmin} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevA)}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosARecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosARecibidos', v)} disabled={d.frozen} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevB} onChange={v => handleCheck(d.statusKey, 'sentRevB', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosARecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosARecibidos', v)} disabled={d.frozen || !isAdmin} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevB} onChange={v => handleCheck(d.statusKey, 'sentRevB', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevB)}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosBRecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosBRecibidos', v)} disabled={d.frozen} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRev0} onChange={v => handleCheck(d.statusKey, 'sentRev0', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosBRecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosBRecibidos', v)} disabled={d.frozen || !isAdmin} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRev0} onChange={v => handleCheck(d.statusKey, 'sentRev0', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRev0)}</td>
                                   <td className="p-2 text-center">
                                     {d.frozen ? (

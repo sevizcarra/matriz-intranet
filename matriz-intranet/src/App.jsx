@@ -1249,7 +1249,8 @@ export default function MatrizIntranet() {
       const fecha = new Date(h.fecha);
       const now = new Date();
       // Solo mostrar horas de Sebastián Vizcarra (id: 3 o 'admin' para registros antiguos)
-      const esDeSebastian = h.profesionalId === 3 || h.profesionalId === 'admin';
+      // Usar == para manejar "3" (string) y 3 (número)
+      const esDeSebastian = h.profesionalId == 3 || h.profesionalId === 'admin';
       return fecha.getMonth() === now.getMonth() && esDeSebastian;
     });
     
@@ -1373,9 +1374,10 @@ export default function MatrizIntranet() {
                   <tbody>
                     {horasDelMes.map(h => {
                       // Para registros antiguos con 'admin', buscar a Sebastián (SV)
+                      // Usar == para manejar "3" (string) y 3 (número)
                       const col = h.profesionalId === 'admin'
                         ? profesionales.find(c => c.iniciales === 'SV')
-                        : profesionales.find(c => c.id === h.profesionalId);
+                        : profesionales.find(c => c.id == h.profesionalId);
                       return (
                         <tr key={h.id} className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:bg-neutral-800/50">
                           <td className="p-2 text-neutral-800 dark:text-neutral-100">{col?.iniciales}</td>
@@ -1395,7 +1397,10 @@ export default function MatrizIntranet() {
                       <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{horasDelMes.reduce((s, h) => s + h.horas, 0)}</td>
                       <td className="p-2 text-right text-green-600">
                         {horasDelMes.reduce((s, h) => {
-                          const col = profesionales.find(c => c.id === h.profesionalId);
+                          // Manejar registros con 'admin' (buscar SV)
+                          const col = h.profesionalId === 'admin'
+                            ? profesionales.find(c => c.iniciales === 'SV')
+                            : profesionales.find(c => c.id === h.profesionalId);
                           return s + (h.horas * (col?.tarifaInterna || 0));
                         }, 0).toFixed(2)}
                       </td>
@@ -1413,8 +1418,12 @@ export default function MatrizIntranet() {
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             {profesionales.map(col => {
               // Para Sebastián (SV), incluir también registros antiguos con profesionalId 'admin'
-              const horasCol = horasDelMes.filter(h => h.profesionalId === col.id || (col.iniciales === 'SV' && h.profesionalId === 'admin'));
-              const totalHoras = horasCol.reduce((s, h) => s + h.horas, 0);
+              // Usar == para comparar números/strings y manejar 'admin'
+              const horasCol = horasDelMes.filter(h =>
+                h.profesionalId == col.id ||
+                (col.iniciales === 'SV' && h.profesionalId === 'admin')
+              );
+              const totalHoras = horasCol.reduce((s, h) => s + parseFloat(h.horas), 0);
               const totalCosto = totalHoras * col.tarifaInterna;
               
               return (

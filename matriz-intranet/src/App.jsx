@@ -2299,18 +2299,139 @@ export default function MatrizIntranet() {
                     </tfoot>
                   </table>
 
+                  {/* Cuadro de Totales HsH */}
+                  <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200 rounded">
+                    <h3 className="text-xs font-bold mb-2 text-neutral-700">RESUMEN HORAS HOMBRE (HsH)</h3>
+                    <div className="grid grid-cols-4 gap-3 text-[10px]">
+                      <div className="text-center p-2 bg-white rounded border">
+                        <p className="text-neutral-500 mb-1">Total HsH Proyecto</p>
+                        <p className="font-bold text-neutral-800">
+                          {(() => {
+                            // Calcular total del proyecto completo (todas las revisiones de todos los entregables)
+                            const factor = 1.30;
+                            let totalProyectoUF = 0;
+                            Object.entries(porProyecto).forEach(([pid, pdata]) => {
+                              const proyecto = proyectos.find(p => p.id === pid);
+                              if (proyecto && proyecto.entregables) {
+                                proyecto.entregables.forEach(ent => {
+                                  if (!ent.frozen) {
+                                    totalProyectoUF += (ent.valorRevA || 0) + (ent.valorRevB || 0) + (ent.valorRev0 || 0);
+                                  }
+                                });
+                              }
+                            });
+                            return (totalProyectoUF / factor).toFixed(1);
+                          })()}
+                        </p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded border">
+                        <p className="text-neutral-500 mb-1">HsH Mes Anterior</p>
+                        <p className="font-bold text-neutral-800">
+                          {(() => {
+                            // Calcular mes anterior
+                            const factor = 1.30;
+                            const [year, month] = selectedMonth.split('-').map(Number);
+                            const prevMonth = month === 1 ? 12 : month - 1;
+                            const prevYear = month === 1 ? year - 1 : year;
+                            let totalAnterior = 0;
+
+                            proyectos.forEach(proyecto => {
+                              if (selectedProyectoEDP !== 'all' && proyecto.id !== selectedProyectoEDP) return;
+                              const entregablesProyecto = proyecto.entregables || [];
+                              entregablesProyecto.forEach(entregable => {
+                                if (entregable.frozen) return;
+                                const statusKey = `${proyecto.id}_${entregable.id}`;
+                                const status = statusData[statusKey];
+                                if (!status) return;
+
+                                // Check each revision date
+                                ['sentRevADate', 'sentRevBDate', 'sentRev0Date'].forEach((dateKey, idx) => {
+                                  if (status[dateKey]) {
+                                    const fecha = new Date(status[dateKey]);
+                                    if (fecha.getMonth() === prevMonth - 1 && fecha.getFullYear() === prevYear) {
+                                      const valores = [entregable.valorRevA || 0, entregable.valorRevB || 0, entregable.valorRev0 || 0];
+                                      totalAnterior += valores[idx];
+                                    }
+                                  }
+                                });
+                              });
+                            });
+                            return (totalAnterior / factor).toFixed(1);
+                          })()}
+                        </p>
+                      </div>
+                      <div className="text-center p-2 bg-orange-50 rounded border border-orange-200">
+                        <p className="text-orange-600 mb-1 font-medium">HsH Mes en Curso</p>
+                        <p className="font-bold text-orange-600 text-lg">{(totalGeneral / 1.30).toFixed(1)}</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded border">
+                        <p className="text-neutral-500 mb-1">HsH Pendientes</p>
+                        <p className="font-bold text-neutral-800">
+                          {(() => {
+                            const factor = 1.30;
+                            let totalProyectoUF = 0;
+                            let totalFacturado = 0;
+
+                            Object.entries(porProyecto).forEach(([pid, pdata]) => {
+                              const proyecto = proyectos.find(p => p.id === pid);
+                              if (proyecto && proyecto.entregables) {
+                                proyecto.entregables.forEach(ent => {
+                                  if (!ent.frozen) {
+                                    totalProyectoUF += (ent.valorRevA || 0) + (ent.valorRevB || 0) + (ent.valorRev0 || 0);
+
+                                    // Calcular lo ya facturado
+                                    const statusKey = `${proyecto.id}_${ent.id}`;
+                                    const status = statusData[statusKey];
+                                    if (status) {
+                                      if (status.sentRevADate) totalFacturado += (ent.valorRevA || 0);
+                                      if (status.sentRevBDate) totalFacturado += (ent.valorRevB || 0);
+                                      if (status.sentRev0Date) totalFacturado += (ent.valorRev0 || 0);
+                                    }
+                                  }
+                                });
+                              }
+                            });
+                            return ((totalProyectoUF - totalFacturado) / factor).toFixed(1);
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Resumen por proyecto */}
-                  <div className="mt-6">
+                  <div className="mt-4">
                     <h3 className="text-sm font-bold mb-2 text-neutral-700">RESUMEN POR PROYECTO</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {Object.entries(porProyecto).map(([pid, pdata]) => (
-                        <div key={pid} className="p-2 bg-neutral-100 rounded border border-neutral-200">
-                          <p className="font-mono text-orange-600 text-xs">{pid}</p>
-                          <p className="text-[9px] text-neutral-600 truncate">{pdata.nombre}</p>
-                          <p className="font-bold text-sm">{pdata.totalUF.toFixed(2)} UF</p>
-                          <p className="text-[8px] text-neutral-500">{pdata.entregables.length} registros</p>
-                        </div>
-                      ))}
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.entries(porProyecto).map(([pid, pdata]) => {
+                        const hshMes = pdata.totalUF / 1.30;
+                        const factor = 1.30;
+                        const totalBruto = hshMes * factor;
+                        return (
+                          <div key={pid} className="p-3 bg-neutral-100 rounded border border-neutral-200">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <p className="font-mono text-orange-600 text-sm font-bold">{pid}</p>
+                                <p className="text-[10px] text-neutral-600 truncate">{pdata.nombre}</p>
+                              </div>
+                              <span className="text-[9px] text-neutral-500 bg-white px-1.5 py-0.5 rounded">{pdata.entregables.length} registros</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-center mt-2 pt-2 border-t border-neutral-200">
+                              <div>
+                                <p className="text-[9px] text-neutral-500">HsH Mes</p>
+                                <p className="font-bold text-sm text-neutral-800">{hshMes.toFixed(1)}</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-neutral-500">Factor</p>
+                                <p className="font-bold text-sm text-neutral-600">{factor.toFixed(2)} UF/HsH</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-neutral-500">Total Bruto</p>
+                                <p className="font-bold text-sm text-orange-600">{totalBruto.toFixed(2)} UF</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 

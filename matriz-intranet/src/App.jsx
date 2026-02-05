@@ -1732,6 +1732,45 @@ export default function MatrizIntranet() {
         });
       });
 
+      // Agregar VIS y REU de Sebastián al EDP
+      // Solo se incluyen las cargadas por Sebastián (profesionalId 3 o 'admin')
+      horasRegistradas.forEach(hora => {
+        // Solo VIS y REU
+        if (hora.tipo !== 'VIS' && hora.tipo !== 'REU') return;
+
+        // Solo de Sebastián
+        const esDeSebastian = hora.profesionalId === 3 || hora.profesionalId === 'admin';
+        if (!esDeSebastian) return;
+
+        // Verificar que sea del mes seleccionado
+        const fechaHora = new Date(hora.fecha);
+        if (fechaHora.getMonth() !== month - 1 || fechaHora.getFullYear() !== year) return;
+
+        // Filtrar por proyecto si hay uno seleccionado
+        if (selectedProyectoEDP !== 'all' && hora.proyectoId !== selectedProyectoEDP) return;
+
+        // Buscar el nombre del proyecto
+        const proyecto = proyectos.find(p => p.id === hora.proyectoId);
+        const proyectoNombre = proyecto ? proyecto.nombre : hora.proyectoId;
+
+        const entregableId = `hsh_${hora.id}`;
+        const revision = '-';
+        const obsKey = `${hora.proyectoId}_${entregableId}_${revision}`;
+        entregablesDelMes.push({
+          proyectoId: hora.proyectoId,
+          proyectoNombre: proyectoNombre,
+          entregableId: entregableId,
+          codigo: '-',
+          nombre: hora.entregable || (hora.tipo === 'VIS' ? 'Visita' : 'Reunión'),
+          tipo: hora.tipo,
+          revision: revision,
+          fecha: hora.fecha.split('T')[0], // Solo la fecha sin la hora
+          valor: hora.horas,
+          observacion: edpObservaciones[obsKey] || '',
+          esHsH: true // Marcador para identificar que viene de HsH
+        });
+      });
+
       // Ordenar por fecha
       entregablesDelMes.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
@@ -1786,7 +1825,7 @@ export default function MatrizIntranet() {
           e.tipo,
           e.codigo,
           e.nombre,
-          'REV_' + e.revision,
+          e.esHsH ? '-' : 'REV_' + e.revision, // VIS/REU no tienen revisión
           e.fecha,
           e.valor.toFixed(2), // HsH directo
           e.observacion || ''
@@ -2322,6 +2361,8 @@ export default function MatrizIntranet() {
                                       e.tipo === 'EETT' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' :
                                       e.tipo === 'MTO' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
                                       e.tipo === 'DETALLE' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
+                                      e.tipo === 'VIS' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300' :
+                                      e.tipo === 'REU' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' :
                                       'bg-neutral-200 text-neutral-700 dark:bg-neutral-600 dark:text-neutral-300'
                                     }`}>
                                       {e.tipo}
@@ -2329,11 +2370,12 @@ export default function MatrizIntranet() {
                                   </td>
                                   <td className="py-2 text-center">
                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                      e.esHsH ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' :
                                       e.revision === 'A' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
                                       e.revision === 'B' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' :
                                       'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
                                     }`}>
-                                      REV_{e.revision}
+                                      {e.esHsH ? e.tipo : `REV_${e.revision}`}
                                     </span>
                                   </td>
                                   <td className="py-2 text-center text-neutral-600 dark:text-neutral-300">{e.fecha}</td>
@@ -2434,7 +2476,7 @@ export default function MatrizIntranet() {
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.tipo}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 font-mono">{e.codigo}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5">{e.nombre}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">REV_{e.revision}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.esHsH ? '-' : `REV_${e.revision}`}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.fecha}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-right font-medium">{e.valor.toFixed(2)}</td>
                         </tr>

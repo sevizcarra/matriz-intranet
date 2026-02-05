@@ -61,21 +61,12 @@ const PrintStyles = () => (
         visibility: hidden !important;
       }
       
-      /* Página 1 - salto de página después */
-      .print-page-1 {
-        page-break-after: always;
-        padding: 5mm !important;
-        margin: 0 !important;
-        background: white !important;
-        box-shadow: none !important;
-        max-width: 100% !important;
-        width: 100% !important;
-      }
-
-      /* Página 2 - salto de página antes */
+      /* Contenido de impresión - sin saltos de página */
+      .print-page-1,
       .print-page-2 {
-        page-break-before: always;
-        padding: 5mm !important;
+        page-break-after: avoid;
+        page-break-before: avoid;
+        padding: 0 !important;
         margin: 0 !important;
         background: white !important;
         box-shadow: none !important;
@@ -544,10 +535,10 @@ export default function MatrizIntranet() {
     });
 
     const unsubProfesionales = subscribeToColaboradores((data) => {
-      if (data.length > 0) {
+      if (data.length >= COLABORADORES_INICIAL.length) {
         setProfesionales(data);
       } else {
-        // Si no hay datos en Firestore, usar datos iniciales y guardarlos
+        // Si faltan profesionales en Firestore, usar datos iniciales y guardarlos
         setProfesionales(COLABORADORES_INICIAL);
         saveAllColaboradores(COLABORADORES_INICIAL);
       }
@@ -2311,7 +2302,6 @@ export default function MatrizIntranet() {
                               <th className="pb-2 text-center">Rev</th>
                               <th className="pb-2 text-center">Fecha</th>
                               <th className="pb-2 text-right">HsH</th>
-                              <th className="pb-2">Observación</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2343,15 +2333,6 @@ export default function MatrizIntranet() {
                                   </td>
                                   <td className="py-2 text-center text-neutral-600 dark:text-neutral-300">{e.fecha}</td>
                                   <td className="py-2 text-right text-green-600 dark:text-green-400 font-medium">{e.valor.toFixed(2)}</td>
-                                  <td className="py-2">
-                                    <input
-                                      type="text"
-                                      placeholder="Agregar obs..."
-                                      value={edpObservaciones[obsKey] || ''}
-                                      onChange={ev => setEdpObservaciones(prev => ({ ...prev, [obsKey]: ev.target.value }))}
-                                      className="w-full px-1.5 py-0.5 text-xs bg-white dark:bg-neutral-600 border border-neutral-200 dark:border-neutral-500 rounded focus:outline-none focus:border-orange-400"
-                                    />
-                                  </td>
                                 </tr>
                               );
                             })}
@@ -2406,66 +2387,68 @@ export default function MatrizIntranet() {
                   </Button>
                 </div>
               </div>
-              <div className="p-6 overflow-auto max-h-[calc(90vh-80px)] print-content">
-                {/* Contenido para PDF */}
-                <div className="print-page-1 bg-white text-black">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-orange-500">
+              <div className="p-4 overflow-auto max-h-[calc(90vh-80px)] print-content">
+                {/* Contenido para PDF - Una sola página */}
+                <div className="bg-white text-black">
+                  {/* Header con proyecto */}
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-orange-500">
                     <div>
-                      <h1 className="text-2xl font-bold text-neutral-800">ESTADO DE PAGO</h1>
-                      <p className="text-neutral-600">{new Date(selectedMonth + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()}</p>
+                      <h1 className="text-xl font-bold text-neutral-800">ESTADO DE PAGO</h1>
+                      <p className="text-sm text-neutral-600">{new Date(selectedMonth + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()}</p>
+                      <p className="text-xs text-orange-600 font-medium mt-1">
+                        {selectedProyectoEDP !== 'all'
+                          ? `${selectedProyectoEDP} - ${proyectos.find(p => p.id === selectedProyectoEDP)?.nombre || ''}`
+                          : 'Todos los proyectos'}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl font-light tracking-widest">
+                      <p className="text-lg font-light tracking-widest">
                         <span className="text-neutral-800">M</span>
                         <span className="text-orange-500">A</span>
                         <span className="text-neutral-800">TRIZ</span>
                       </p>
-                      <p className="text-[8px] text-neutral-400 tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
+                      <p className="text-[7px] text-neutral-400 tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
                     </div>
                   </div>
 
-                  {/* Tabla principal (formato Excel: C.COSTO, TIPO, CODIGO, DESCRIPCIÓN, REV, FECHA, UF, OBS) */}
-                  <table className="w-full text-[9px] border-collapse mb-4">
+                  {/* Tabla de entregables */}
+                  <table className="w-full text-[8px] border-collapse mb-3">
                     <thead>
                       <tr className="bg-neutral-800 text-white">
-                        <th className="border border-neutral-300 px-2 py-1.5 text-left">C. COSTO</th>
-                        <th className="border border-neutral-300 px-2 py-1.5 text-center">TIPO</th>
-                        <th className="border border-neutral-300 px-2 py-1.5 text-left">CÓDIGO</th>
-                        <th className="border border-neutral-300 px-2 py-1.5 text-left">DESCRIPCIÓN</th>
-                        <th className="border border-neutral-300 px-2 py-1.5 text-center">REV</th>
-                        <th className="border border-neutral-300 px-2 py-1.5 text-center">FECHA</th>
-                        <th className="border border-neutral-300 px-2 py-1.5 text-right">HsH</th>
+                        <th className="border border-neutral-300 px-1.5 py-1 text-center">TIPO</th>
+                        <th className="border border-neutral-300 px-1.5 py-1 text-left">CÓDIGO</th>
+                        <th className="border border-neutral-300 px-1.5 py-1 text-left">DESCRIPCIÓN</th>
+                        <th className="border border-neutral-300 px-1.5 py-1 text-center">REV</th>
+                        <th className="border border-neutral-300 px-1.5 py-1 text-center">FECHA</th>
+                        <th className="border border-neutral-300 px-1.5 py-1 text-right">HsH</th>
                       </tr>
                     </thead>
                     <tbody>
                       {edpData.map((e, i) => (
                         <tr key={`${e.entregableId}-${e.revision}`} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
-                          <td className="border border-neutral-300 px-2 py-1 font-mono text-orange-600">{e.proyectoId}</td>
-                          <td className="border border-neutral-300 px-2 py-1 text-center">{e.tipo}</td>
-                          <td className="border border-neutral-300 px-2 py-1 font-mono">{e.codigo}</td>
-                          <td className="border border-neutral-300 px-2 py-1">{e.nombre}</td>
-                          <td className="border border-neutral-300 px-2 py-1 text-center">REV_{e.revision}</td>
-                          <td className="border border-neutral-300 px-2 py-1 text-center">{e.fecha}</td>
-                          <td className="border border-neutral-300 px-2 py-1 text-right font-medium">{e.valor.toFixed(2)}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.tipo}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 font-mono">{e.codigo}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5">{e.nombre}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">REV_{e.revision}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.fecha}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 text-right font-medium">{e.valor.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="bg-orange-100 font-bold">
-                        <td colSpan={6} className="border border-neutral-300 px-2 py-2 text-right">TOTAL:</td>
-                        <td className="border border-neutral-300 px-2 py-2 text-right text-orange-600">{totalGeneral.toFixed(2)} HsH</td>
+                        <td colSpan={5} className="border border-neutral-300 px-1.5 py-1 text-right">TOTAL HsH:</td>
+                        <td className="border border-neutral-300 px-1.5 py-1 text-right text-orange-600">{totalGeneral.toFixed(2)}</td>
                       </tr>
                     </tfoot>
                   </table>
 
-                  {/* Cuadro de Totales HsH */}
-                  <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200 rounded">
-                    <h3 className="text-xs font-bold mb-2 text-neutral-700">RESUMEN HORAS HOMBRE (HsH)</h3>
-                    <div className="grid grid-cols-4 gap-3 text-[10px]">
-                      <div className="text-center p-2 bg-white rounded border">
-                        <p className="text-neutral-500 mb-1">Total HsH Proyecto</p>
-                        <p className="font-bold text-neutral-800">
+                  {/* Resumen compacto */}
+                  <div className="mt-3 p-2 bg-neutral-50 border border-neutral-200 rounded">
+                    <div className="grid grid-cols-4 gap-2 text-[9px]">
+                      <div className="text-center p-1.5 bg-white rounded border">
+                        <p className="text-neutral-500 text-[8px]">Total Proyecto</p>
+                        <p className="font-bold text-neutral-800 text-xs">
                           {(() => {
                             // Calcular total del proyecto completo (todas las revisiones de todos los entregables)
                             const factor = 1.30;
@@ -2484,114 +2467,18 @@ export default function MatrizIntranet() {
                           })()}
                         </p>
                       </div>
-                      <div className="text-center p-2 bg-white rounded border">
-                        <p className="text-neutral-500 mb-1">HsH Mes Anterior</p>
-                        <p className="font-bold text-neutral-800">
-                          {(() => {
-                            // Calcular mes anterior
-                            const factor = 1.30;
-                            const [year, month] = selectedMonth.split('-').map(Number);
-                            const prevMonth = month === 1 ? 12 : month - 1;
-                            const prevYear = month === 1 ? year - 1 : year;
-                            let totalAnterior = 0;
-
-                            proyectos.forEach(proyecto => {
-                              if (selectedProyectoEDP !== 'all' && proyecto.id !== selectedProyectoEDP) return;
-                              const entregablesProyecto = proyecto.entregables || [];
-                              entregablesProyecto.forEach(entregable => {
-                                if (entregable.frozen) return;
-                                const statusKey = `${proyecto.id}_${entregable.id}`;
-                                const status = statusData[statusKey];
-                                if (!status) return;
-
-                                // Check each revision date
-                                ['sentRevADate', 'sentRevBDate', 'sentRev0Date'].forEach((dateKey, idx) => {
-                                  if (status[dateKey]) {
-                                    const fecha = new Date(status[dateKey]);
-                                    if (fecha.getMonth() === prevMonth - 1 && fecha.getFullYear() === prevYear) {
-                                      const valores = [entregable.valorRevA || 0, entregable.valorRevB || 0, entregable.valorRev0 || 0];
-                                      totalAnterior += valores[idx];
-                                    }
-                                  }
-                                });
-                              });
-                            });
-                            return totalAnterior.toFixed(1);
-                          })()}
-                        </p>
+                      <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
+                        <p className="text-orange-600 text-[8px]">HsH Mes</p>
+                        <p className="font-bold text-orange-600 text-sm">{totalGeneral.toFixed(1)}</p>
                       </div>
-                      <div className="text-center p-2 bg-orange-50 rounded border border-orange-200">
-                        <p className="text-orange-600 mb-1 font-medium">HsH Mes en Curso</p>
-                        <p className="font-bold text-orange-600 text-lg">{totalGeneral.toFixed(1)}</p>
+                      <div className="text-center p-1.5 bg-white rounded border">
+                        <p className="text-neutral-500 text-[8px]">Factor</p>
+                        <p className="font-bold text-neutral-600 text-xs">1.30 UF/HsH</p>
                       </div>
-                      <div className="text-center p-2 bg-white rounded border">
-                        <p className="text-neutral-500 mb-1">HsH Pendientes</p>
-                        <p className="font-bold text-neutral-800">
-                          {(() => {
-                            const factor = 1.30;
-                            let totalProyectoUF = 0;
-                            let totalFacturado = 0;
-
-                            Object.entries(porProyecto).forEach(([pid, pdata]) => {
-                              const proyecto = proyectos.find(p => p.id === pid);
-                              if (proyecto && proyecto.entregables) {
-                                proyecto.entregables.forEach(ent => {
-                                  if (!ent.frozen) {
-                                    totalProyectoUF += (ent.valorRevA || 0) + (ent.valorRevB || 0) + (ent.valorRev0 || 0);
-
-                                    // Calcular lo ya facturado
-                                    const statusKey = `${proyecto.id}_${ent.id}`;
-                                    const status = statusData[statusKey];
-                                    if (status) {
-                                      if (status.sentRevADate) totalFacturado += (ent.valorRevA || 0);
-                                      if (status.sentRevBDate) totalFacturado += (ent.valorRevB || 0);
-                                      if (status.sentRev0Date) totalFacturado += (ent.valorRev0 || 0);
-                                    }
-                                  }
-                                });
-                              }
-                            });
-                            return (totalProyectoUF - totalFacturado).toFixed(1);
-                          })()}
-                        </p>
+                      <div className="text-center p-1.5 bg-orange-100 rounded border border-orange-300">
+                        <p className="text-orange-700 text-[8px]">Total Bruto</p>
+                        <p className="font-bold text-orange-600 text-sm">{(totalGeneral * 1.30).toFixed(2)} UF</p>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Resumen por proyecto */}
-                  <div className="mt-4">
-                    <h3 className="text-sm font-bold mb-2 text-neutral-700">RESUMEN POR PROYECTO</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {Object.entries(porProyecto).map(([pid, pdata]) => {
-                        const hshMes = pdata.totalUF; // Ya está en HsH
-                        const factor = 1.30;
-                        const totalBruto = hshMes * factor; // Multiplicar por factor para obtener UF
-                        return (
-                          <div key={pid} className="p-3 bg-neutral-100 rounded border border-neutral-200">
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <p className="font-mono text-orange-600 text-sm font-bold">{pid}</p>
-                                <p className="text-[10px] text-neutral-600 truncate">{pdata.nombre}</p>
-                              </div>
-                              <span className="text-[9px] text-neutral-500 bg-white px-1.5 py-0.5 rounded">{pdata.entregables.length} registros</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 text-center mt-2 pt-2 border-t border-neutral-200">
-                              <div>
-                                <p className="text-[9px] text-neutral-500">HsH Mes</p>
-                                <p className="font-bold text-sm text-neutral-800">{hshMes.toFixed(1)}</p>
-                              </div>
-                              <div>
-                                <p className="text-[9px] text-neutral-500">Factor</p>
-                                <p className="font-bold text-sm text-neutral-600">{factor.toFixed(2)} UF/HsH</p>
-                              </div>
-                              <div>
-                                <p className="text-[9px] text-neutral-500">Total Bruto</p>
-                                <p className="font-bold text-sm text-orange-600">{totalBruto.toFixed(2)} UF</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
                     </div>
                   </div>
 
@@ -3550,7 +3437,7 @@ export default function MatrizIntranet() {
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs" style={{ minWidth: '900px' }}>
                             <thead>
-                              <tr className="bg-neutral-100 text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                              <tr className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                                 <th className="p-2 text-center font-medium">#</th>
                                 <th className="p-2 text-left font-medium">Código</th>
                                 <th className="p-2 text-left font-medium min-w-[120px]">Descripción</th>
@@ -3569,7 +3456,7 @@ export default function MatrizIntranet() {
                             </thead>
                             <tbody>
                               {deliverables.map((d, i) => (
-                                <tr key={d.id} className={`border-b border-neutral-200 dark:border-neutral-700 ${d.frozen ? 'opacity-50 bg-blue-50 dark:bg-blue-900/20' : i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white'}`}>
+                                <tr key={d.id} className={`border-b border-neutral-200 dark:border-neutral-700 ${d.frozen ? 'opacity-50 bg-blue-50 dark:bg-blue-900/20' : i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}`}>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{d.id}</td>
                                   <td className={`p-2 text-neutral-600 dark:text-neutral-300 font-mono text-xs ${d.frozen ? 'line-through' : ''}`}>{d.codigo || '-'}</td>
                                   <td className={`p-2 text-neutral-800 dark:text-neutral-100 font-medium text-xs ${d.frozen ? 'line-through' : ''}`}>
@@ -3622,7 +3509,7 @@ export default function MatrizIntranet() {
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs">
                             <thead>
-                              <tr className="bg-neutral-100 text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                              <tr className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                                 <th className="p-2 text-center font-medium">#</th>
                                 <th className="p-2 text-left font-medium">Código</th>
                                 <th className="p-2 text-left font-medium">Descripción</th>

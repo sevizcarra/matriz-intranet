@@ -164,23 +164,46 @@ const ENTREGABLES_PROYECTO = [
 ];
 
 const PROYECTOS_INICIALES = [
-  { 
-    id: 'P2600', 
+  {
+    id: 'P2600',
     nombre: 'Spence SGO - Obras Tempranas',
     cliente: 'BHP Billiton',
     estado: 'Activo',
     inicio: '2026-01-06',
     avance: 8.6,
-    tarifaVenta: 1.2, // UF/Hr para EDP
+    tarifaVenta: 1.2,
+    entregables: [
+      { id: 1, codigo: 'P2600-CRD-001', nombre: 'CRITERIOS DE DISEÑO', secuencia: 1, valorRevA: 28, valorRevB: 8, valorRev0: 4, frozen: false },
+      { id: 2, codigo: 'P2600-ARQ-001', nombre: 'PLANTA DISPOSICIÓN GENERAL', secuencia: 2, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 3, codigo: 'P2600-ARQ-002', nombre: 'PLANTA DEMOLICIÓN 1 DE 2', secuencia: 3, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 4, codigo: 'P2600-ARQ-003', nombre: 'PLANTA DEMOLICIÓN 2 DE 2', secuencia: 4, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 5, codigo: 'P2600-SPE-001', nombre: 'EETT DEMOLICIONES', secuencia: 5, valorRevA: 28, valorRevB: 8, valorRev0: 4, frozen: false },
+      { id: 6, codigo: 'P2600-ARQ-004', nombre: 'PLANTA TERMINACIONES 1', secuencia: 6, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 7, codigo: 'P2600-ARQ-005', nombre: 'PLANTA TERMINACIONES 2', secuencia: 7, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 8, codigo: 'P2600-ARQ-006', nombre: 'PLANTA PAVIMENTOS 1', secuencia: 8, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 9, codigo: 'P2600-ARQ-007', nombre: 'PLANTA PAVIMENTOS 2', secuencia: 9, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 10, codigo: 'P2600-DET-001', nombre: 'DETALLES TABIQUES TIPO', secuencia: 10, valorRevA: 17.5, valorRevB: 5, valorRev0: 2.5, frozen: false },
+      { id: 11, codigo: 'P2600-DET-002', nombre: 'DETALLES REVESTIMIENTOS', secuencia: 11, valorRevA: 17.5, valorRevB: 5, valorRev0: 2.5, frozen: false },
+      { id: 12, codigo: 'P2600-DET-003', nombre: 'DETALLES PAVIMENTOS', secuencia: 12, valorRevA: 17.5, valorRevB: 5, valorRev0: 2.5, frozen: false },
+      { id: 13, codigo: 'P2600-SPE-002', nombre: 'EETT GENERALES', secuencia: 13, valorRevA: 28, valorRevB: 8, valorRev0: 4, frozen: false },
+      { id: 14, codigo: 'P2600-MTO-001', nombre: 'MTO (MATERIALES)', secuencia: 14, valorRevA: 28, valorRevB: 8, valorRev0: 4, frozen: false },
+    ]
   },
-  { 
-    id: 'P2601', 
+  {
+    id: 'P2601',
     nombre: 'Escondida MEL - Fase 2',
     cliente: 'BHP Billiton',
     estado: 'Activo',
     inicio: '2026-02-01',
     avance: 0,
     tarifaVenta: 1.1,
+    entregables: [
+      { id: 1, codigo: 'P2601-CRD-001', nombre: 'CRITERIOS DE DISEÑO', secuencia: 1, valorRevA: 28, valorRevB: 8, valorRev0: 4, frozen: false },
+      { id: 2, codigo: 'P2601-ARQ-001', nombre: 'PLANTA GENERAL NIVEL 0', secuencia: 2, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 3, codigo: 'P2601-ARQ-002', nombre: 'PLANTA GENERAL NIVEL 1', secuencia: 3, valorRevA: 14, valorRevB: 4, valorRev0: 2, frozen: false },
+      { id: 4, codigo: 'P2601-SPE-001', nombre: 'EETT ARQUITECTURA', secuencia: 4, valorRevA: 28, valorRevB: 8, valorRev0: 4, frozen: false },
+      { id: 5, codigo: 'P2601-MTO-001', nombre: 'MTO ARQUITECTURA', secuencia: 5, valorRevA: 28, valorRevB: 8, valorRev0: 4, frozen: false },
+    ]
   },
 ];
 
@@ -659,6 +682,7 @@ export default function MatrizIntranet() {
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
+    // Inicializar para ENTREGABLES_PROYECTO (compatibilidad)
     ENTREGABLES_PROYECTO.forEach(d => {
       status[d.id] = {
         sentIniciado: d.id <= 4,
@@ -673,6 +697,27 @@ export default function MatrizIntranet() {
         sentRev0: false,
         sentRev0Date: null,
       };
+    });
+    // Inicializar para entregables de cada proyecto
+    PROYECTOS_INICIALES.forEach(proyecto => {
+      if (proyecto.entregables) {
+        proyecto.entregables.forEach((e, idx) => {
+          const key = `${proyecto.id}_${e.id}`;
+          status[key] = {
+            sentIniciado: idx < 5,
+            sentRevA: idx < 3,
+            sentRevADate: idx < 3 ? '2026-01-20' : null,
+            comentariosARecibidos: idx < 2,
+            comentariosARecibidosDate: idx < 2 ? '2026-01-22' : null,
+            sentRevB: idx < 2,
+            sentRevBDate: idx < 2 ? '2026-01-25' : null,
+            comentariosBRecibidos: idx === 0,
+            comentariosBRecibidosDate: idx === 0 ? '2026-01-26' : null,
+            sentRev0: false,
+            sentRev0Date: null,
+          };
+        });
+      }
     });
     return status;
   });

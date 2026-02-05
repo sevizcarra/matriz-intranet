@@ -25,8 +25,8 @@ import {
 // ============================================
 // SISTEMA DE USUARIOS Y ROLES
 // ============================================
-const USUARIOS = [
-  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', profesionalId: null },
+const USUARIOS_INICIAL = [
+  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', profesionalId: 3 },
   { id: 'user1', nombre: 'Cristóbal Ríos', email: 'cristobal@matriz.cl', password: 'crios123', rol: 'profesional', profesionalId: 1 },
   { id: 'user2', nombre: 'Dominique Thompson', email: 'dominique@matriz.cl', password: 'dthompson123', rol: 'profesional', profesionalId: 2 },
 ];
@@ -454,6 +454,7 @@ export default function MatrizIntranet() {
   // ESTADOS DE AUTENTICACIÓN
   // ============================================
   const [currentUser, setCurrentUser] = useState(null);
+  const [usuarios, setUsuarios] = useState(USUARIOS_INICIAL);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -470,7 +471,7 @@ export default function MatrizIntranet() {
       setTimeout(() => setLoginError(''), 3000);
       return;
     }
-    const user = USUARIOS.find(u => u.email === loginEmail && u.password === loginPassword);
+    const user = usuarios.find(u => u.email === loginEmail && u.password === loginPassword);
     if (user) {
       setCurrentUser(user);
       setLoginEmail('');
@@ -675,7 +676,7 @@ export default function MatrizIntranet() {
   // Estados para configuración
   const [configTab, setConfigTab] = useState('profesionales');
   const [showNewProfesional, setShowNewProfesional] = useState(false);
-  const [newProfesional, setNewProfesional] = useState({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
+  const [newProfesional, setNewProfesional] = useState({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5, email: '', password: '' });
   const [editProfesionalOpen, setEditProfesionalOpen] = useState(false);
   const [profesionalToEdit, setProfesionalToEdit] = useState(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -881,24 +882,52 @@ export default function MatrizIntranet() {
   
   // Funciones para gestión de profesionales
   const handleAddProfesional = async () => {
-    if (newProfesional.nombre.trim() && newProfesional.cargo.trim()) {
-      const newId = Math.max(...profesionales.map(c => c.id), 0) + 1;
-      const nuevoProfesional = {
-        id: newId,
-        nombre: newProfesional.nombre.trim(),
-        cargo: newProfesional.cargo.trim(),
-        categoria: newProfesional.categoria,
-        tarifaInterna: parseFloat(newProfesional.tarifaInterna) || 0.5,
-        iniciales: getIniciales(newProfesional.nombre.trim())
-      };
-
-      // Guardar en Firestore
-      await saveColaborador(nuevoProfesional);
-
-      setNewProfesional({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
-      setShowNewProfesional(false);
-      showNotification('success', 'Profesional agregado');
+    // Validar campos obligatorios
+    if (!newProfesional.nombre.trim() || !newProfesional.cargo.trim()) {
+      showNotification('error', 'Nombre y cargo son obligatorios');
+      return;
     }
+    if (!newProfesional.email.trim() || !newProfesional.password.trim()) {
+      showNotification('error', 'Email y contraseña son obligatorios');
+      return;
+    }
+
+    // Verificar que el email no exista
+    const emailExiste = usuarios.find(u => u.email === newProfesional.email.trim());
+    if (emailExiste) {
+      showNotification('error', 'Este email ya está registrado');
+      return;
+    }
+
+    const newId = Math.max(...profesionales.map(c => c.id), 0) + 1;
+    const nuevoProfesional = {
+      id: newId,
+      nombre: newProfesional.nombre.trim(),
+      cargo: newProfesional.cargo.trim(),
+      categoria: newProfesional.categoria,
+      tarifaInterna: parseFloat(newProfesional.tarifaInterna) || 0.5,
+      iniciales: getIniciales(newProfesional.nombre.trim())
+    };
+
+    // Crear usuario para login
+    const nuevoUsuario = {
+      id: `user${newId}`,
+      nombre: newProfesional.nombre.trim(),
+      email: newProfesional.email.trim(),
+      password: newProfesional.password.trim(),
+      rol: 'profesional',
+      profesionalId: newId
+    };
+
+    // Guardar profesional en Firestore
+    await saveColaborador(nuevoProfesional);
+
+    // Agregar usuario al estado
+    setUsuarios(prev => [...prev, nuevoUsuario]);
+
+    setNewProfesional({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5, email: '', password: '' });
+    setShowNewProfesional(false);
+    showNotification('success', 'Profesional y usuario creados');
   };
 
   const handleDeleteProfesional = async (id) => {
@@ -909,7 +938,9 @@ export default function MatrizIntranet() {
     }
     // Eliminar de Firestore
     await deleteColaboradorFS(id);
-    showNotification('success', 'Profesional eliminado');
+    // También eliminar el usuario asociado
+    setUsuarios(prev => prev.filter(u => u.profesionalId !== id));
+    showNotification('success', 'Profesional y usuario eliminados');
   };
   
   const handleSaveProfesional = async () => {
@@ -2903,11 +2934,39 @@ export default function MatrizIntranet() {
                         />
                       </div>
                     </div>
-                    <div className="flex gap-2 justify-end">
+
+                    {/* Credenciales de acceso */}
+                    <div className="border-t border-orange-200 pt-3 mt-3">
+                      <p className="text-xs font-medium text-orange-600 mb-2">🔐 Credenciales de Acceso</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Email</label>
+                          <input
+                            type="email"
+                            placeholder="usuario@matriz.cl"
+                            value={newProfesional.email}
+                            onChange={e => setNewProfesional(prev => ({ ...prev, email: e.target.value }))}
+                            className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Contraseña</label>
+                          <input
+                            type="text"
+                            placeholder="Contraseña inicial"
+                            value={newProfesional.password}
+                            onChange={e => setNewProfesional(prev => ({ ...prev, password: e.target.value }))}
+                            className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 justify-end mt-4">
                       <Button variant="secondary" onClick={() => setShowNewProfesional(false)}>
                         Cancelar
                       </Button>
-                      <Button onClick={handleAddProfesional} disabled={!newProfesional.nombre.trim() || !newProfesional.cargo.trim()}>
+                      <Button onClick={handleAddProfesional} disabled={!newProfesional.nombre.trim() || !newProfesional.cargo.trim() || !newProfesional.email.trim() || !newProfesional.password.trim()}>
                         <Check className="w-4 h-4 mr-1" />
                         Agregar
                       </Button>
@@ -2917,7 +2976,9 @@ export default function MatrizIntranet() {
                 
                 {/* Lista de profesionales */}
                 <div className="space-y-2">
-                  {profesionales.map(col => (
+                  {profesionales.map(col => {
+                    const usuarioCol = usuarios.find(u => u.profesionalId === col.id);
+                    return (
                     <Card key={col.id} className="p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -2927,6 +2988,9 @@ export default function MatrizIntranet() {
                           <div>
                             <p className="font-medium text-neutral-800 dark:text-neutral-100">{col.nombre}</p>
                             <p className="text-sm text-neutral-500 dark:text-neutral-400">{col.cargo} • {col.categoria}</p>
+                            {usuarioCol && (
+                              <p className="text-xs text-blue-500">🔐 {usuarioCol.email}</p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -2953,11 +3017,12 @@ export default function MatrizIntranet() {
                         </div>
                       </div>
                     </Card>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
             )}
-            
+
             {/* Tab: Seguridad */}
             {configTab === 'seguridad' && (
               <div className="space-y-4">

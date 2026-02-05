@@ -64,18 +64,18 @@ const PrintStyles = () => (
       /* Página 1 - salto de página después */
       .print-page-1 {
         page-break-after: always;
-        padding: 10mm !important;
+        padding: 5mm !important;
         margin: 0 !important;
         background: white !important;
         box-shadow: none !important;
         max-width: 100% !important;
         width: 100% !important;
       }
-      
+
       /* Página 2 - salto de página antes */
       .print-page-2 {
         page-break-before: always;
-        padding: 10mm !important;
+        padding: 5mm !important;
         margin: 0 !important;
         background: white !important;
         box-shadow: none !important;
@@ -109,7 +109,7 @@ const PrintStyles = () => (
       /* Tamaño de página carta apaisada */
       @page {
         size: letter landscape;
-        margin: 10mm;
+        margin: 8mm 12mm;
       }
     }
   `}</style>
@@ -122,6 +122,7 @@ const PrintStyles = () => (
 const COLABORADORES_INICIAL = [
   { id: 1, nombre: 'Cristóbal Ríos', cargo: 'Arquitecto', categoria: 'Ingeniero Senior', tarifaInterna: 0.75, iniciales: 'CR' },
   { id: 2, nombre: 'Dominique Thompson', cargo: 'Arquitecta', categoria: 'Proyectista', tarifaInterna: 0.5, iniciales: 'DT' },
+  { id: 3, nombre: 'Sebastián Vizcarra', cargo: 'Arquitecto', categoria: 'Líder de Proyecto', tarifaInterna: 1.0, iniciales: 'SV' },
 ];
 
 // Entregables del proyecto (35 documentos)

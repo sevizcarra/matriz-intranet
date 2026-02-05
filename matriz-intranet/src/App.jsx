@@ -1713,11 +1713,11 @@ export default function MatrizIntranet() {
 
       const mesNombre = new Date(selectedMonth + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
 
-      // Crear datos para Excel (formato del usuario: C.COSTO, TIPO, CODIGO, DESCRIPCIÓN, REV, FECHA, UF, OBS)
+      // Crear datos para Excel (formato del usuario: C.COSTO, TIPO, CODIGO, DESCRIPCIÓN, REV, FECHA, HsH, OBS)
       const data = [
         ['ESTADO DE PAGO - ' + mesNombre.toUpperCase()],
         [''],
-        ['C. COSTO', 'TIPO', 'CÓDIGO', 'DESCRIPCIÓN', 'REV', 'FECHA ENVÍO', 'UF', 'OBS'],
+        ['C. COSTO', 'TIPO', 'CÓDIGO', 'DESCRIPCIÓN', 'REV', 'FECHA ENVÍO', 'HsH', 'OBS'],
         ...entregables.map(e => [
           e.proyectoId,      // Centro de Costo = código proyecto
           e.tipo,
@@ -1725,11 +1725,11 @@ export default function MatrizIntranet() {
           e.nombre,
           'REV_' + e.revision,
           e.fecha,
-          (e.valor * 1.30).toFixed(2), // HsH × factor = UF
+          e.valor.toFixed(2), // HsH directo
           e.observacion || ''
         ]),
         [''],
-        ['', '', '', '', '', 'TOTAL:', (entregables.reduce((s, e) => s + e.valor, 0) * 1.30).toFixed(2) + ' UF', '']
+        ['', '', '', '', '', 'TOTAL:', entregables.reduce((s, e) => s + e.valor, 0).toFixed(2) + ' HsH', '']
       ];
 
       const ws = window.XLSX.utils.aoa_to_sheet(data);
@@ -1850,6 +1850,7 @@ export default function MatrizIntranet() {
                         <th className="pb-2">Código</th>
                         <th className="pb-2">Descripción</th>
                         <th className="pb-2 text-center">Tipo</th>
+                        <th className="pb-2 text-center">Sem</th>
                         <th className="pb-2 text-right">REV_A (HsH)</th>
                         <th className="pb-2 text-right">REV_B (HsH)</th>
                         <th className="pb-2 text-right">REV_0 (HsH)</th>
@@ -1889,6 +1890,20 @@ export default function MatrizIntranet() {
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getTipoColor(getTipoDocumento(ent.codigo, ent.nombre, ent.tipo))}`}>
                               {getTipoDocumento(ent.codigo, ent.nombre, ent.tipo)}
                             </span>
+                          </td>
+                          <td className="py-2 text-center">
+                            {editingEntregable === ent.id ? (
+                              <input
+                                type="number"
+                                min="1"
+                                max="52"
+                                defaultValue={ent.weekStart || ent.secuencia || 1}
+                                className="w-12 px-1 py-0.5 border rounded text-xs text-center dark:bg-neutral-700 dark:border-neutral-600"
+                                onBlur={e => updateEntregable(selectedProyectoEdit, ent.id, { weekStart: parseInt(e.target.value) || 1 })}
+                              />
+                            ) : (
+                              <span className="text-neutral-500">S{ent.weekStart || ent.secuencia || 1}</span>
+                            )}
                           </td>
                           <td className="py-2 text-right">
                             {editingEntregable === ent.id ? (
@@ -2193,7 +2208,7 @@ export default function MatrizIntranet() {
                               <th className="pb-2 text-center">Tipo</th>
                               <th className="pb-2 text-center">Rev</th>
                               <th className="pb-2 text-center">Fecha</th>
-                              <th className="pb-2 text-right">UF</th>
+                              <th className="pb-2 text-right">HsH</th>
                               <th className="pb-2">Observación</th>
                             </tr>
                           </thead>
@@ -2225,7 +2240,7 @@ export default function MatrizIntranet() {
                                     </span>
                                   </td>
                                   <td className="py-2 text-center text-neutral-600 dark:text-neutral-300">{e.fecha}</td>
-                                  <td className="py-2 text-right text-green-600 dark:text-green-400 font-medium">{(e.valor * 1.30).toFixed(2)}</td>
+                                  <td className="py-2 text-right text-green-600 dark:text-green-400 font-medium">{e.valor.toFixed(2)}</td>
                                   <td className="py-2">
                                     <input
                                       type="text"
@@ -2262,7 +2277,7 @@ export default function MatrizIntranet() {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-orange-500">
-                          {(totalGeneral * 1.30).toFixed(2)} UF
+                          {totalGeneral.toFixed(2)} HsH
                         </p>
                       </div>
                     </div>
@@ -2318,7 +2333,7 @@ export default function MatrizIntranet() {
                         <th className="border border-neutral-300 px-1.5 py-1 text-left">DESCRIPCIÓN</th>
                         <th className="border border-neutral-300 px-1.5 py-1 text-center">REV</th>
                         <th className="border border-neutral-300 px-1.5 py-1 text-center">FECHA</th>
-                        <th className="border border-neutral-300 px-1.5 py-1 text-right">UF</th>
+                        <th className="border border-neutral-300 px-1.5 py-1 text-right">HsH</th>
                         <th className="border border-neutral-300 px-1.5 py-1 text-left">OBS</th>
                       </tr>
                     </thead>
@@ -2331,7 +2346,7 @@ export default function MatrizIntranet() {
                           <td className="border border-neutral-300 px-1.5 py-0.5">{e.nombre}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-center">REV_{e.revision}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.fecha}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-right font-medium">{(e.valor * 1.30).toFixed(2)}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 text-right font-medium">{e.valor.toFixed(2)}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-neutral-600">{e.observacion || ''}</td>
                         </tr>
                       ))}
@@ -2339,7 +2354,7 @@ export default function MatrizIntranet() {
                     <tfoot>
                       <tr className="bg-orange-100 font-bold">
                         <td colSpan={6} className="border border-neutral-300 px-1.5 py-1.5 text-right">TOTAL:</td>
-                        <td className="border border-neutral-300 px-1.5 py-1.5 text-right text-orange-600">{(totalGeneral * 1.30).toFixed(2)} UF</td>
+                        <td className="border border-neutral-300 px-1.5 py-1.5 text-right text-orange-600">{totalGeneral.toFixed(2)} HsH</td>
                         <td className="border border-neutral-300 px-1.5 py-1.5"></td>
                       </tr>
                     </tfoot>

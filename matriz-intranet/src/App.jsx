@@ -26,9 +26,9 @@ import {
 // SISTEMA DE USUARIOS Y ROLES
 // ============================================
 const USUARIOS = [
-  { id: 'admin', nombre: 'Seba', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', colaboradorId: null },
-  { id: 'user1', nombre: 'Cristóbal Ríos', email: 'cristobal@matriz.cl', password: 'crios123', rol: 'colaborador', colaboradorId: 1 },
-  { id: 'user2', nombre: 'Dominique Thompson', email: 'dominique@matriz.cl', password: 'dthompson123', rol: 'colaborador', colaboradorId: 2 },
+  { id: 'admin', nombre: 'Seba', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', profesionalId: null },
+  { id: 'user1', nombre: 'Cristóbal Ríos', email: 'cristobal@matriz.cl', password: 'crios123', rol: 'profesional', profesionalId: 1 },
+  { id: 'user2', nombre: 'Dominique Thompson', email: 'dominique@matriz.cl', password: 'dthompson123', rol: 'profesional', profesionalId: 2 },
 ];
 
 // Estilos de impresión
@@ -502,7 +502,7 @@ export default function MatrizIntranet() {
   // ============================================
   const [currentPage, setCurrentPage] = useState('home');
   const [proyectos, setProyectos] = useState([]);
-  const [colaboradores, setColaboradores] = useState([]);
+  const [profesionales, setProfesionales] = useState([]);
   const [horasRegistradas, setHorasRegistradas] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -542,12 +542,12 @@ export default function MatrizIntranet() {
       }
     });
 
-    const unsubColaboradores = subscribeToColaboradores((data) => {
+    const unsubProfesionales = subscribeToColaboradores((data) => {
       if (data.length > 0) {
-        setColaboradores(data);
+        setProfesionales(data);
       } else {
         // Si no hay datos en Firestore, usar datos iniciales y guardarlos
-        setColaboradores(COLABORADORES_INICIAL);
+        setProfesionales(COLABORADORES_INICIAL);
         saveAllColaboradores(COLABORADORES_INICIAL);
       }
     });
@@ -565,7 +565,7 @@ export default function MatrizIntranet() {
     // Cleanup
     return () => {
       unsubProyectos();
-      unsubColaboradores();
+      unsubProfesionales();
       unsubHoras();
     };
   }, []);
@@ -681,11 +681,11 @@ export default function MatrizIntranet() {
   const [editProjectData, setEditProjectData] = useState({ id: '', nombre: '', cliente: '', estado: '' });
   
   // Estados para configuración
-  const [configTab, setConfigTab] = useState('colaboradores');
-  const [showNewColaborador, setShowNewColaborador] = useState(false);
-  const [newColaborador, setNewColaborador] = useState({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
-  const [editColaboradorOpen, setEditColaboradorOpen] = useState(false);
-  const [colaboradorToEdit, setColaboradorToEdit] = useState(null);
+  const [configTab, setConfigTab] = useState('profesionales');
+  const [showNewProfesional, setShowNewProfesional] = useState(false);
+  const [newProfesional, setNewProfesional] = useState({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
+  const [editProfesionalOpen, setEditProfesionalOpen] = useState(false);
+  const [profesionalToEdit, setProfesionalToEdit] = useState(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: string }
   
@@ -879,64 +879,64 @@ export default function MatrizIntranet() {
     }
   };
 
-  // Categorías de colaboradores
-  const categoriasColaborador = ['Ingeniero Senior', 'Proyectista', 'Dibujante', 'Administrativo'];
+  // Categorías de profesionales
+  const categoriasProfesional = ['Líder de Proyecto', 'Ingeniero Senior', 'Proyectista', 'Administrativo'];
   
   // Función para obtener iniciales
   const getIniciales = (nombre) => {
     return nombre.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
   
-  // Funciones para gestión de colaboradores
-  const handleAddColaborador = async () => {
-    if (newColaborador.nombre.trim() && newColaborador.cargo.trim()) {
-      const newId = Math.max(...colaboradores.map(c => c.id), 0) + 1;
-      const nuevoColaborador = {
+  // Funciones para gestión de profesionales
+  const handleAddProfesional = async () => {
+    if (newProfesional.nombre.trim() && newProfesional.cargo.trim()) {
+      const newId = Math.max(...profesionales.map(c => c.id), 0) + 1;
+      const nuevoProfesional = {
         id: newId,
-        nombre: newColaborador.nombre.trim(),
-        cargo: newColaborador.cargo.trim(),
-        categoria: newColaborador.categoria,
-        tarifaInterna: parseFloat(newColaborador.tarifaInterna) || 0.5,
-        iniciales: getIniciales(newColaborador.nombre.trim())
+        nombre: newProfesional.nombre.trim(),
+        cargo: newProfesional.cargo.trim(),
+        categoria: newProfesional.categoria,
+        tarifaInterna: parseFloat(newProfesional.tarifaInterna) || 0.5,
+        iniciales: getIniciales(newProfesional.nombre.trim())
       };
 
       // Guardar en Firestore
-      await saveColaborador(nuevoColaborador);
+      await saveColaborador(nuevoProfesional);
 
-      setNewColaborador({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
-      setShowNewColaborador(false);
-      showNotification('success', 'Colaborador agregado');
+      setNewProfesional({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
+      setShowNewProfesional(false);
+      showNotification('success', 'Profesional agregado');
     }
   };
 
-  const handleDeleteColaborador = async (id) => {
-    const tieneHoras = horasRegistradas.some(h => h.colaboradorId === id);
+  const handleDeleteProfesional = async (id) => {
+    const tieneHoras = horasRegistradas.some(h => h.profesionalId === id);
     if (tieneHoras) {
-      showNotification('error', 'No se puede eliminar: este colaborador tiene horas registradas.');
+      showNotification('error', 'No se puede eliminar: este profesional tiene horas registradas.');
       return;
     }
     // Eliminar de Firestore
     await deleteColaboradorFS(id);
-    showNotification('success', 'Colaborador eliminado');
+    showNotification('success', 'Profesional eliminado');
   };
   
-  const handleSaveColaborador = async () => {
-    if (colaboradorToEdit) {
-      const colaboradorActualizado = {
-        ...colaboradorToEdit,
-        nombre: colaboradorToEdit.nombre,
-        cargo: colaboradorToEdit.cargo,
-        categoria: colaboradorToEdit.categoria,
-        tarifaInterna: parseFloat(colaboradorToEdit.tarifaInterna) || 0.5,
-        iniciales: getIniciales(colaboradorToEdit.nombre)
+  const handleSaveProfesional = async () => {
+    if (profesionalToEdit) {
+      const profesionalActualizado = {
+        ...profesionalToEdit,
+        nombre: profesionalToEdit.nombre,
+        cargo: profesionalToEdit.cargo,
+        categoria: profesionalToEdit.categoria,
+        tarifaInterna: parseFloat(profesionalToEdit.tarifaInterna) || 0.5,
+        iniciales: getIniciales(profesionalToEdit.nombre)
       };
 
       // Guardar en Firestore
-      await saveColaborador(colaboradorActualizado);
+      await saveColaborador(profesionalActualizado);
 
-      setEditColaboradorOpen(false);
-      setColaboradorToEdit(null);
-      showNotification('success', 'Colaborador actualizado');
+      setEditProfesionalOpen(false);
+      setProfesionalToEdit(null);
+      showNotification('success', 'Profesional actualizado');
     }
   };
 
@@ -944,8 +944,8 @@ export default function MatrizIntranet() {
   const allNavItems = [
     { id: 'home', label: 'Home', icon: Home, adminOnly: false },
     { id: 'proyectos', label: 'Proyectos', icon: FolderKanban, adminOnly: false },
-    { id: 'horas', label: 'Carga de Horas', icon: Clock, adminOnly: false },
-    { id: 'facturacion', label: 'Facturación', icon: FileSpreadsheet, locked: true, adminOnly: true },
+    { id: 'horas', label: 'Carga HsH', icon: Clock, adminOnly: false },
+    { id: 'facturacion', label: 'Adm. Proyectos', icon: FileSpreadsheet, locked: true, adminOnly: true },
     { id: 'config', label: 'Config', icon: Settings, adminOnly: true },
   ];
   const navItems = isAdmin ? allNavItems : allNavItems.filter(item => !item.adminOnly);
@@ -960,8 +960,8 @@ export default function MatrizIntranet() {
     
     const totalHoras = horasMes.reduce((sum, h) => sum + h.horas, 0);
     const costoInterno = horasMes.reduce((sum, h) => {
-      const colaborador = colaboradores.find(c => c.id === h.colaboradorId);
-      return sum + (h.horas * (colaborador?.tarifaInterna || 0));
+      const profesional = profesionales.find(c => c.id === h.profesionalId);
+      return sum + (h.horas * (profesional?.tarifaInterna || 0));
     }, 0);
     
     return { totalHoras, costoInterno, registros: horasMes.length };
@@ -976,7 +976,7 @@ export default function MatrizIntranet() {
     <div className="space-y-5">
       <div>
         <h1 className="text-xl sm:text-2xl text-neutral-800 dark:text-neutral-100 font-light mb-1">Bienvenido, {currentUser?.nombre}</h1>
-        <p className="text-neutral-500 dark:text-neutral-400 text-sm">{isAdmin ? 'Administrador • Acceso completo' : 'Colaborador • Carga de horas'}</p>
+        <p className="text-neutral-500 dark:text-neutral-400 text-sm">{isAdmin ? 'Administrador • Acceso completo' : 'Profesional • Carga HsH'}</p>
       </div>
 
       {/* KPIs Rápidos */}
@@ -999,8 +999,8 @@ export default function MatrizIntranet() {
               <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{colaboradores.length}</p>
-              <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Colaboradores</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{profesionales.length}</p>
+              <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Profesionales</p>
             </div>
           </div>
         </Card>
@@ -1097,7 +1097,7 @@ export default function MatrizIntranet() {
             onClick={() => setCurrentPage('facturacion')}
           >
             <FileSpreadsheet className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500 mx-auto mb-1 sm:mb-2" />
-            <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Facturación</p>
+            <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Adm. Proyectos</p>
           </Card>
         </div>
       </div>
@@ -1194,7 +1194,7 @@ export default function MatrizIntranet() {
   // PÁGINA: CARGA DE HORAS
   // ============================================
   const HorasPage = () => {
-    const [colaborador, setColaborador] = useState('');
+    const [profesional, setProfesional] = useState('');
     const [proyecto, setProyecto] = useState('');
     const [semana, setSemana] = useState('');
     const [entregable, setEntregable] = useState('');
@@ -1214,13 +1214,13 @@ export default function MatrizIntranet() {
     ];
     
     const registrarHoras = async () => {
-      if (!colaborador || !proyecto || !semana || !entregable || !horas) {
+      if (!profesional || !proyecto || !semana || !entregable || !horas) {
         showNotification('error', 'Por favor completa todos los campos');
         return;
       }
       const nuevoRegistro = {
         id: Date.now(),
-        colaboradorId: parseInt(colaborador),
+        profesionalId: parseInt(profesional),
         proyectoId: proyecto,
         semana: parseInt(semana),
         entregable,
@@ -1247,7 +1247,7 @@ export default function MatrizIntranet() {
     return (
       <div className="space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-lg sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium">Carga de Horas</h1>
+          <h1 className="text-lg sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium">Carga HsH</h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm">Registro semanal por proyecto</p>
         </div>
 
@@ -1256,9 +1256,10 @@ export default function MatrizIntranet() {
           <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm p-3 sm:p-4 lg:col-span-1">
             <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">Registrar Horas</h2>
             <div className="space-y-3 sm:space-y-4">
-              <Select label="Colaborador" value={colaborador} onChange={e => setColaborador(e.target.value)}>
+              <Select label="Profesional" value={profesional} onChange={e => setProfesional(e.target.value)}>
                 <option value="">Seleccionar...</option>
-                {colaboradores.map(c => (
+                <option value="admin">Seba (Admin)</option>
+                {profesionales.map(c => (
                   <option key={c.id} value={c.id}>{c.nombre}</option>
                 ))}
               </Select>
@@ -1341,7 +1342,7 @@ export default function MatrizIntranet() {
                   </thead>
                   <tbody>
                     {horasDelMes.map(h => {
-                      const col = colaboradores.find(c => c.id === h.colaboradorId);
+                      const col = profesionales.find(c => c.id === h.profesionalId);
                       return (
                         <tr key={h.id} className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:bg-neutral-800/50">
                           <td className="p-2 text-neutral-800 dark:text-neutral-100">{col?.iniciales}</td>
@@ -1361,7 +1362,7 @@ export default function MatrizIntranet() {
                       <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{horasDelMes.reduce((s, h) => s + h.horas, 0)}</td>
                       <td className="p-2 text-right text-green-600">
                         {horasDelMes.reduce((s, h) => {
-                          const col = colaboradores.find(c => c.id === h.colaboradorId);
+                          const col = profesionales.find(c => c.id === h.profesionalId);
                           return s + (h.horas * (col?.tarifaInterna || 0));
                         }, 0).toFixed(2)}
                       </td>
@@ -1373,12 +1374,12 @@ export default function MatrizIntranet() {
           </Card>
         </div>
         
-        {/* Resumen por colaborador */}
+        {/* Resumen por profesional */}
         <Card className="p-3 sm:p-4">
-          <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">Resumen por Colaborador</h2>
+          <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">Resumen por Profesional</h2>
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-            {colaboradores.map(col => {
-              const horasCol = horasDelMes.filter(h => h.colaboradorId === col.id);
+            {profesionales.map(col => {
+              const horasCol = horasDelMes.filter(h => h.profesionalId === col.id);
               const totalHoras = horasCol.reduce((s, h) => s + h.horas, 0);
               const totalCosto = totalHoras * col.tarifaInterna;
               
@@ -1440,29 +1441,51 @@ export default function MatrizIntranet() {
     };
 
     // Función para determinar el tipo de documento
-    const getTipoDocumento = (codigo, nombre) => {
+    // Tipos de entregable
+    const TIPOS_ENTREGABLE = [
+      { id: 'DOC', nombre: 'Documento', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' },
+      { id: 'PLA', nombre: 'Plano', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' },
+      { id: 'INF', nombre: 'Informe', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' },
+      { id: 'REU', nombre: 'Reunión', color: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' },
+      { id: 'VIS', nombre: 'Visita', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' }
+    ];
+
+    const getTipoDocumento = (codigo, nombre, tipoManual) => {
+      // Si tiene tipo manual asignado, usarlo
+      if (tipoManual && ['DOC', 'PLA', 'INF', 'REU', 'VIS'].includes(tipoManual)) {
+        return tipoManual;
+      }
+
       const cod = (codigo || '').toUpperCase();
       const nom = (nombre || '').toUpperCase();
 
-      // Verificar por código (según especificación del usuario)
-      if (cod.includes('CRD')) return 'CRD';
-      if (cod.includes('SPE')) return 'EETT';  // SPE = Especificaciones Técnicas
-      if (cod.includes('MTO')) return 'MTO';
-      if (cod.includes('DET') || nom.includes('DETALLE')) return 'DETALLE';
+      // Auto-mapeo por código
+      // CRD, EETT(SPE), MTO → DOC
+      if (cod.includes('CRD') || cod.includes('SPE') || cod.includes('MTO') || cod.includes('ERD')) return 'DOC';
 
-      // Por defecto, es plano general
-      return 'GENERAL';
+      // DET, PLA, ARQ → PLA
+      if (cod.includes('DET') || cod.includes('PLA') || cod.includes('ARQ') || nom.includes('DETALLE') || nom.includes('PLANO')) return 'PLA';
+
+      // Por defecto es Plano
+      return 'PLA';
+    };
+
+    const getTipoColor = (tipo) => {
+      const tipoObj = TIPOS_ENTREGABLE.find(t => t.id === tipo);
+      return tipoObj?.color || 'bg-neutral-200 text-neutral-700 dark:bg-neutral-600 dark:text-neutral-300';
     };
 
     // Nuevo estado para agregar entregable en línea
     const [nuevoEntregable, setNuevoEntregable] = useState({
       codigo: '',
       nombre: '',
+      tipo: 'PLA',
       secuencia: 1,
       weekStart: 1,
       valorRevA: 0,
       valorRevB: 0,
-      valorRev0: 0
+      valorRev0: 0,
+      hshDirecto: 0  // Para REU y VIS (sin revisiones)
     });
 
     // Estado para confirmación de congelamiento
@@ -1495,15 +1518,20 @@ export default function MatrizIntranet() {
       if (!proyecto) return;
 
       const maxId = Math.max(0, ...(proyecto.entregables || []).map(e => e.id));
+      const esHshDirecto = ['REU', 'VIS'].includes(nuevoEntregable.tipo);
+
       const nuevoEnt = {
         id: maxId + 1,
         codigo: nuevoEntregable.codigo,
         nombre: nuevoEntregable.nombre,
+        tipo: nuevoEntregable.tipo,
         secuencia: parseInt(nuevoEntregable.secuencia) || 1,
         weekStart: parseInt(nuevoEntregable.weekStart) || 1,
-        valorRevA: parseFloat(nuevoEntregable.valorRevA) || 0,
-        valorRevB: parseFloat(nuevoEntregable.valorRevB) || 0,
-        valorRev0: parseFloat(nuevoEntregable.valorRev0) || 0,
+        // Para REU/VIS: usar hshDirecto; para otros: usar REV_A, REV_B, REV_0
+        valorRevA: esHshDirecto ? parseFloat(nuevoEntregable.hshDirecto) || 0 : parseFloat(nuevoEntregable.valorRevA) || 0,
+        valorRevB: esHshDirecto ? 0 : parseFloat(nuevoEntregable.valorRevB) || 0,
+        valorRev0: esHshDirecto ? 0 : parseFloat(nuevoEntregable.valorRev0) || 0,
+        hshDirecto: esHshDirecto,
         frozen: false
       };
 
@@ -1531,7 +1559,7 @@ export default function MatrizIntranet() {
       }));
 
       // Limpiar formulario
-      setNuevoEntregable({ codigo: '', nombre: '', secuencia: 1, weekStart: 1, valorRevA: 0, valorRevB: 0, valorRev0: 0 });
+      setNuevoEntregable({ codigo: '', nombre: '', tipo: 'PLA', secuencia: 1, weekStart: 1, valorRevA: 0, valorRevB: 0, valorRev0: 0, hshDirecto: 0 });
       setShowAddEntregable(false);
       showNotification('success', 'Entregable agregado');
     };
@@ -1741,8 +1769,8 @@ export default function MatrizIntranet() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Facturación</h1>
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm">Gestión de entregables y estados de pago</p>
+            <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Administración de Proyectos</h1>
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm">Gestión de entregables, EDP y control de proyectos</p>
           </div>
           <Button variant="ghost" onClick={() => setEdpUnlocked(false)}>
             <Lock className="w-4 h-4 mr-2" />
@@ -1822,9 +1850,9 @@ export default function MatrizIntranet() {
                         <th className="pb-2">Código</th>
                         <th className="pb-2">Descripción</th>
                         <th className="pb-2 text-center">Tipo</th>
-                        <th className="pb-2 text-right">REV_A</th>
-                        <th className="pb-2 text-right">REV_B</th>
-                        <th className="pb-2 text-right">REV_0</th>
+                        <th className="pb-2 text-right">REV_A (HsH)</th>
+                        <th className="pb-2 text-right">REV_B (HsH)</th>
+                        <th className="pb-2 text-right">REV_0 (HsH)</th>
                         <th className="pb-2 text-center">Estado</th>
                         <th className="pb-2 text-center">Acciones</th>
                       </tr>
@@ -1858,14 +1886,8 @@ export default function MatrizIntranet() {
                             )}
                           </td>
                           <td className="py-2 text-center">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              getTipoDocumento(ent.codigo, ent.nombre) === 'CRD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' :
-                              getTipoDocumento(ent.codigo, ent.nombre) === 'EETT' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' :
-                              getTipoDocumento(ent.codigo, ent.nombre) === 'MTO' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
-                              getTipoDocumento(ent.codigo, ent.nombre) === 'DETALLE' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
-                              'bg-neutral-200 text-neutral-700 dark:bg-neutral-600 dark:text-neutral-300'
-                            }`}>
-                              {getTipoDocumento(ent.codigo, ent.nombre)}
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getTipoColor(getTipoDocumento(ent.codigo, ent.nombre, ent.tipo))}`}>
+                              {getTipoDocumento(ent.codigo, ent.nombre, ent.tipo)}
                             </span>
                           </td>
                           <td className="py-2 text-right">
@@ -1882,7 +1904,9 @@ export default function MatrizIntranet() {
                             )}
                           </td>
                           <td className="py-2 text-right">
-                            {editingEntregable === ent.id ? (
+                            {ent.hshDirecto || ['REU', 'VIS'].includes(getTipoDocumento(ent.codigo, ent.nombre, ent.tipo)) ? (
+                              <span className="text-neutral-400">-</span>
+                            ) : editingEntregable === ent.id ? (
                               <input
                                 type="number"
                                 step="0.1"
@@ -1895,7 +1919,9 @@ export default function MatrizIntranet() {
                             )}
                           </td>
                           <td className="py-2 text-right">
-                            {editingEntregable === ent.id ? (
+                            {ent.hshDirecto || ['REU', 'VIS'].includes(getTipoDocumento(ent.codigo, ent.nombre, ent.tipo)) ? (
+                              <span className="text-neutral-400">-</span>
+                            ) : editingEntregable === ent.id ? (
                               <input
                                 type="number"
                                 step="0.1"
@@ -1950,25 +1976,25 @@ export default function MatrizIntranet() {
                     <div className="text-right">
                       <p className="text-neutral-500 dark:text-neutral-400 text-xs">Total REV_A</p>
                       <p className="text-green-600 font-medium">
-                        {entregablesEditProyecto.filter(e => !e.frozen).reduce((s, e) => s + (e.valorRevA || 0), 0).toFixed(2)} UF
+                        {entregablesEditProyecto.filter(e => !e.frozen).reduce((s, e) => s + (e.valorRevA || 0), 0).toFixed(1)} HsH
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-neutral-500 dark:text-neutral-400 text-xs">Total REV_B</p>
                       <p className="text-blue-600 font-medium">
-                        {entregablesEditProyecto.filter(e => !e.frozen).reduce((s, e) => s + (e.valorRevB || 0), 0).toFixed(2)} UF
+                        {entregablesEditProyecto.filter(e => !e.frozen).reduce((s, e) => s + (e.valorRevB || 0), 0).toFixed(1)} HsH
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-neutral-500 dark:text-neutral-400 text-xs">Total REV_0</p>
                       <p className="text-purple-600 font-medium">
-                        {entregablesEditProyecto.filter(e => !e.frozen).reduce((s, e) => s + (e.valorRev0 || 0), 0).toFixed(2)} UF
+                        {entregablesEditProyecto.filter(e => !e.frozen).reduce((s, e) => s + (e.valorRev0 || 0), 0).toFixed(1)} HsH
                       </p>
                     </div>
                     <div className="text-right border-l border-neutral-300 dark:border-neutral-600 pl-6">
                       <p className="text-neutral-500 dark:text-neutral-400 text-xs">Total Proyecto</p>
                       <p className="text-orange-500 font-bold text-lg">
-                        {entregablesEditProyecto.filter(e => !e.frozen).reduce((s, e) => s + (e.valorRevA || 0) + (e.valorRevB || 0) + (e.valorRev0 || 0), 0).toFixed(2)} UF
+                        {entregablesEditProyecto.filter(e => !e.frozen).reduce((s, e) => s + (e.valorRevA || 0) + (e.valorRevB || 0) + (e.valorRev0 || 0), 0).toFixed(1)} HsH
                       </p>
                     </div>
                   </div>
@@ -1982,6 +2008,15 @@ export default function MatrizIntranet() {
                 <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-md w-full p-6">
                   <h2 className="text-neutral-800 dark:text-neutral-100 font-medium mb-4">Agregar Entregable</h2>
                   <div className="space-y-3">
+                    <Select
+                      label="Tipo de Entregable"
+                      value={nuevoEntregable.tipo}
+                      onChange={e => setNuevoEntregable(prev => ({ ...prev, tipo: e.target.value }))}
+                    >
+                      {TIPOS_ENTREGABLE.map(t => (
+                        <option key={t.id} value={t.id}>{t.id} - {t.nombre}</option>
+                      ))}
+                    </Select>
                     <Input
                       label="Código"
                       placeholder="Ej: P2600-ARQ-PLA-001"
@@ -2002,29 +2037,40 @@ export default function MatrizIntranet() {
                       value={nuevoEntregable.weekStart}
                       onChange={e => setNuevoEntregable(prev => ({ ...prev, weekStart: e.target.value }))}
                     />
-                    <div className="grid grid-cols-3 gap-2">
+                    {/* REU y VIS tienen HsH directo (sin revisiones) */}
+                    {['REU', 'VIS'].includes(nuevoEntregable.tipo) ? (
                       <Input
-                        label="REV_A (UF)"
+                        label="HsH Directo"
                         type="number"
                         step="0.1"
-                        value={nuevoEntregable.valorRevA}
-                        onChange={e => setNuevoEntregable(prev => ({ ...prev, valorRevA: e.target.value }))}
+                        value={nuevoEntregable.hshDirecto}
+                        onChange={e => setNuevoEntregable(prev => ({ ...prev, hshDirecto: e.target.value }))}
                       />
-                      <Input
-                        label="REV_B (UF)"
-                        type="number"
-                        step="0.1"
-                        value={nuevoEntregable.valorRevB}
-                        onChange={e => setNuevoEntregable(prev => ({ ...prev, valorRevB: e.target.value }))}
-                      />
-                      <Input
-                        label="REV_0 (UF)"
-                        type="number"
-                        step="0.1"
-                        value={nuevoEntregable.valorRev0}
-                        onChange={e => setNuevoEntregable(prev => ({ ...prev, valorRev0: e.target.value }))}
-                      />
-                    </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input
+                          label="REV_A (HsH)"
+                          type="number"
+                          step="0.1"
+                          value={nuevoEntregable.valorRevA}
+                          onChange={e => setNuevoEntregable(prev => ({ ...prev, valorRevA: e.target.value }))}
+                        />
+                        <Input
+                          label="REV_B (HsH)"
+                          type="number"
+                          step="0.1"
+                          value={nuevoEntregable.valorRevB}
+                          onChange={e => setNuevoEntregable(prev => ({ ...prev, valorRevB: e.target.value }))}
+                        />
+                        <Input
+                          label="REV_0 (HsH)"
+                          type="number"
+                          step="0.1"
+                          value={nuevoEntregable.valorRev0}
+                          onChange={e => setNuevoEntregable(prev => ({ ...prev, valorRev0: e.target.value }))}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 mt-6">
                     <Button variant="ghost" onClick={() => setShowAddEntregable(false)} className="flex-1">
@@ -2543,7 +2589,7 @@ export default function MatrizIntranet() {
             <p className="text-xs text-orange-200/70 text-center mb-2">Usuarios de prueba:</p>
             <div className="space-y-1 text-xs text-white/80">
               <p><strong className="text-orange-300">Admin:</strong> sebastianvizcarra@gmail.com / admin123</p>
-              <p><strong className="text-orange-300">Colaborador:</strong> cristobal@matriz.cl / crios123</p>
+              <p><strong className="text-orange-300">Profesional:</strong> cristobal@matriz.cl / crios123</p>
             </div>
           </div>
         </div>
@@ -2630,7 +2676,7 @@ export default function MatrizIntranet() {
                   <Lock className="w-8 h-8 text-orange-500" />
                 </div>
                 <h2 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium">Acceso Restringido</h2>
-                <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Módulo de Facturación protegido</p>
+                <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Módulo de Administración protegido</p>
               </div>
 
               <div className="space-y-4">
@@ -2692,14 +2738,14 @@ export default function MatrizIntranet() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100">Configuración</h1>
-                <p className="text-neutral-500 dark:text-neutral-400 text-sm">Administra colaboradores y ajustes del sistema</p>
+                <p className="text-neutral-500 dark:text-neutral-400 text-sm">Administra profesionales y ajustes del sistema</p>
               </div>
             </div>
             
             {/* Tabs de configuración */}
             <div className="flex gap-2 mb-6 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto">
               {[
-                { id: 'colaboradores', label: 'Colaboradores', icon: Users },
+                { id: 'profesionales', label: 'Profesionales', icon: Users },
                 { id: 'seguridad', label: 'Seguridad', icon: Lock },
                 { id: 'sistema', label: 'Sistema', icon: Settings },
               ].map(tab => (
@@ -2718,31 +2764,31 @@ export default function MatrizIntranet() {
               ))}
             </div>
             
-            {/* Tab: Colaboradores */}
-            {configTab === 'colaboradores' && (
+            {/* Tab: Profesionales */}
+            {configTab === 'profesionales' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-neutral-600 dark:text-neutral-300 text-sm">
-                    {colaboradores.length} colaborador{colaboradores.length !== 1 ? 'es' : ''} registrado{colaboradores.length !== 1 ? 's' : ''}
+                    {profesionales.length} profesional{profesionales.length !== 1 ? 'es' : ''} registrado{profesionales.length !== 1 ? 's' : ''}
                   </p>
-                  <Button onClick={() => setShowNewColaborador(true)}>
+                  <Button onClick={() => setShowNewProfesional(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Agregar
                   </Button>
                 </div>
                 
-                {/* Formulario nuevo colaborador */}
-                {showNewColaborador && (
+                {/* Formulario nuevo profesional */}
+                {showNewProfesional && (
                   <Card className="p-4 border-2 border-orange-200 bg-orange-50/50">
-                    <h3 className="font-medium text-neutral-800 dark:text-neutral-100 mb-3">Nuevo Colaborador</h3>
+                    <h3 className="font-medium text-neutral-800 dark:text-neutral-100 mb-3">Nuevo Profesional</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                       <div>
                         <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Nombre Completo</label>
                         <input
                           type="text"
                           placeholder="Ej: Juan Pérez"
-                          value={newColaborador.nombre}
-                          onChange={e => setNewColaborador(prev => ({ ...prev, nombre: e.target.value }))}
+                          value={newProfesional.nombre}
+                          onChange={e => setNewProfesional(prev => ({ ...prev, nombre: e.target.value }))}
                           className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
@@ -2751,19 +2797,19 @@ export default function MatrizIntranet() {
                         <input
                           type="text"
                           placeholder="Ej: Arquitecto"
-                          value={newColaborador.cargo}
-                          onChange={e => setNewColaborador(prev => ({ ...prev, cargo: e.target.value }))}
+                          value={newProfesional.cargo}
+                          onChange={e => setNewProfesional(prev => ({ ...prev, cargo: e.target.value }))}
                           className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Categoría</label>
                         <select
-                          value={newColaborador.categoria}
-                          onChange={e => setNewColaborador(prev => ({ ...prev, categoria: e.target.value }))}
+                          value={newProfesional.categoria}
+                          onChange={e => setNewProfesional(prev => ({ ...prev, categoria: e.target.value }))}
                           className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
                         >
-                          {categoriasColaborador.map(cat => (
+                          {categoriasProfesional.map(cat => (
                             <option key={cat} value={cat}>{cat}</option>
                           ))}
                         </select>
@@ -2774,17 +2820,17 @@ export default function MatrizIntranet() {
                           type="number"
                           step="0.05"
                           placeholder="0.5"
-                          value={newColaborador.tarifaInterna}
-                          onChange={e => setNewColaborador(prev => ({ ...prev, tarifaInterna: e.target.value }))}
+                          value={newProfesional.tarifaInterna}
+                          onChange={e => setNewProfesional(prev => ({ ...prev, tarifaInterna: e.target.value }))}
                           className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                     </div>
                     <div className="flex gap-2 justify-end">
-                      <Button variant="secondary" onClick={() => setShowNewColaborador(false)}>
+                      <Button variant="secondary" onClick={() => setShowNewProfesional(false)}>
                         Cancelar
                       </Button>
-                      <Button onClick={handleAddColaborador} disabled={!newColaborador.nombre.trim() || !newColaborador.cargo.trim()}>
+                      <Button onClick={handleAddProfesional} disabled={!newProfesional.nombre.trim() || !newProfesional.cargo.trim()}>
                         <Check className="w-4 h-4 mr-1" />
                         Agregar
                       </Button>
@@ -2792,9 +2838,9 @@ export default function MatrizIntranet() {
                   </Card>
                 )}
                 
-                {/* Lista de colaboradores */}
+                {/* Lista de profesionales */}
                 <div className="space-y-2">
-                  {colaboradores.map(col => (
+                  {profesionales.map(col => (
                     <Card key={col.id} className="p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -2812,8 +2858,8 @@ export default function MatrizIntranet() {
                           </span>
                           <button
                             onClick={() => {
-                              setColaboradorToEdit({ ...col });
-                              setEditColaboradorOpen(true);
+                              setProfesionalToEdit({ ...col });
+                              setEditProfesionalOpen(true);
                             }}
                             className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Editar"
@@ -2821,7 +2867,7 @@ export default function MatrizIntranet() {
                             <Pencil className="w-4 h-4 text-neutral-400 dark:text-neutral-500 hover:text-blue-500" />
                           </button>
                           <button
-                            onClick={() => handleDeleteColaborador(col.id)}
+                            onClick={() => handleDeleteProfesional(col.id)}
                             className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                             title="Eliminar"
                           >
@@ -2907,8 +2953,8 @@ export default function MatrizIntranet() {
                       <span className="text-neutral-800 dark:text-neutral-100">{proyectos.length}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
-                      <span className="text-neutral-500 dark:text-neutral-400">Colaboradores</span>
-                      <span className="text-neutral-800 dark:text-neutral-100">{colaboradores.length}</span>
+                      <span className="text-neutral-500 dark:text-neutral-400">Profesionales</span>
+                      <span className="text-neutral-800 dark:text-neutral-100">{profesionales.length}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
                       <span className="text-neutral-500 dark:text-neutral-400">Horas Registradas</span>
@@ -2937,15 +2983,15 @@ export default function MatrizIntranet() {
               </div>
             )}
             
-            {/* Modal editar colaborador */}
-            {editColaboradorOpen && colaboradorToEdit && (
+            {/* Modal editar profesional */}
+            {editProfesionalOpen && profesionalToEdit && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <Card className="w-full max-w-md p-6">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-blue-100 rounded-full">
                       <Pencil className="w-5 h-5 text-blue-500" />
                     </div>
-                    <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Editar Colaborador</h2>
+                    <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Editar Profesional</h2>
                   </div>
                   
                   <div className="space-y-3 mb-6">
@@ -2953,8 +2999,8 @@ export default function MatrizIntranet() {
                       <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Nombre Completo</label>
                       <input
                         type="text"
-                        value={colaboradorToEdit.nombre}
-                        onChange={e => setColaboradorToEdit(prev => ({ ...prev, nombre: e.target.value }))}
+                        value={profesionalToEdit.nombre}
+                        onChange={e => setProfesionalToEdit(prev => ({ ...prev, nombre: e.target.value }))}
                         className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
@@ -2962,19 +3008,19 @@ export default function MatrizIntranet() {
                       <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Cargo</label>
                       <input
                         type="text"
-                        value={colaboradorToEdit.cargo}
-                        onChange={e => setColaboradorToEdit(prev => ({ ...prev, cargo: e.target.value }))}
+                        value={profesionalToEdit.cargo}
+                        onChange={e => setProfesionalToEdit(prev => ({ ...prev, cargo: e.target.value }))}
                         className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Categoría</label>
                       <select
-                        value={colaboradorToEdit.categoria}
-                        onChange={e => setColaboradorToEdit(prev => ({ ...prev, categoria: e.target.value }))}
+                        value={profesionalToEdit.categoria}
+                        onChange={e => setProfesionalToEdit(prev => ({ ...prev, categoria: e.target.value }))}
                         className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
                       >
-                        {categoriasColaborador.map(cat => (
+                        {categoriasProfesional.map(cat => (
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
@@ -2984,8 +3030,8 @@ export default function MatrizIntranet() {
                       <input
                         type="number"
                         step="0.05"
-                        value={colaboradorToEdit.tarifaInterna}
-                        onChange={e => setColaboradorToEdit(prev => ({ ...prev, tarifaInterna: e.target.value }))}
+                        value={profesionalToEdit.tarifaInterna}
+                        onChange={e => setProfesionalToEdit(prev => ({ ...prev, tarifaInterna: e.target.value }))}
                         className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
@@ -2993,12 +3039,12 @@ export default function MatrizIntranet() {
                   
                   <div className="flex gap-3">
                     <Button variant="secondary" className="flex-1" onClick={() => {
-                      setEditColaboradorOpen(false);
-                      setColaboradorToEdit(null);
+                      setEditProfesionalOpen(false);
+                      setProfesionalToEdit(null);
                     }}>
                       Cancelar
                     </Button>
-                    <Button className="flex-1" onClick={handleSaveColaborador}>
+                    <Button className="flex-1" onClick={handleSaveProfesional}>
                       <Check className="w-4 h-4 mr-2" />
                       Guardar
                     </Button>
@@ -3028,7 +3074,7 @@ export default function MatrizIntranet() {
                     <ul className="text-sm text-red-600 mt-2 space-y-1">
                       <li>• Todos los proyectos ({proyectos.length})</li>
                       <li>• Todas las horas registradas ({horasRegistradas.length})</li>
-                      <li>• Colaboradores se restablecerán a valores iniciales</li>
+                      <li>• Profesionales se restablecerán a valores iniciales</li>
                     </ul>
                   </div>
                   
@@ -3045,7 +3091,7 @@ export default function MatrizIntranet() {
                       onClick={() => {
                         setProyectos([]);
                         setHorasRegistradas([]);
-                        setColaboradores(COLABORADORES_INICIAL);
+                        setProfesionales(COLABORADORES_INICIAL);
                         setResetConfirmOpen(false);
                         setCurrentPage('home');
                       }}
@@ -3760,7 +3806,7 @@ export default function MatrizIntranet() {
                       <p className="text-sm text-neutral-500 dark:text-neutral-400">Click para subir Excel</p>
                     )}
                     <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                      Columnas: Código, Descripción, Secuencia, REV_A (UF), REV_B (UF), REV_0 (UF)
+                      Columnas: Código, Descripción, Secuencia, REV_A (HsH), REV_B (HsH), REV_0 (HsH)
                     </p>
                   </label>
                 </div>
@@ -4304,7 +4350,7 @@ export default function MatrizIntranet() {
 
       {/* Footer */}
       <footer className="border-t border-neutral-200 dark:border-neutral-700 py-4 text-center text-neutral-500 dark:text-neutral-400 text-xs">
-        MATRIZ © 2026 • {currentUser?.nombre} ({isAdmin ? 'Admin' : 'Colaborador'})
+        MATRIZ © 2026 • {currentUser?.nombre} ({isAdmin ? 'Admin' : 'Profesional'})
       </footer>
     </div>
   );

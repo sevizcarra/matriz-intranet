@@ -1225,7 +1225,7 @@ export default function MatrizIntranet() {
 
       const nuevoRegistro = {
         id: Date.now(),
-        profesionalId: profesional === 'admin' ? 'admin' : parseInt(profesional),
+        profesionalId: parseInt(profesional),
         proyectoId: proyecto,
         semana: parseInt(semana),
         tipo: tipoCarga,
@@ -1248,7 +1248,9 @@ export default function MatrizIntranet() {
     const horasDelMes = horasRegistradas.filter(h => {
       const fecha = new Date(h.fecha);
       const now = new Date();
-      return fecha.getMonth() === now.getMonth();
+      // Solo mostrar horas de Sebastián Vizcarra (id: 3 o 'admin' para registros antiguos)
+      const esDeSebastian = h.profesionalId === 3 || h.profesionalId === 'admin';
+      return fecha.getMonth() === now.getMonth() && esDeSebastian;
     });
     
     return (
@@ -1265,7 +1267,6 @@ export default function MatrizIntranet() {
             <div className="space-y-3 sm:space-y-4">
               <Select label="Profesional" value={profesional} onChange={e => setProfesional(e.target.value)}>
                 <option value="">Seleccionar...</option>
-                {isAdmin && <option value="admin">{currentUser?.nombre}</option>}
                 {profesionales.map(c => (
                   <option key={c.id} value={c.id}>{c.nombre}</option>
                 ))}
@@ -1371,7 +1372,10 @@ export default function MatrizIntranet() {
                   </thead>
                   <tbody>
                     {horasDelMes.map(h => {
-                      const col = profesionales.find(c => c.id === h.profesionalId);
+                      // Para registros antiguos con 'admin', buscar a Sebastián (SV)
+                      const col = h.profesionalId === 'admin'
+                        ? profesionales.find(c => c.iniciales === 'SV')
+                        : profesionales.find(c => c.id === h.profesionalId);
                       return (
                         <tr key={h.id} className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:bg-neutral-800/50">
                           <td className="p-2 text-neutral-800 dark:text-neutral-100">{col?.iniciales}</td>
@@ -1408,7 +1412,8 @@ export default function MatrizIntranet() {
           <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">Resumen por Profesional</h2>
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             {profesionales.map(col => {
-              const horasCol = horasDelMes.filter(h => h.profesionalId === col.id);
+              // Para Sebastián (SV), incluir también registros antiguos con profesionalId 'admin'
+              const horasCol = horasDelMes.filter(h => h.profesionalId === col.id || (col.iniciales === 'SV' && h.profesionalId === 'admin'));
               const totalHoras = horasCol.reduce((s, h) => s + h.horas, 0);
               const totalCosto = totalHoras * col.tarifaInterna;
               

@@ -1196,17 +1196,11 @@ export default function MatrizIntranet() {
     const [descripcionCarga, setDescripcionCarga] = useState(''); // Para REU y VIS
     
     const weeks = getWeeksOfMonth();
-    
-    // Entregables de ejemplo (en producción vendrían del proyecto)
-    const entregables = [
-      'Planta General Nivel 0',
-      'Planta General Nivel 1',
-      'Cortes y Elevaciones',
-      'Detalles Constructivos',
-      'Cuadro de Superficies',
-      'Memoria Descriptiva',
-    ];
-    
+
+    // Entregables dinámicos del proyecto seleccionado
+    const proyectoSeleccionado = proyectos.find(p => p.id === proyecto);
+    const entregables = proyectoSeleccionado?.entregables || [];
+
     const esReunionOVisita = ['REU', 'VIS'].includes(tipoCarga);
 
     const registrarHoras = async () => {
@@ -1220,6 +1214,28 @@ export default function MatrizIntranet() {
         if (!profesional || !proyecto || !semana || !entregable || !horas) {
           showNotification('error', 'Por favor completa todos los campos');
           return;
+        }
+      }
+
+      // Verificar duplicados (mismo proyecto + entregable + revisión)
+      if (!esReunionOVisita) {
+        const duplicado = horasRegistradas.find(h =>
+          h.proyectoId === proyecto &&
+          h.entregable === entregable &&
+          h.revision === revision
+        );
+        if (duplicado) {
+          const fechaDup = new Date(duplicado.fecha).toLocaleDateString('es-CL');
+          const confirmar = window.confirm(
+            `⚠️ ALERTA DE DUPLICADO\n\n` +
+            `Ya existe un registro para:\n` +
+            `• Proyecto: ${proyecto}\n` +
+            `• Entregable: ${entregable}\n` +
+            `• Revisión: ${revision}\n` +
+            `• Fecha anterior: ${fechaDup}\n\n` +
+            `¿Deseas registrar de todas formas?`
+          );
+          if (!confirmar) return;
         }
       }
 
@@ -1271,7 +1287,7 @@ export default function MatrizIntranet() {
                 ))}
               </Select>
               
-              <Select label="Proyecto" value={proyecto} onChange={e => setProyecto(e.target.value)}>
+              <Select label="Proyecto" value={proyecto} onChange={e => { setProyecto(e.target.value); setEntregable(''); }}>
                 <option value="">Seleccionar...</option>
                 {proyectos.filter(p => p.estado === 'Activo').map(p => (
                   <option key={p.id} value={p.id}>{p.id} - {p.nombre}</option>
@@ -1307,9 +1323,15 @@ export default function MatrizIntranet() {
               {/* Entregable solo para DOC, PLA, INF */}
               {!esReunionOVisita ? (
                 <Select label="Entregable" value={entregable} onChange={e => setEntregable(e.target.value)}>
-                  <option value="">Seleccionar...</option>
+                  <option value="">
+                    {!proyecto ? 'Primero selecciona un proyecto...' :
+                     entregables.length === 0 ? 'Este proyecto no tiene entregables' :
+                     'Seleccionar...'}
+                  </option>
                   {entregables.map(ent => (
-                    <option key={ent} value={ent}>{ent}</option>
+                    <option key={ent.id || ent.codigo} value={ent.nombre || ent}>
+                      {ent.codigo ? `${ent.codigo} - ${ent.nombre}` : ent}
+                    </option>
                   ))}
                 </Select>
               ) : (

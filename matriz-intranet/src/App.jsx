@@ -1248,10 +1248,8 @@ export default function MatrizIntranet() {
     const horasDelMes = horasRegistradas.filter(h => {
       const fecha = new Date(h.fecha);
       const now = new Date();
-      // Solo mostrar horas de Sebastián Vizcarra (id: 3 o 'admin' para registros antiguos)
-      // Usar == para manejar "3" (string) y 3 (número)
-      const esDeSebastian = h.profesionalId == 3 || h.profesionalId === 'admin';
-      return fecha.getMonth() === now.getMonth() && esDeSebastian;
+      // Mostrar todas las horas del mes actual (el filtro de Sebastián solo aplica en EDP)
+      return fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear();
     });
     
     return (

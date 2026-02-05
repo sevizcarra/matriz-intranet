@@ -26,7 +26,7 @@ import {
 // SISTEMA DE USUARIOS Y ROLES
 // ============================================
 const USUARIOS = [
-  { id: 'admin', nombre: 'Seba', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', profesionalId: null },
+  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', profesionalId: null },
   { id: 'user1', nombre: 'Cristóbal Ríos', email: 'cristobal@matriz.cl', password: 'crios123', rol: 'profesional', profesionalId: 1 },
   { id: 'user2', nombre: 'Dominique Thompson', email: 'dominique@matriz.cl', password: 'dthompson123', rol: 'profesional', profesionalId: 2 },
 ];
@@ -106,9 +106,9 @@ const PrintStyles = () => (
         border: 1px solid #ccc !important;
       }
       
-      /* Tamaño de página carta */
+      /* Tamaño de página carta apaisada */
       @page {
-        size: letter portrait;
+        size: letter landscape;
         margin: 10mm;
       }
     }
@@ -1200,6 +1200,8 @@ export default function MatrizIntranet() {
     const [entregable, setEntregable] = useState('');
     const [horas, setHoras] = useState('');
     const [revision, setRevision] = useState('REV_A');
+    const [tipoCarga, setTipoCarga] = useState('PLA'); // PLA, DOC, INF, REU, VIS
+    const [descripcionCarga, setDescripcionCarga] = useState(''); // Para REU y VIS
     
     const weeks = getWeeksOfMonth();
     
@@ -1213,18 +1215,30 @@ export default function MatrizIntranet() {
       'Memoria Descriptiva',
     ];
     
+    const esReunionOVisita = ['REU', 'VIS'].includes(tipoCarga);
+
     const registrarHoras = async () => {
-      if (!profesional || !proyecto || !semana || !entregable || !horas) {
-        showNotification('error', 'Por favor completa todos los campos');
-        return;
+      // Validación diferente para REU/VIS vs otros tipos
+      if (esReunionOVisita) {
+        if (!profesional || !proyecto || !semana || !descripcionCarga || !horas) {
+          showNotification('error', 'Por favor completa todos los campos');
+          return;
+        }
+      } else {
+        if (!profesional || !proyecto || !semana || !entregable || !horas) {
+          showNotification('error', 'Por favor completa todos los campos');
+          return;
+        }
       }
+
       const nuevoRegistro = {
         id: Date.now(),
-        profesionalId: parseInt(profesional),
+        profesionalId: profesional === 'admin' ? 'admin' : parseInt(profesional),
         proyectoId: proyecto,
         semana: parseInt(semana),
-        entregable,
-        revision,
+        tipo: tipoCarga,
+        entregable: esReunionOVisita ? descripcionCarga : entregable,
+        revision: esReunionOVisita ? null : revision,
         horas: parseFloat(horas),
         fecha: new Date().toISOString(),
       };
@@ -1234,6 +1248,7 @@ export default function MatrizIntranet() {
 
       setHoras('');
       setEntregable('');
+      setDescripcionCarga('');
       setSemana('');
       showNotification('success', 'Horas registradas correctamente');
     };
@@ -1258,7 +1273,7 @@ export default function MatrizIntranet() {
             <div className="space-y-3 sm:space-y-4">
               <Select label="Profesional" value={profesional} onChange={e => setProfesional(e.target.value)}>
                 <option value="">Seleccionar...</option>
-                <option value="admin">Seba (Admin)</option>
+                {isAdmin && <option value="admin">{currentUser?.nombre}</option>}
                 {profesionales.map(c => (
                   <option key={c.id} value={c.id}>{c.nombre}</option>
                 ))}
@@ -1272,26 +1287,48 @@ export default function MatrizIntranet() {
               </Select>
               
               <div className="grid grid-cols-2 gap-3">
+                <Select label="Tipo" value={tipoCarga} onChange={e => setTipoCarga(e.target.value)}>
+                  <option value="DOC">DOC</option>
+                  <option value="PLA">PLA</option>
+                  <option value="INF">INF</option>
+                  <option value="REU">REU</option>
+                  <option value="VIS">VIS</option>
+                </Select>
+
                 <Select label="Semana" value={semana} onChange={e => setSemana(e.target.value)}>
                   <option value="">Sem...</option>
                   {weeks.map(w => (
                     <option key={w.num} value={w.num}>S{w.num}</option>
                   ))}
                 </Select>
-                
+              </div>
+
+              {/* Revisión solo para DOC, PLA, INF */}
+              {!esReunionOVisita && (
                 <Select label="Revisión" value={revision} onChange={e => setRevision(e.target.value)}>
                   <option value="REV_A">REV_A</option>
                   <option value="REV_B">REV_B</option>
                   <option value="REV_0">REV_0</option>
                 </Select>
-              </div>
-              
-              <Select label="Entregable" value={entregable} onChange={e => setEntregable(e.target.value)}>
-                <option value="">Seleccionar...</option>
-                {entregables.map(ent => (
-                  <option key={ent} value={ent}>{ent}</option>
-                ))}
-              </Select>
+              )}
+
+              {/* Entregable solo para DOC, PLA, INF */}
+              {!esReunionOVisita ? (
+                <Select label="Entregable" value={entregable} onChange={e => setEntregable(e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  {entregables.map(ent => (
+                    <option key={ent} value={ent}>{ent}</option>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  label={tipoCarga === 'REU' ? 'Descripción Reunión' : 'Descripción Visita'}
+                  type="text"
+                  value={descripcionCarga}
+                  onChange={e => setDescripcionCarga(e.target.value)}
+                  placeholder={tipoCarga === 'REU' ? 'Ej: Reunión coordinación cliente' : 'Ej: Visita terreno fiscalización'}
+                />
+              )}
               
               <Input 
                 label="Horas" 
@@ -1491,6 +1528,9 @@ export default function MatrizIntranet() {
     // Estado para confirmación de congelamiento
     const [freezeConfirm, setFreezeConfirm] = useState({ show: false, proyectoId: null, entregableId: null, nombre: '' });
 
+    // Estado para confirmación de eliminación de entregable
+    const [deleteEntregableConfirm, setDeleteEntregableConfirm] = useState({ show: false, proyectoId: null, entregableId: null, nombre: '' });
+
     // Función para obtener entregables del proyecto seleccionado
     const getEntregablesProyecto = (proyectoId) => {
       const proyecto = proyectos.find(p => p.id === proyectoId);
@@ -1503,9 +1543,15 @@ export default function MatrizIntranet() {
       const proyecto = proyectos.find(p => p.id === proyectoId);
       if (!proyecto) return;
 
-      const entregablesActualizados = (proyecto.entregables || []).map(e =>
+      let entregablesActualizados = (proyecto.entregables || []).map(e =>
         e.id === entregableId ? { ...e, ...updates } : e
       );
+
+      // Si se actualizó weekStart, reordenar por semana
+      if (updates.weekStart !== undefined) {
+        entregablesActualizados = entregablesActualizados
+          .sort((a, b) => (a.weekStart || a.secuencia || 1) - (b.weekStart || b.secuencia || 1));
+      }
 
       const proyectoActualizado = { ...proyecto, entregables: entregablesActualizados };
       await saveProyecto(proyectoActualizado);
@@ -1535,7 +1581,9 @@ export default function MatrizIntranet() {
         frozen: false
       };
 
-      const entregablesActualizados = [...(proyecto.entregables || []), nuevoEnt];
+      // Agregar y ordenar por semana (weekStart)
+      const entregablesActualizados = [...(proyecto.entregables || []), nuevoEnt]
+        .sort((a, b) => (a.weekStart || a.secuencia || 1) - (b.weekStart || b.secuencia || 1));
       const proyectoActualizado = { ...proyecto, entregables: entregablesActualizados };
       await saveProyecto(proyectoActualizado);
 
@@ -1583,6 +1631,24 @@ export default function MatrizIntranet() {
       await saveProyecto(proyectoActualizado);
       showNotification('info', entregablesActualizados.find(e => e.id === entregableId)?.frozen ? 'Entregable congelado' : 'Entregable descongelado');
       setFreezeConfirm({ show: false, proyectoId: null, entregableId: null, nombre: '' });
+    };
+
+    // Función para mostrar confirmación de eliminación
+    const showDeleteEntregableConfirm = (proyectoId, entregableId, nombre) => {
+      setDeleteEntregableConfirm({ show: true, proyectoId, entregableId, nombre });
+    };
+
+    // Función para eliminar entregable
+    const deleteEntregable = async () => {
+      const { proyectoId, entregableId } = deleteEntregableConfirm;
+      const proyecto = proyectos.find(p => p.id === proyectoId);
+      if (!proyecto) return;
+
+      const entregablesActualizados = (proyecto.entregables || []).filter(e => e.id !== entregableId);
+      const proyectoActualizado = { ...proyecto, entregables: entregablesActualizados };
+      await saveProyecto(proyectoActualizado);
+      showNotification('success', 'Entregable eliminado');
+      setDeleteEntregableConfirm({ show: false, proyectoId: null, entregableId: null, nombre: '' });
     };
 
     // Función para calcular EDP por entregables del mes (usando valores del Excel)
@@ -1975,6 +2041,13 @@ export default function MatrizIntranet() {
                               >
                                 <Snowflake className={`w-3.5 h-3.5 ${ent.frozen ? 'fill-blue-200' : ''}`} />
                               </button>
+                              <button
+                                onClick={() => showDeleteEntregableConfirm(selectedProyectoEdit, ent.id, ent.nombre)}
+                                className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-neutral-500 hover:text-red-500"
+                                title="Eliminar entregable"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -2129,6 +2202,34 @@ export default function MatrizIntranet() {
                     </Button>
                     <Button onClick={toggleFreezeEntregable} className="flex-1">
                       Confirmar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de confirmación para eliminar entregable */}
+            {deleteEntregableConfirm.show && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-sm w-full p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
+                      <Trash2 className="w-5 h-5 text-red-500" />
+                    </div>
+                    <h2 className="text-neutral-800 dark:text-neutral-100 font-medium">Eliminar Entregable</h2>
+                  </div>
+                  <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-4">
+                    ¿Estás seguro que deseas eliminar el entregable <strong>"{deleteEntregableConfirm.nombre}"</strong>?
+                  </p>
+                  <p className="text-xs text-red-500 dark:text-red-400 mb-4">
+                    Esta acción no se puede deshacer.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => setDeleteEntregableConfirm({ show: false, proyectoId: null, entregableId: null, nombre: '' })} className="flex-1">
+                      Cancelar
+                    </Button>
+                    <Button onClick={deleteEntregable} className="flex-1 bg-red-500 hover:bg-red-600">
+                      Eliminar
                     </Button>
                   </div>
                 </div>
@@ -2327,35 +2428,32 @@ export default function MatrizIntranet() {
                   <table className="w-full text-[9px] border-collapse mb-4">
                     <thead>
                       <tr className="bg-neutral-800 text-white">
-                        <th className="border border-neutral-300 px-1.5 py-1 text-left">C. COSTO</th>
-                        <th className="border border-neutral-300 px-1.5 py-1 text-center">TIPO</th>
-                        <th className="border border-neutral-300 px-1.5 py-1 text-left">CÓDIGO</th>
-                        <th className="border border-neutral-300 px-1.5 py-1 text-left">DESCRIPCIÓN</th>
-                        <th className="border border-neutral-300 px-1.5 py-1 text-center">REV</th>
-                        <th className="border border-neutral-300 px-1.5 py-1 text-center">FECHA</th>
-                        <th className="border border-neutral-300 px-1.5 py-1 text-right">HsH</th>
-                        <th className="border border-neutral-300 px-1.5 py-1 text-left">OBS</th>
+                        <th className="border border-neutral-300 px-2 py-1.5 text-left">C. COSTO</th>
+                        <th className="border border-neutral-300 px-2 py-1.5 text-center">TIPO</th>
+                        <th className="border border-neutral-300 px-2 py-1.5 text-left">CÓDIGO</th>
+                        <th className="border border-neutral-300 px-2 py-1.5 text-left">DESCRIPCIÓN</th>
+                        <th className="border border-neutral-300 px-2 py-1.5 text-center">REV</th>
+                        <th className="border border-neutral-300 px-2 py-1.5 text-center">FECHA</th>
+                        <th className="border border-neutral-300 px-2 py-1.5 text-right">HsH</th>
                       </tr>
                     </thead>
                     <tbody>
                       {edpData.map((e, i) => (
                         <tr key={`${e.entregableId}-${e.revision}`} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 font-mono text-orange-600">{e.proyectoId}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.tipo}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 font-mono">{e.codigo}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5">{e.nombre}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">REV_{e.revision}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.fecha}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-right font-medium">{e.valor.toFixed(2)}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-neutral-600">{e.observacion || ''}</td>
+                          <td className="border border-neutral-300 px-2 py-1 font-mono text-orange-600">{e.proyectoId}</td>
+                          <td className="border border-neutral-300 px-2 py-1 text-center">{e.tipo}</td>
+                          <td className="border border-neutral-300 px-2 py-1 font-mono">{e.codigo}</td>
+                          <td className="border border-neutral-300 px-2 py-1">{e.nombre}</td>
+                          <td className="border border-neutral-300 px-2 py-1 text-center">REV_{e.revision}</td>
+                          <td className="border border-neutral-300 px-2 py-1 text-center">{e.fecha}</td>
+                          <td className="border border-neutral-300 px-2 py-1 text-right font-medium">{e.valor.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="bg-orange-100 font-bold">
-                        <td colSpan={6} className="border border-neutral-300 px-1.5 py-1.5 text-right">TOTAL:</td>
-                        <td className="border border-neutral-300 px-1.5 py-1.5 text-right text-orange-600">{totalGeneral.toFixed(2)} HsH</td>
-                        <td className="border border-neutral-300 px-1.5 py-1.5"></td>
+                        <td colSpan={6} className="border border-neutral-300 px-2 py-2 text-right">TOTAL:</td>
+                        <td className="border border-neutral-300 px-2 py-2 text-right text-orange-600">{totalGeneral.toFixed(2)} HsH</td>
                       </tr>
                     </tfoot>
                   </table>

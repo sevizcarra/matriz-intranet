@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
   Building2, User, DollarSign, FileText, Check, X, Pencil, Trash2, Settings,
   BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2,
-  Moon, Sun
+  Moon, Sun, Snowflake
 } from 'lucide-react';
 import {
   subscribeToProyectos,
@@ -507,6 +507,8 @@ export default function MatrizIntranet() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [firestoreReady, setFirestoreReady] = useState(false);
+  // Estado persistente para Facturación (evita reset al re-render)
+  const [selectedProyectoFacturacion, setSelectedProyectoFacturacion] = useState('');
 
   // ============================================
   // FIRESTORE SUBSCRIPTIONS
@@ -515,7 +517,24 @@ export default function MatrizIntranet() {
     // Subscribe to Firestore collections
     const unsubProyectos = subscribeToProyectos((data) => {
       if (data.length > 0) {
-        setProyectos(data);
+        // Mezclar entregables de PROYECTOS_INICIALES en proyectos sin entregables
+        const proyectosMerged = data.map(p => {
+          if (!p.entregables || p.entregables.length === 0) {
+            const inicial = PROYECTOS_INICIALES.find(pi => pi.id === p.id);
+            if (inicial && inicial.entregables) {
+              return { ...p, entregables: inicial.entregables };
+            }
+          }
+          return p;
+        });
+        setProyectos(proyectosMerged);
+        // Guardar los proyectos actualizados con entregables
+        proyectosMerged.forEach(p => {
+          const original = data.find(d => d.id === p.id);
+          if (original && (!original.entregables || original.entregables.length === 0) && p.entregables) {
+            saveProyecto(p);
+          }
+        });
       } else {
         // Si no hay datos en Firestore, usar datos iniciales y guardarlos
         setProyectos(PROYECTOS_INICIALES);
@@ -1397,7 +1416,9 @@ export default function MatrizIntranet() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [showPreview, setShowPreview] = useState(false);
     const [selectedProyectoEDP, setSelectedProyectoEDP] = useState('all');
-    const [selectedProyectoEdit, setSelectedProyectoEdit] = useState(proyectos[0]?.id || '');
+    // Usar estado del padre para evitar reset al re-render
+    const selectedProyectoEdit = selectedProyectoFacturacion || proyectos[0]?.id || '';
+    const setSelectedProyectoEdit = setSelectedProyectoFacturacion;
     const [editingEntregable, setEditingEntregable] = useState(null);
     const [showAddEntregable, setShowAddEntregable] = useState(false);
     const [edpObservaciones, setEdpObservaciones] = useState({});
@@ -1438,10 +1459,14 @@ export default function MatrizIntranet() {
       codigo: '',
       nombre: '',
       secuencia: 1,
+      weekStart: 1,
       valorRevA: 0,
       valorRevB: 0,
       valorRev0: 0
     });
+
+    // Estado para confirmación de congelamiento
+    const [freezeConfirm, setFreezeConfirm] = useState({ show: false, proyectoId: null, entregableId: null, nombre: '' });
 
     // Función para obtener entregables del proyecto seleccionado
     const getEntregablesProyecto = (proyectoId) => {
@@ -1475,6 +1500,7 @@ export default function MatrizIntranet() {
         codigo: nuevoEntregable.codigo,
         nombre: nuevoEntregable.nombre,
         secuencia: parseInt(nuevoEntregable.secuencia) || 1,
+        weekStart: parseInt(nuevoEntregable.weekStart) || 1,
         valorRevA: parseFloat(nuevoEntregable.valorRevA) || 0,
         valorRevB: parseFloat(nuevoEntregable.valorRevB) || 0,
         valorRev0: parseFloat(nuevoEntregable.valorRev0) || 0,
@@ -1505,13 +1531,19 @@ export default function MatrizIntranet() {
       }));
 
       // Limpiar formulario
-      setNuevoEntregable({ codigo: '', nombre: '', secuencia: 1, valorRevA: 0, valorRevB: 0, valorRev0: 0 });
+      setNuevoEntregable({ codigo: '', nombre: '', secuencia: 1, weekStart: 1, valorRevA: 0, valorRevB: 0, valorRev0: 0 });
       setShowAddEntregable(false);
       showNotification('success', 'Entregable agregado');
     };
 
+    // Función para mostrar confirmación de congelamiento
+    const showFreezeConfirm = (proyectoId, entregableId, nombre) => {
+      setFreezeConfirm({ show: true, proyectoId, entregableId, nombre });
+    };
+
     // Función para congelar/descongelar entregable
-    const toggleFreezeEntregable = async (proyectoId, entregableId) => {
+    const toggleFreezeEntregable = async () => {
+      const { proyectoId, entregableId } = freezeConfirm;
       const proyecto = proyectos.find(p => p.id === proyectoId);
       if (!proyecto) return;
 
@@ -1522,6 +1554,7 @@ export default function MatrizIntranet() {
       const proyectoActualizado = { ...proyecto, entregables: entregablesActualizados };
       await saveProyecto(proyectoActualizado);
       showNotification('info', entregablesActualizados.find(e => e.id === entregableId)?.frozen ? 'Entregable congelado' : 'Entregable descongelado');
+      setFreezeConfirm({ show: false, proyectoId: null, entregableId: null, nombre: '' });
     };
 
     // Función para calcular EDP por entregables del mes (usando valores del Excel)
@@ -1895,11 +1928,11 @@ export default function MatrizIntranet() {
                                 {editingEntregable === ent.id ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                               </button>
                               <button
-                                onClick={() => toggleFreezeEntregable(selectedProyectoEdit, ent.id)}
-                                className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 ${ent.frozen ? 'text-blue-500' : 'text-neutral-500'}`}
+                                onClick={() => showFreezeConfirm(selectedProyectoEdit, ent.id, ent.nombre)}
+                                className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 ${ent.frozen ? 'text-blue-400' : 'text-neutral-500'}`}
                                 title={ent.frozen ? 'Descongelar' : 'Congelar'}
                               >
-                                {ent.frozen ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                                <Snowflake className={`w-3.5 h-3.5 ${ent.frozen ? 'fill-blue-200' : ''}`} />
                               </button>
                             </div>
                           </td>
@@ -1961,6 +1994,14 @@ export default function MatrizIntranet() {
                       value={nuevoEntregable.nombre}
                       onChange={e => setNuevoEntregable(prev => ({ ...prev, nombre: e.target.value }))}
                     />
+                    <Input
+                      label="Semana de Entrega"
+                      type="number"
+                      min="1"
+                      max="52"
+                      value={nuevoEntregable.weekStart}
+                      onChange={e => setNuevoEntregable(prev => ({ ...prev, weekStart: e.target.value }))}
+                    />
                     <div className="grid grid-cols-3 gap-2">
                       <Input
                         label="REV_A (UF)"
@@ -1995,6 +2036,38 @@ export default function MatrizIntranet() {
                       className="flex-1"
                     >
                       Agregar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de confirmación para congelar */}
+            {freezeConfirm.show && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-sm w-full p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                      <Snowflake className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <h2 className="text-neutral-800 dark:text-neutral-100 font-medium">Confirmar Acción</h2>
+                  </div>
+                  <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-4">
+                    ¿Estás seguro que deseas {(() => {
+                      const proyecto = proyectos.find(p => p.id === freezeConfirm.proyectoId);
+                      const entregable = proyecto?.entregables?.find(e => e.id === freezeConfirm.entregableId);
+                      return entregable?.frozen ? 'descongelar' : 'congelar';
+                    })()} el entregable <strong>"{freezeConfirm.nombre}"</strong>?
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-500 mb-4">
+                    Los entregables congelados aparecerán tachados en Control, Log y Carta.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => setFreezeConfirm({ show: false, proyectoId: null, entregableId: null, nombre: '' })} className="flex-1">
+                      Cancelar
+                    </Button>
+                    <Button onClick={toggleFreezeEntregable} className="flex-1">
+                      Confirmar
                     </Button>
                   </div>
                 </div>
@@ -3215,24 +3288,31 @@ export default function MatrizIntranet() {
                             </thead>
                             <tbody>
                               {deliverables.map((d, i) => (
-                                <tr key={d.id} className={`border-b border-neutral-200 dark:border-neutral-700 ${i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white'}`}>
+                                <tr key={d.id} className={`border-b border-neutral-200 dark:border-neutral-700 ${d.frozen ? 'opacity-50 bg-blue-50 dark:bg-blue-900/20' : i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white'}`}>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{d.id}</td>
-                                  <td className="p-2 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{d.codigo || '-'}</td>
-                                  <td className="p-2 text-neutral-800 dark:text-neutral-100 font-medium text-xs">{d.nombre || d.name}</td>
+                                  <td className={`p-2 text-neutral-600 dark:text-neutral-300 font-mono text-xs ${d.frozen ? 'line-through' : ''}`}>{d.codigo || '-'}</td>
+                                  <td className={`p-2 text-neutral-800 dark:text-neutral-100 font-medium text-xs ${d.frozen ? 'line-through' : ''}`}>
+                                    {d.nombre || d.name}
+                                    {d.frozen && <Snowflake className="w-3 h-3 inline ml-1 text-blue-400" />}
+                                  </td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{d.weekStart || d.secuencia}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} disabled={d.frozen} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevA)}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosARecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosARecibidos', v)} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevB} onChange={v => handleCheck(d.statusKey, 'sentRevB', v)} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosARecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosARecibidos', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevB} onChange={v => handleCheck(d.statusKey, 'sentRevB', v)} disabled={d.frozen} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevB)}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosBRecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosBRecibidos', v)} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRev0} onChange={v => handleCheck(d.statusKey, 'sentRev0', v)} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosBRecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosBRecibidos', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRev0} onChange={v => handleCheck(d.statusKey, 'sentRev0', v)} disabled={d.frozen} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRev0)}</td>
                                   <td className="p-2 text-center">
-                                    <DashboardBadge variant={d.statusInfo.status === 'TERMINADO' ? 'success' : d.statusInfo.status === 'ATRASADO' ? 'danger' : d.statusInfo.status === 'En Proceso' ? 'warning' : 'default'}>
-                                      {d.statusInfo.status}
-                                    </DashboardBadge>
+                                    {d.frozen ? (
+                                      <DashboardBadge variant="default">CONGELADO</DashboardBadge>
+                                    ) : (
+                                      <DashboardBadge variant={d.statusInfo.status === 'TERMINADO' ? 'success' : d.statusInfo.status === 'ATRASADO' ? 'danger' : d.statusInfo.status === 'En Proceso' ? 'warning' : 'default'}>
+                                        {d.statusInfo.status}
+                                      </DashboardBadge>
+                                    )}
                                   </td>
                                 </tr>
                               ))}
@@ -3273,23 +3353,30 @@ export default function MatrizIntranet() {
                             </thead>
                             <tbody>
                               {deliverables.map((d, i) => (
-                                <tr key={d.id} className={`border-b border-neutral-200 dark:border-neutral-700 ${i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}`}>
+                                <tr key={d.id} className={`border-b border-neutral-200 dark:border-neutral-700 ${d.frozen ? 'opacity-50 bg-blue-50 dark:bg-blue-900/20' : i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : ''}`}>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{d.id}</td>
-                                  <td className="p-2 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{d.codigo || '-'}</td>
-                                  <td className="p-2 text-neutral-800 dark:text-neutral-100">{d.nombre || d.name}</td>
-                                  <td className={`p-2 text-center ${d.status.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {d.status.sentRevADate ? formatDateFull(d.status.sentRevADate) : '-'}
+                                  <td className={`p-2 text-neutral-600 dark:text-neutral-300 font-mono text-xs ${d.frozen ? 'line-through' : ''}`}>{d.codigo || '-'}</td>
+                                  <td className={`p-2 text-neutral-800 dark:text-neutral-100 ${d.frozen ? 'line-through' : ''}`}>
+                                    {d.nombre || d.name}
+                                    {d.frozen && <Snowflake className="w-3 h-3 inline ml-1 text-blue-400" />}
                                   </td>
-                                  <td className={`p-2 text-center ${d.status.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {d.status.sentRevBDate ? formatDateFull(d.status.sentRevBDate) : '-'}
+                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
+                                    {d.frozen ? '-' : d.status.sentRevADate ? formatDateFull(d.status.sentRevADate) : '-'}
                                   </td>
-                                  <td className={`p-2 text-center ${d.status.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {d.status.sentRev0Date ? formatDateFull(d.status.sentRev0Date) : '-'}
+                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
+                                    {d.frozen ? '-' : d.status.sentRevBDate ? formatDateFull(d.status.sentRevBDate) : '-'}
+                                  </td>
+                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
+                                    {d.frozen ? '-' : d.status.sentRev0Date ? formatDateFull(d.status.sentRev0Date) : '-'}
                                   </td>
                                   <td className="p-2 text-center">
-                                    <DashboardBadge variant={d.statusInfo.status === 'TERMINADO' ? 'success' : d.statusInfo.status === 'ATRASADO' ? 'danger' : d.statusInfo.status === 'En Proceso' ? 'warning' : 'default'}>
-                                      {d.statusInfo.status}
-                                    </DashboardBadge>
+                                    {d.frozen ? (
+                                      <DashboardBadge variant="default">CONGELADO</DashboardBadge>
+                                    ) : (
+                                      <DashboardBadge variant={d.statusInfo.status === 'TERMINADO' ? 'success' : d.statusInfo.status === 'ATRASADO' ? 'danger' : d.statusInfo.status === 'En Proceso' ? 'warning' : 'default'}>
+                                        {d.statusInfo.status}
+                                      </DashboardBadge>
+                                    )}
                                   </td>
                                 </tr>
                               ))}
@@ -3298,7 +3385,7 @@ export default function MatrizIntranet() {
                         </div>
                       </Card>
                     )}
-                    
+
                     {/* Tab: Gantt */}
                     {dashboardTab === 'gantt' && (
                       <Card className="overflow-hidden">
@@ -3388,12 +3475,16 @@ export default function MatrizIntranet() {
                                   
                                   {/* Filas de entregables */}
                                   {deliverables.map((d, i) => {
-                                    const bars = getGanttBars(d);
-                                    
+                                    const bars = d.frozen ? [] : getGanttBars(d);
+
                                     return (
-                                      <div key={d.id} className={`flex border-b border-neutral-100 dark:border-neutral-700 ${i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white'}`}>
-                                        <div style={{ width: labelWidth, minWidth: labelWidth }} className="p-2 text-[10px] text-neutral-700 dark:text-neutral-200 truncate flex items-center gap-1">
-                                          <div className={`w-2 h-2 rounded-full ${d.statusInfo.color}`} />
+                                      <div key={d.id} className={`flex border-b border-neutral-100 dark:border-neutral-700 ${d.frozen ? 'opacity-50 bg-blue-50 dark:bg-blue-900/20' : i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white'}`}>
+                                        <div style={{ width: labelWidth, minWidth: labelWidth }} className={`p-2 text-[10px] text-neutral-700 dark:text-neutral-200 truncate flex items-center gap-1 ${d.frozen ? 'line-through' : ''}`}>
+                                          {d.frozen ? (
+                                            <Snowflake className="w-2 h-2 text-blue-400" />
+                                          ) : (
+                                            <div className={`w-2 h-2 rounded-full ${d.statusInfo.color}`} />
+                                          )}
                                           {d.nombre || d.name}
                                         </div>
                                         <div className="flex relative" style={{ height: rowHeight }}>

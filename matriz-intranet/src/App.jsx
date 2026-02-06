@@ -1420,6 +1420,7 @@ export default function MatrizIntranet() {
                       <th className="text-center p-2">Sem</th>
                       <th className="text-right p-2">Hrs</th>
                       <th className="text-right p-2">UF</th>
+                      {isAdmin && <th className="text-center p-2 w-10"></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -1438,6 +1439,22 @@ export default function MatrizIntranet() {
                           <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{h.semana}</td>
                           <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{h.horas}</td>
                           <td className="p-2 text-right text-green-600">{(h.horas * (col?.tarifaInterna || 0)).toFixed(2)}</td>
+                          {isAdmin && (
+                            <td className="p-2 text-center">
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm(`¿Eliminar registro de ${col?.iniciales || 'N/A'}?\n${h.entregable} - ${h.horas}hrs`)) {
+                                    await deleteHoraFS(h._docId || h.id);
+                                    showNotification('success', 'Registro eliminado');
+                                  }
+                                }}
+                                className="p-1 hover:bg-red-100 rounded text-neutral-400 hover:text-red-500 transition-colors"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
@@ -1445,16 +1462,17 @@ export default function MatrizIntranet() {
                   <tfoot>
                     <tr className="border-t border-neutral-300 font-medium bg-neutral-50 dark:bg-neutral-800/50">
                       <td colSpan={5} className="p-2 text-right text-neutral-500 dark:text-neutral-400">Total:</td>
-                      <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{horasDelMes.reduce((s, h) => s + h.horas, 0)}</td>
+                      <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{horasDelMes.reduce((s, h) => s + parseFloat(h.horas), 0)}</td>
                       <td className="p-2 text-right text-green-600">
                         {horasDelMes.reduce((s, h) => {
                           // Manejar registros con 'admin' (buscar SV)
                           const col = h.profesionalId === 'admin'
                             ? profesionales.find(c => c.iniciales === 'SV')
-                            : profesionales.find(c => c.id === h.profesionalId);
-                          return s + (h.horas * (col?.tarifaInterna || 0));
+                            : profesionales.find(c => c.id == h.profesionalId);
+                          return s + (parseFloat(h.horas) * (col?.tarifaInterna || 0));
                         }, 0).toFixed(2)}
                       </td>
+                      {isAdmin && <td></td>}
                     </tr>
                   </tfoot>
                 </table>

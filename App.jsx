@@ -2744,14 +2744,6 @@ export default function MatrizIntranet() {
               </button>
             </div>
           </div>
-
-          <div className="mt-6 p-4 bg-black/30 backdrop-blur rounded-lg border border-white/10">
-            <p className="text-xs text-orange-200/70 text-center mb-2">Usuarios de prueba:</p>
-            <div className="space-y-1 text-xs text-white/80">
-              <p><strong className="text-orange-300">Admin:</strong> sebastianvizcarra@gmail.com / admin123</p>
-              <p><strong className="text-orange-300">Profesional:</strong> cristobal@matriz.cl / crios123</p>
-            </div>
-          </div>
         </div>
       </div>
     );

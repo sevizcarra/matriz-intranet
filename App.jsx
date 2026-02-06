@@ -25,8 +25,8 @@ import {
 // ============================================
 // SISTEMA DE USUARIOS Y ROLES
 // ============================================
-const USUARIOS = [
-  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', profesionalId: null },
+const USUARIOS_INICIAL = [
+  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', profesionalId: 3 },
   { id: 'user1', nombre: 'Cristóbal Ríos', email: 'cristobal@matriz.cl', password: 'crios123', rol: 'profesional', profesionalId: 1 },
   { id: 'user2', nombre: 'Dominique Thompson', email: 'dominique@matriz.cl', password: 'dthompson123', rol: 'profesional', profesionalId: 2 },
 ];
@@ -111,9 +111,9 @@ const PrintStyles = () => (
 // ============================================
 
 const COLABORADORES_INICIAL = [
-  { id: 1, nombre: 'Cristóbal Ríos', cargo: 'Arquitecto', categoria: 'Ingeniero Senior', tarifaInterna: 0.75, iniciales: 'CR' },
-  { id: 2, nombre: 'Dominique Thompson', cargo: 'Arquitecta', categoria: 'Proyectista', tarifaInterna: 0.5, iniciales: 'DT' },
-  { id: 3, nombre: 'Sebastián Vizcarra', cargo: 'Arquitecto', categoria: 'Líder de Proyecto', tarifaInterna: 1.0, iniciales: 'SV' },
+  { id: 1, nombre: 'Cristóbal Ríos', cargo: 'Arquitecto', categoria: 'Ingeniero Senior', tarifaInterna: 0.75, iniciales: 'CR', proyectosAsignados: [] },
+  { id: 2, nombre: 'Dominique Thompson', cargo: 'Arquitecta', categoria: 'Proyectista', tarifaInterna: 0.5, iniciales: 'DT', proyectosAsignados: [] },
+  { id: 3, nombre: 'Sebastián Vizcarra', cargo: 'Arquitecto', categoria: 'Líder de Proyecto', tarifaInterna: 1.0, iniciales: 'SV', proyectosAsignados: [] },
 ];
 
 // Entregables del proyecto (35 documentos)
@@ -454,6 +454,7 @@ export default function MatrizIntranet() {
   // ESTADOS DE AUTENTICACIÓN
   // ============================================
   const [currentUser, setCurrentUser] = useState(null);
+  const [usuarios, setUsuarios] = useState(USUARIOS_INICIAL);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -463,6 +464,16 @@ export default function MatrizIntranet() {
   const isAdmin = currentUser?.rol === 'admin';
   const canEdit = () => currentUser?.rol === 'admin';
 
+  // Helper para filtrar proyectos según rol y asignación
+  const currentColaborador = currentUser ? profesionales.find(c => c.id === currentUser.profesionalId) : null;
+  const proyectosVisibles = proyectos.filter(p => {
+    if (isAdmin) return true; // Admin ve todos
+    if (!currentColaborador) return false;
+    const asignados = currentColaborador.proyectosAsignados || [];
+    return asignados.includes(p.id); // Solo ve proyectos asignados
+  });
+  const proyectosActivosVisibles = proyectosVisibles.filter(p => p.estado === 'Activo');
+
   // Login handlers
   const handleLogin = () => {
     if (!loginEmail || !loginPassword) {
@@ -470,7 +481,7 @@ export default function MatrizIntranet() {
       setTimeout(() => setLoginError(''), 3000);
       return;
     }
-    const user = USUARIOS.find(u => u.email === loginEmail && u.password === loginPassword);
+    const user = usuarios.find(u => u.email === loginEmail && u.password === loginPassword);
     if (user) {
       setCurrentUser(user);
       setLoginEmail('');
@@ -675,7 +686,7 @@ export default function MatrizIntranet() {
   // Estados para configuración
   const [configTab, setConfigTab] = useState('profesionales');
   const [showNewProfesional, setShowNewProfesional] = useState(false);
-  const [newProfesional, setNewProfesional] = useState({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
+  const [newProfesional, setNewProfesional] = useState({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5, email: '', password: '' });
   const [editProfesionalOpen, setEditProfesionalOpen] = useState(false);
   const [profesionalToEdit, setProfesionalToEdit] = useState(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -881,24 +892,52 @@ export default function MatrizIntranet() {
   
   // Funciones para gestión de profesionales
   const handleAddProfesional = async () => {
-    if (newProfesional.nombre.trim() && newProfesional.cargo.trim()) {
-      const newId = Math.max(...profesionales.map(c => c.id), 0) + 1;
-      const nuevoProfesional = {
-        id: newId,
-        nombre: newProfesional.nombre.trim(),
-        cargo: newProfesional.cargo.trim(),
-        categoria: newProfesional.categoria,
-        tarifaInterna: parseFloat(newProfesional.tarifaInterna) || 0.5,
-        iniciales: getIniciales(newProfesional.nombre.trim())
-      };
-
-      // Guardar en Firestore
-      await saveColaborador(nuevoProfesional);
-
-      setNewProfesional({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5 });
-      setShowNewProfesional(false);
-      showNotification('success', 'Profesional agregado');
+    // Validar campos obligatorios
+    if (!newProfesional.nombre.trim() || !newProfesional.cargo.trim()) {
+      showNotification('error', 'Nombre y cargo son obligatorios');
+      return;
     }
+    if (!newProfesional.email.trim() || !newProfesional.password.trim()) {
+      showNotification('error', 'Email y contraseña son obligatorios');
+      return;
+    }
+
+    // Verificar que el email no exista
+    const emailExiste = usuarios.find(u => u.email === newProfesional.email.trim());
+    if (emailExiste) {
+      showNotification('error', 'Este email ya está registrado');
+      return;
+    }
+
+    const newId = Math.max(...profesionales.map(c => c.id), 0) + 1;
+    const nuevoProfesional = {
+      id: newId,
+      nombre: newProfesional.nombre.trim(),
+      cargo: newProfesional.cargo.trim(),
+      categoria: newProfesional.categoria,
+      tarifaInterna: parseFloat(newProfesional.tarifaInterna) || 0.5,
+      iniciales: getIniciales(newProfesional.nombre.trim())
+    };
+
+    // Crear usuario para login
+    const nuevoUsuario = {
+      id: `user${newId}`,
+      nombre: newProfesional.nombre.trim(),
+      email: newProfesional.email.trim(),
+      password: newProfesional.password.trim(),
+      rol: 'profesional',
+      profesionalId: newId
+    };
+
+    // Guardar profesional en Firestore
+    await saveColaborador(nuevoProfesional);
+
+    // Agregar usuario al estado
+    setUsuarios(prev => [...prev, nuevoUsuario]);
+
+    setNewProfesional({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5, email: '', password: '' });
+    setShowNewProfesional(false);
+    showNotification('success', 'Profesional y usuario creados');
   };
 
   const handleDeleteProfesional = async (id) => {
@@ -909,7 +948,9 @@ export default function MatrizIntranet() {
     }
     // Eliminar de Firestore
     await deleteColaboradorFS(id);
-    showNotification('success', 'Profesional eliminado');
+    // También eliminar el usuario asociado
+    setUsuarios(prev => prev.filter(u => u.profesionalId !== id));
+    showNotification('success', 'Profesional y usuario eliminados');
   };
   
   const handleSaveProfesional = async () => {
@@ -979,7 +1020,7 @@ export default function MatrizIntranet() {
               <FolderKanban className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{proyectos.filter(p => p.estado === 'Activo').length}</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{proyectosActivosVisibles.length}</p>
               <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Proyectos</p>
             </div>
           </div>
@@ -1019,49 +1060,58 @@ export default function MatrizIntranet() {
           </Button>
         </div>
         
-        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
-          {proyectos.filter(p => p.estado === 'Activo').map(proyecto => (
-            <Card 
-              key={proyecto.id} 
-              className="p-3 sm:p-4"
-              onClick={() => {
-                setSelectedProject(proyecto.id);
-                setCurrentPage('proyecto-detail');
-              }}
-            >
-              <div className="flex items-start justify-between mb-2 sm:mb-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-orange-500 font-mono text-xs sm:text-sm">{proyecto.id}</span>
-                    <Badge variant="success">Activo</Badge>
+        {proyectosActivosVisibles.length === 0 ? (
+          <Card className="p-6 text-center">
+            <FolderKanban className="w-10 h-10 mx-auto text-neutral-300 dark:text-neutral-600 mb-3" />
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+              {!isAdmin ? 'No tienes proyectos asignados. Contacta al administrador.' : 'No hay proyectos activos.'}
+            </p>
+          </Card>
+        ) : (
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+            {proyectosActivosVisibles.map(proyecto => (
+              <Card
+                key={proyecto.id}
+                className="p-3 sm:p-4"
+                onClick={() => {
+                  setSelectedProject(proyecto.id);
+                  setCurrentPage('proyecto-detail');
+                }}
+              >
+                <div className="flex items-start justify-between mb-2 sm:mb-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-500 font-mono text-xs sm:text-sm">{proyecto.id}</span>
+                      <Badge variant="success">Activo</Badge>
+                    </div>
+                    <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre}</h3>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente}</p>
                   </div>
-                  <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre}</h3>
-                  <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente}</p>
+                  <ChevronRight className="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0 ml-2" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0 ml-2" />
-              </div>
-              
-              <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500 dark:text-neutral-400">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(proyecto.inicio).toLocaleDateString('es-CL')}
-                </span>
-                <span className="flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  {proyecto.avance.toFixed(1)}%
-                </span>
-              </div>
-              
-              {/* Barra de avance */}
-              <div className="mt-2 sm:mt-3 h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-orange-500 rounded-full transition-all"
-                  style={{ width: `${proyecto.avance}%` }}
-                />
-              </div>
-            </Card>
-          ))}
-        </div>
+
+                <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500 dark:text-neutral-400">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(proyecto.inicio).toLocaleDateString('es-CL')}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                    {proyecto.avance.toFixed(1)}%
+                  </span>
+                </div>
+
+                {/* Barra de avance */}
+                <div className="mt-2 sm:mt-3 h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-orange-500 rounded-full transition-all"
+                    style={{ width: `${proyecto.avance}%` }}
+                  />
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Accesos Rápidos */}
@@ -1106,79 +1156,94 @@ export default function MatrizIntranet() {
           <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Proyectos</h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm">Gestión de proyectos activos e históricos</p>
         </div>
-        <Button onClick={() => setShowNewProject(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Proyecto
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setShowNewProject(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Proyecto
+          </Button>
+        )}
       </div>
 
-      <div className="space-y-3">
-        {proyectos.map(proyecto => (
-          <Card 
-            key={proyecto.id} 
-            className="p-4"
-            onClick={() => {
-              setSelectedProject(proyecto.id);
-              setCurrentPage('proyecto-detail');
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-orange-500/20 rounded-lg">
-                  <Building2 className="w-6 h-6 text-orange-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-orange-500 font-mono">{proyecto.id}</span>
-                    <Badge variant={proyecto.estado === 'Activo' ? 'success' : 'default'}>
-                      {proyecto.estado}
-                    </Badge>
+      {proyectosVisibles.length === 0 ? (
+        <Card className="p-8 text-center">
+          <FolderKanban className="w-12 h-12 mx-auto text-neutral-300 dark:text-neutral-600 mb-3" />
+          <p className="text-neutral-500 dark:text-neutral-400">
+            {!isAdmin ? 'No tienes proyectos asignados. Contacta al administrador para que te asigne acceso.' : 'No hay proyectos creados.'}
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {proyectosVisibles.map(proyecto => (
+            <Card
+              key={proyecto.id}
+              className="p-4"
+              onClick={() => {
+                setSelectedProject(proyecto.id);
+                setCurrentPage('proyecto-detail');
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-orange-500/20 rounded-lg">
+                    <Building2 className="w-6 h-6 text-orange-500" />
                   </div>
-                  <h3 className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.nombre}</h3>
-                  <p className="text-neutral-500 dark:text-neutral-400 text-xs">{proyecto.cliente}</p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-500 font-mono">{proyecto.id}</span>
+                      <Badge variant={proyecto.estado === 'Activo' ? 'success' : 'default'}>
+                        {proyecto.estado}
+                      </Badge>
+                    </div>
+                    <h3 className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.nombre}</h3>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs">{proyecto.cliente}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.avance.toFixed(1)}%</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs">Avance</p>
+                  </div>
+                  <div className="w-24 sm:w-32 h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden hidden sm:block">
+                    <div
+                      className="h-full bg-orange-500 rounded-full"
+                      style={{ width: `${proyecto.avance}%` }}
+                    />
+                  </div>
+                  {isAdmin && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditProject(proyecto);
+                        }}
+                        className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
+                        title="Editar proyecto"
+                      >
+                        <Pencil className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-blue-500" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectToDelete(proyecto);
+                          setDeleteConfirmOpen(true);
+                        }}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
+                        title="Eliminar proyecto"
+                      >
+                        <Trash2 className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-red-500" />
+                      </button>
+                    </>
+                  )}
+                  <ChevronRight className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
                 </div>
               </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="text-right hidden sm:block">
-                  <p className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.avance.toFixed(1)}%</p>
-                  <p className="text-neutral-500 dark:text-neutral-400 text-xs">Avance</p>
-                </div>
-                <div className="w-24 sm:w-32 h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden hidden sm:block">
-                  <div 
-                    className="h-full bg-orange-500 rounded-full"
-                    style={{ width: `${proyecto.avance}%` }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditProject(proyecto);
-                  }}
-                  className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
-                  title="Editar proyecto"
-                >
-                  <Pencil className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-blue-500" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setProjectToDelete(proyecto);
-                    setDeleteConfirmOpen(true);
-                  }}
-                  className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
-                  title="Eliminar proyecto"
-                >
-                  <Trash2 className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-red-500" />
-                </button>
-                <ChevronRight className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -1196,17 +1261,11 @@ export default function MatrizIntranet() {
     const [descripcionCarga, setDescripcionCarga] = useState(''); // Para REU y VIS
     
     const weeks = getWeeksOfMonth();
-    
-    // Entregables de ejemplo (en producción vendrían del proyecto)
-    const entregables = [
-      'Planta General Nivel 0',
-      'Planta General Nivel 1',
-      'Cortes y Elevaciones',
-      'Detalles Constructivos',
-      'Cuadro de Superficies',
-      'Memoria Descriptiva',
-    ];
-    
+
+    // Entregables dinámicos del proyecto seleccionado
+    const proyectoSeleccionado = proyectos.find(p => p.id === proyecto);
+    const entregables = proyectoSeleccionado?.entregables || [];
+
     const esReunionOVisita = ['REU', 'VIS'].includes(tipoCarga);
 
     const registrarHoras = async () => {
@@ -1220,6 +1279,28 @@ export default function MatrizIntranet() {
         if (!profesional || !proyecto || !semana || !entregable || !horas) {
           showNotification('error', 'Por favor completa todos los campos');
           return;
+        }
+      }
+
+      // Verificar duplicados (mismo proyecto + entregable + revisión)
+      if (!esReunionOVisita) {
+        const duplicado = horasRegistradas.find(h =>
+          h.proyectoId === proyecto &&
+          h.entregable === entregable &&
+          h.revision === revision
+        );
+        if (duplicado) {
+          const fechaDup = new Date(duplicado.fecha).toLocaleDateString('es-CL');
+          const confirmar = window.confirm(
+            `⚠️ ALERTA DE DUPLICADO\n\n` +
+            `Ya existe un registro para:\n` +
+            `• Proyecto: ${proyecto}\n` +
+            `• Entregable: ${entregable}\n` +
+            `• Revisión: ${revision}\n` +
+            `• Fecha anterior: ${fechaDup}\n\n` +
+            `¿Deseas registrar de todas formas?`
+          );
+          if (!confirmar) return;
         }
       }
 
@@ -1248,9 +1329,8 @@ export default function MatrizIntranet() {
     const horasDelMes = horasRegistradas.filter(h => {
       const fecha = new Date(h.fecha);
       const now = new Date();
-      // Solo mostrar horas de Sebastián Vizcarra (id: 3 o 'admin' para registros antiguos)
-      const esDeSebastian = h.profesionalId === 3 || h.profesionalId === 'admin';
-      return fecha.getMonth() === now.getMonth() && esDeSebastian;
+      // Mostrar todas las horas del mes actual (el filtro de Sebastián solo aplica en EDP)
+      return fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear();
     });
     
     return (
@@ -1272,9 +1352,9 @@ export default function MatrizIntranet() {
                 ))}
               </Select>
               
-              <Select label="Proyecto" value={proyecto} onChange={e => setProyecto(e.target.value)}>
-                <option value="">Seleccionar...</option>
-                {proyectos.filter(p => p.estado === 'Activo').map(p => (
+              <Select label="Proyecto" value={proyecto} onChange={e => { setProyecto(e.target.value); setEntregable(''); }}>
+                <option value="">{proyectosActivosVisibles.length === 0 ? 'Sin proyectos asignados' : 'Seleccionar...'}</option>
+                {proyectosActivosVisibles.map(p => (
                   <option key={p.id} value={p.id}>{p.id} - {p.nombre}</option>
                 ))}
               </Select>
@@ -1308,9 +1388,15 @@ export default function MatrizIntranet() {
               {/* Entregable solo para DOC, PLA, INF */}
               {!esReunionOVisita ? (
                 <Select label="Entregable" value={entregable} onChange={e => setEntregable(e.target.value)}>
-                  <option value="">Seleccionar...</option>
+                  <option value="">
+                    {!proyecto ? 'Primero selecciona un proyecto...' :
+                     entregables.length === 0 ? 'Este proyecto no tiene entregables' :
+                     'Seleccionar...'}
+                  </option>
                   {entregables.map(ent => (
-                    <option key={ent} value={ent}>{ent}</option>
+                    <option key={ent.id || ent.codigo} value={ent.nombre || ent}>
+                      {ent.codigo ? `${ent.codigo} - ${ent.nombre}` : ent}
+                    </option>
                   ))}
                 </Select>
               ) : (
@@ -1368,14 +1454,16 @@ export default function MatrizIntranet() {
                       <th className="text-center p-2">Sem</th>
                       <th className="text-right p-2">Hrs</th>
                       <th className="text-right p-2">UF</th>
+                      {isAdmin && <th className="text-center p-2 w-10"></th>}
                     </tr>
                   </thead>
                   <tbody>
                     {horasDelMes.map(h => {
                       // Para registros antiguos con 'admin', buscar a Sebastián (SV)
+                      // Usar == para manejar "3" (string) y 3 (número)
                       const col = h.profesionalId === 'admin'
                         ? profesionales.find(c => c.iniciales === 'SV')
-                        : profesionales.find(c => c.id === h.profesionalId);
+                        : profesionales.find(c => c.id == h.profesionalId);
                       return (
                         <tr key={h.id} className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:bg-neutral-800/50">
                           <td className="p-2 text-neutral-800 dark:text-neutral-100">{col?.iniciales}</td>
@@ -1385,6 +1473,22 @@ export default function MatrizIntranet() {
                           <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{h.semana}</td>
                           <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{h.horas}</td>
                           <td className="p-2 text-right text-green-600">{(h.horas * (col?.tarifaInterna || 0)).toFixed(2)}</td>
+                          {isAdmin && (
+                            <td className="p-2 text-center">
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm(`¿Eliminar registro de ${col?.iniciales || 'N/A'}?\n${h.entregable} - ${h.horas}hrs`)) {
+                                    await deleteHoraFS(h._docId || h.id);
+                                    showNotification('success', 'Registro eliminado');
+                                  }
+                                }}
+                                className="p-1 hover:bg-red-100 rounded text-neutral-400 hover:text-red-500 transition-colors"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
@@ -1392,13 +1496,17 @@ export default function MatrizIntranet() {
                   <tfoot>
                     <tr className="border-t border-neutral-300 font-medium bg-neutral-50 dark:bg-neutral-800/50">
                       <td colSpan={5} className="p-2 text-right text-neutral-500 dark:text-neutral-400">Total:</td>
-                      <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{horasDelMes.reduce((s, h) => s + h.horas, 0)}</td>
+                      <td className="p-2 text-right text-neutral-800 dark:text-neutral-100">{horasDelMes.reduce((s, h) => s + parseFloat(h.horas), 0)}</td>
                       <td className="p-2 text-right text-green-600">
                         {horasDelMes.reduce((s, h) => {
-                          const col = profesionales.find(c => c.id === h.profesionalId);
-                          return s + (h.horas * (col?.tarifaInterna || 0));
+                          // Manejar registros con 'admin' (buscar SV)
+                          const col = h.profesionalId === 'admin'
+                            ? profesionales.find(c => c.iniciales === 'SV')
+                            : profesionales.find(c => c.id == h.profesionalId);
+                          return s + (parseFloat(h.horas) * (col?.tarifaInterna || 0));
                         }, 0).toFixed(2)}
                       </td>
+                      {isAdmin && <td></td>}
                     </tr>
                   </tfoot>
                 </table>
@@ -1413,8 +1521,12 @@ export default function MatrizIntranet() {
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             {profesionales.map(col => {
               // Para Sebastián (SV), incluir también registros antiguos con profesionalId 'admin'
-              const horasCol = horasDelMes.filter(h => h.profesionalId === col.id || (col.iniciales === 'SV' && h.profesionalId === 'admin'));
-              const totalHoras = horasCol.reduce((s, h) => s + h.horas, 0);
+              // Usar == para comparar números/strings y manejar 'admin'
+              const horasCol = horasDelMes.filter(h =>
+                h.profesionalId == col.id ||
+                (col.iniciales === 'SV' && h.profesionalId === 'admin')
+              );
+              const totalHoras = horasCol.reduce((s, h) => s + parseFloat(h.horas), 0);
               const totalCosto = totalHoras * col.tarifaInterna;
               
               return (
@@ -1732,6 +1844,45 @@ export default function MatrizIntranet() {
         });
       });
 
+      // Agregar VIS y REU de Sebastián al EDP
+      // Solo se incluyen las cargadas por Sebastián (profesionalId 3 o 'admin')
+      horasRegistradas.forEach(hora => {
+        // Solo VIS y REU
+        if (hora.tipo !== 'VIS' && hora.tipo !== 'REU') return;
+
+        // Solo de Sebastián
+        const esDeSebastian = hora.profesionalId === 3 || hora.profesionalId === 'admin';
+        if (!esDeSebastian) return;
+
+        // Verificar que sea del mes seleccionado
+        const fechaHora = new Date(hora.fecha);
+        if (fechaHora.getMonth() !== month - 1 || fechaHora.getFullYear() !== year) return;
+
+        // Filtrar por proyecto si hay uno seleccionado
+        if (selectedProyectoEDP !== 'all' && hora.proyectoId !== selectedProyectoEDP) return;
+
+        // Buscar el nombre del proyecto
+        const proyecto = proyectos.find(p => p.id === hora.proyectoId);
+        const proyectoNombre = proyecto ? proyecto.nombre : hora.proyectoId;
+
+        const entregableId = `hsh_${hora.id}`;
+        const revision = '-';
+        const obsKey = `${hora.proyectoId}_${entregableId}_${revision}`;
+        entregablesDelMes.push({
+          proyectoId: hora.proyectoId,
+          proyectoNombre: proyectoNombre,
+          entregableId: entregableId,
+          codigo: '-',
+          nombre: hora.entregable || (hora.tipo === 'VIS' ? 'Visita' : 'Reunión'),
+          tipo: hora.tipo,
+          revision: revision,
+          fecha: hora.fecha.split('T')[0], // Solo la fecha sin la hora
+          valor: hora.horas,
+          observacion: edpObservaciones[obsKey] || '',
+          esHsH: true // Marcador para identificar que viene de HsH
+        });
+      });
+
       // Ordenar por fecha
       entregablesDelMes.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
@@ -1786,7 +1937,7 @@ export default function MatrizIntranet() {
           e.tipo,
           e.codigo,
           e.nombre,
-          'REV_' + e.revision,
+          e.esHsH ? '-' : 'REV_' + e.revision, // VIS/REU no tienen revisión
           e.fecha,
           e.valor.toFixed(2), // HsH directo
           e.observacion || ''
@@ -2322,6 +2473,8 @@ export default function MatrizIntranet() {
                                       e.tipo === 'EETT' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' :
                                       e.tipo === 'MTO' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
                                       e.tipo === 'DETALLE' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
+                                      e.tipo === 'VIS' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300' :
+                                      e.tipo === 'REU' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' :
                                       'bg-neutral-200 text-neutral-700 dark:bg-neutral-600 dark:text-neutral-300'
                                     }`}>
                                       {e.tipo}
@@ -2329,11 +2482,12 @@ export default function MatrizIntranet() {
                                   </td>
                                   <td className="py-2 text-center">
                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                      e.esHsH ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' :
                                       e.revision === 'A' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
                                       e.revision === 'B' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' :
                                       'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
                                     }`}>
-                                      REV_{e.revision}
+                                      {e.esHsH ? e.tipo : `REV_${e.revision}`}
                                     </span>
                                   </td>
                                   <td className="py-2 text-center text-neutral-600 dark:text-neutral-300">{e.fecha}</td>
@@ -2434,7 +2588,7 @@ export default function MatrizIntranet() {
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.tipo}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 font-mono">{e.codigo}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5">{e.nombre}</td>
-                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">REV_{e.revision}</td>
+                          <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.esHsH ? '-' : `REV_${e.revision}`}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-center">{e.fecha}</td>
                           <td className="border border-neutral-300 px-1.5 py-0.5 text-right font-medium">{e.valor.toFixed(2)}</td>
                         </tr>
@@ -2832,11 +2986,39 @@ export default function MatrizIntranet() {
                         />
                       </div>
                     </div>
-                    <div className="flex gap-2 justify-end">
+
+                    {/* Credenciales de acceso */}
+                    <div className="border-t border-orange-200 pt-3 mt-3">
+                      <p className="text-xs font-medium text-orange-600 mb-2">🔐 Credenciales de Acceso</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Email</label>
+                          <input
+                            type="email"
+                            placeholder="usuario@matriz.cl"
+                            value={newProfesional.email}
+                            onChange={e => setNewProfesional(prev => ({ ...prev, email: e.target.value }))}
+                            className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Contraseña</label>
+                          <input
+                            type="text"
+                            placeholder="Contraseña inicial"
+                            value={newProfesional.password}
+                            onChange={e => setNewProfesional(prev => ({ ...prev, password: e.target.value }))}
+                            className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 justify-end mt-4">
                       <Button variant="secondary" onClick={() => setShowNewProfesional(false)}>
                         Cancelar
                       </Button>
-                      <Button onClick={handleAddProfesional} disabled={!newProfesional.nombre.trim() || !newProfesional.cargo.trim()}>
+                      <Button onClick={handleAddProfesional} disabled={!newProfesional.nombre.trim() || !newProfesional.cargo.trim() || !newProfesional.email.trim() || !newProfesional.password.trim()}>
                         <Check className="w-4 h-4 mr-1" />
                         Agregar
                       </Button>
@@ -2845,8 +3027,11 @@ export default function MatrizIntranet() {
                 )}
                 
                 {/* Lista de profesionales */}
-                <div className="space-y-2">
-                  {profesionales.map(col => (
+                <div className="space-y-3">
+                  {profesionales.map(col => {
+                    const usuarioCol = usuarios.find(u => u.profesionalId === col.id);
+                    const proyectosAsig = col.proyectosAsignados || [];
+                    return (
                     <Card key={col.id} className="p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -2856,6 +3041,9 @@ export default function MatrizIntranet() {
                           <div>
                             <p className="font-medium text-neutral-800 dark:text-neutral-100">{col.nombre}</p>
                             <p className="text-sm text-neutral-500 dark:text-neutral-400">{col.cargo} • {col.categoria}</p>
+                            {usuarioCol && (
+                              <p className="text-xs text-blue-500">🔐 {usuarioCol.email}</p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -2881,12 +3069,62 @@ export default function MatrizIntranet() {
                           </button>
                         </div>
                       </div>
+
+                      {/* Proyectos asignados */}
+                      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-700">
+                        <p className="text-xs font-medium text-neutral-500 mb-2">📁 Proyectos asignados:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {proyectosAsig.length === 0 ? (
+                            <span className="text-xs text-neutral-400 italic">Sin proyectos asignados</span>
+                          ) : (
+                            proyectosAsig.map(pId => {
+                              const proy = proyectos.find(p => p.id === pId);
+                              return (
+                                <span key={pId} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                                  {pId}
+                                  <button
+                                    onClick={async () => {
+                                      const nuevosProyectos = proyectosAsig.filter(id => id !== pId);
+                                      const colActualizado = { ...col, proyectosAsignados: nuevosProyectos };
+                                      await saveColaborador(colActualizado);
+                                      showNotification('success', `Proyecto ${pId} removido`);
+                                    }}
+                                    className="hover:text-red-500"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              );
+                            })
+                          )}
+                          {/* Selector para agregar proyecto */}
+                          <select
+                            className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 bg-white dark:bg-neutral-700 dark:border-neutral-600"
+                            value=""
+                            onChange={async (e) => {
+                              const pId = e.target.value;
+                              if (pId && !proyectosAsig.includes(pId)) {
+                                const nuevosProyectos = [...proyectosAsig, pId];
+                                const colActualizado = { ...col, proyectosAsignados: nuevosProyectos };
+                                await saveColaborador(colActualizado);
+                                showNotification('success', `Proyecto ${pId} asignado`);
+                              }
+                            }}
+                          >
+                            <option value="">+ Agregar...</option>
+                            {proyectos.filter(p => !proyectosAsig.includes(p.id)).map(p => (
+                              <option key={p.id} value={p.id}>{p.id} - {p.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </Card>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
             )}
-            
+
             {/* Tab: Seguridad */}
             {configTab === 'seguridad' && (
               <div className="space-y-4">
@@ -3283,9 +3521,9 @@ export default function MatrizIntranet() {
                           <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-3">Comparación avance proyectado vs real</p>
                           {(() => {
                             const weeksToShow = 20;
-                            const chartWidth = 500;
+                            const chartWidth = 550;
                             const chartHeight = 150;
-                            const padding = { top: 20, right: 80, bottom: 35, left: 45 };
+                            const padding = { top: 20, right: 70, bottom: 30, left: 35 };
                             
                             // Calcular avance proyectado (curva S típica)
                             const projectedData = [];
@@ -3299,20 +3537,25 @@ export default function MatrizIntranet() {
                             const startDate = new Date(dashboardStartDate);
                             const today = new Date();
                             const diffTime = today - startDate;
-                            const currentWeek = Math.max(0, Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)));
-                            
-                            // Calcular avance real basado en entregas completadas por semana
+                            const currentWeek = Math.max(1, Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)));
+
+                            // Calcular avance real basado en entregas completadas
                             const realData = [];
-                            let cumulativeReal = 0;
+                            const totalEntregables = stats.total || deliverables.length || 1;
                             for (let w = 0; w <= Math.min(currentWeek, weeksToShow); w++) {
                               // Contar entregables completados hasta esta semana
                               const completedThisWeek = deliverables.filter(d => {
-                                if (!d.status.sentRev0Date) return false;
-                                const completedDate = new Date(d.status.sentRev0Date);
+                                // Considerar completado si tiene Rev0, RevB o RevA
+                                const hasProgress = d.status?.sentRev0 || d.status?.sentRevB || d.status?.sentRevA || d.status?.sentIniciado;
+                                if (!hasProgress) return false;
+                                // Si tiene fecha, verificar si es antes de esta semana
+                                const completedDate = d.status.sentRev0Date ? new Date(d.status.sentRev0Date) :
+                                                     d.status.sentRevBDate ? new Date(d.status.sentRevBDate) :
+                                                     d.status.sentRevADate ? new Date(d.status.sentRevADate) : today;
                                 const weeksSinceStart = Math.floor((completedDate - startDate) / (7 * 24 * 60 * 60 * 1000));
                                 return weeksSinceStart <= w;
                               }).length;
-                              cumulativeReal = (completedThisWeek / stats.total) * 100;
+                              const cumulativeReal = (completedThisWeek / totalEntregables) * 100;
                               realData.push({ week: w, value: cumulativeReal });
                             }
                             
@@ -3344,51 +3587,51 @@ export default function MatrizIntranet() {
                                   {[0, 25, 50, 75, 100].map(v => (
                                     <g key={v}>
                                       <line x1={padding.left} y1={yScale(v)} x2={chartWidth - padding.right} y2={yScale(v)} stroke="#e5e7eb" strokeWidth="1" />
-                                      <text x={padding.left - 10} y={yScale(v) + 4} textAnchor="end" fontSize="10" fill="#6b7280">{v}%</text>
+                                      <text x={padding.left - 5} y={yScale(v) + 3} textAnchor="end" fontSize="8" fill="#9ca3af" fontWeight="300">{v}%</text>
                                     </g>
                                   ))}
-                                  
-                                  {/* Etiquetas semanas */}
-                                  {Array.from({ length: Math.floor(weeksToShow / 2) + 1 }, (_, i) => i * 2).filter(w => w <= weeksToShow).map(w => (
-                                    <text key={w} x={xScale(w)} y={chartHeight - 18} textAnchor="middle" fontSize="10" fill="#6b7280">S{w}</text>
+
+                                  {/* Etiquetas semanas - mostrar todas */}
+                                  {Array.from({ length: weeksToShow + 1 }, (_, i) => i).map(w => (
+                                    <text key={w} x={xScale(w)} y={chartHeight - 15} textAnchor="middle" fontSize="7" fill="#9ca3af" fontWeight="300">S{w}</text>
                                   ))}
                                   
                                   {/* Línea vertical HOY */}
-                                  {currentWeek > 0 && currentWeek <= weeksToShow && (
+                                  {currentWeek >= 0 && currentWeek <= weeksToShow && (
                                     <>
-                                      <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" />
-                                      <text x={xScale(currentWeek)} y={padding.top - 8} textAnchor="middle" fontSize="10" fill="#ef4444" fontWeight="600">HOY</text>
+                                      <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4,3" />
+                                      <text x={xScale(currentWeek)} y={padding.top - 5} textAnchor="middle" fontSize="7" fill="#ef4444" fontWeight="500">S{currentWeek}</text>
                                     </>
                                   )}
-                                  
+
                                   {/* Curva proyectada */}
-                                  <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="3" />
-                                  
-                                  {/* Curva real */}
-                                  {realPath && currentWeek > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="3" />}
-                                  
+                                  <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="2.5" />
+
+                                  {/* Curva real - siempre mostrar si hay datos */}
+                                  {realPath && realData.length > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="2.5" />}
+
                                   {/* Leyenda */}
-                                  <g transform={`translate(${chartWidth - padding.right + 12}, ${padding.top + 15})`}>
-                                    <line x1="0" y1="0" x2="18" y2="0" stroke="#f97316" strokeWidth="3" />
-                                    <text x="24" y="4" fontSize="11" fill="#374151">Proyectado</text>
-                                    <line x1="0" y1="22" x2="18" y2="22" stroke="#22c55e" strokeWidth="3" />
-                                    <text x="24" y="26" fontSize="11" fill="#374151">Real</text>
+                                  <g transform={`translate(${chartWidth - padding.right + 8}, ${padding.top + 10})`}>
+                                    <line x1="0" y1="0" x2="12" y2="0" stroke="#f97316" strokeWidth="2" />
+                                    <text x="16" y="3" fontSize="8" fill="#6b7280" fontWeight="300">Proyectado</text>
+                                    <line x1="0" y1="16" x2="12" y2="16" stroke="#22c55e" strokeWidth="2" />
+                                    <text x="16" y="19" fontSize="8" fill="#6b7280" fontWeight="300">Real</text>
                                   </g>
                                 </svg>
                                 
                                 {/* Resumen numérico */}
-                                <div className="flex justify-center gap-8 mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                                <div className="flex justify-center gap-6 mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">Proyectado</div>
-                                    <div className="text-xl font-bold text-orange-500">{projectedAtCurrentWeek.toFixed(1)}%</div>
+                                    <div className="text-[10px] text-neutral-400 uppercase tracking-wide">Proyectado</div>
+                                    <div className="text-base font-medium text-orange-500">{projectedAtCurrentWeek.toFixed(1)}%</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">Real</div>
-                                    <div className="text-xl font-bold text-green-500">{realFinal.toFixed(1)}%</div>
+                                    <div className="text-[10px] text-neutral-400 uppercase tracking-wide">Real</div>
+                                    <div className="text-base font-medium text-green-500">{realFinal.toFixed(1)}%</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">Diferencia</div>
-                                    <div className={`text-xl font-bold ${difference >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <div className="text-[10px] text-neutral-400 uppercase tracking-wide">Diferencia</div>
+                                    <div className={`text-base font-medium ${difference >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                       {difference >= 0 ? '+' : ''}{difference.toFixed(1)}%
                                     </div>
                                   </div>
@@ -3469,14 +3712,14 @@ export default function MatrizIntranet() {
                                     {d.frozen && <Snowflake className="w-3 h-3 inline ml-1 text-blue-400" />}
                                   </td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{d.weekStart || d.secuencia}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} disabled={d.frozen} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} disabled={d.frozen || !isAdmin} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevA)}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosARecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosARecibidos', v)} disabled={d.frozen} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevB} onChange={v => handleCheck(d.statusKey, 'sentRevB', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosARecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosARecibidos', v)} disabled={d.frozen || !isAdmin} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevB} onChange={v => handleCheck(d.statusKey, 'sentRevB', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevB)}</td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosBRecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosBRecibidos', v)} disabled={d.frozen} /></td>
-                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRev0} onChange={v => handleCheck(d.statusKey, 'sentRev0', v)} disabled={d.frozen} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.comentariosBRecibidos} onChange={v => handleCheck(d.statusKey, 'comentariosBRecibidos', v)} disabled={d.frozen || !isAdmin} /></td>
+                                  <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRev0} onChange={v => handleCheck(d.statusKey, 'sentRev0', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRev0)}</td>
                                   <td className="p-2 text-center">
                                     {d.frozen ? (

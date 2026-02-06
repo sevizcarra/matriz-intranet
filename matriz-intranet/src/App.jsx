@@ -3435,20 +3435,25 @@ export default function MatrizIntranet() {
                             const startDate = new Date(dashboardStartDate);
                             const today = new Date();
                             const diffTime = today - startDate;
-                            const currentWeek = Math.max(0, Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)));
-                            
-                            // Calcular avance real basado en entregas completadas por semana
+                            const currentWeek = Math.max(1, Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)));
+
+                            // Calcular avance real basado en entregas completadas
                             const realData = [];
-                            let cumulativeReal = 0;
+                            const totalEntregables = stats.total || deliverables.length || 1;
                             for (let w = 0; w <= Math.min(currentWeek, weeksToShow); w++) {
                               // Contar entregables completados hasta esta semana
                               const completedThisWeek = deliverables.filter(d => {
-                                if (!d.status.sentRev0Date) return false;
-                                const completedDate = new Date(d.status.sentRev0Date);
+                                // Considerar completado si tiene Rev0, RevB o RevA
+                                const hasProgress = d.status?.sentRev0 || d.status?.sentRevB || d.status?.sentRevA || d.status?.sentIniciado;
+                                if (!hasProgress) return false;
+                                // Si tiene fecha, verificar si es antes de esta semana
+                                const completedDate = d.status.sentRev0Date ? new Date(d.status.sentRev0Date) :
+                                                     d.status.sentRevBDate ? new Date(d.status.sentRevBDate) :
+                                                     d.status.sentRevADate ? new Date(d.status.sentRevADate) : today;
                                 const weeksSinceStart = Math.floor((completedDate - startDate) / (7 * 24 * 60 * 60 * 1000));
                                 return weeksSinceStart <= w;
                               }).length;
-                              cumulativeReal = (completedThisWeek / stats.total) * 100;
+                              const cumulativeReal = (completedThisWeek / totalEntregables) * 100;
                               realData.push({ week: w, value: cumulativeReal });
                             }
                             
@@ -3484,24 +3489,24 @@ export default function MatrizIntranet() {
                                     </g>
                                   ))}
 
-                                  {/* Etiquetas semanas */}
-                                  {Array.from({ length: Math.floor(weeksToShow / 2) + 1 }, (_, i) => i * 2).filter(w => w <= weeksToShow).map(w => (
-                                    <text key={w} x={xScale(w)} y={chartHeight - 15} textAnchor="middle" fontSize="8" fill="#9ca3af" fontWeight="300">S{w}</text>
+                                  {/* Etiquetas semanas - mostrar todas */}
+                                  {Array.from({ length: weeksToShow + 1 }, (_, i) => i).map(w => (
+                                    <text key={w} x={xScale(w)} y={chartHeight - 15} textAnchor="middle" fontSize="7" fill="#9ca3af" fontWeight="300">S{w}</text>
                                   ))}
                                   
                                   {/* Línea vertical HOY */}
-                                  {currentWeek > 0 && currentWeek <= weeksToShow && (
+                                  {currentWeek >= 0 && currentWeek <= weeksToShow && (
                                     <>
                                       <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4,3" />
-                                      <text x={xScale(currentWeek)} y={padding.top - 5} textAnchor="middle" fontSize="7" fill="#ef4444" fontWeight="500">HOY</text>
+                                      <text x={xScale(currentWeek)} y={padding.top - 5} textAnchor="middle" fontSize="7" fill="#ef4444" fontWeight="500">S{currentWeek}</text>
                                     </>
                                   )}
-                                  
+
                                   {/* Curva proyectada */}
                                   <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="2.5" />
 
-                                  {/* Curva real */}
-                                  {realPath && currentWeek > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="2.5" />}
+                                  {/* Curva real - siempre mostrar si hay datos */}
+                                  {realPath && realData.length > 0 && <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="2.5" />}
 
                                   {/* Leyenda */}
                                   <g transform={`translate(${chartWidth - padding.right + 8}, ${padding.top + 10})`}>

@@ -111,9 +111,9 @@ const PrintStyles = () => (
 // ============================================
 
 const COLABORADORES_INICIAL = [
-  { id: 1, nombre: 'Cristóbal Ríos', cargo: 'Arquitecto', categoria: 'Ingeniero Senior', tarifaInterna: 0.75, iniciales: 'CR' },
-  { id: 2, nombre: 'Dominique Thompson', cargo: 'Arquitecta', categoria: 'Proyectista', tarifaInterna: 0.5, iniciales: 'DT' },
-  { id: 3, nombre: 'Sebastián Vizcarra', cargo: 'Arquitecto', categoria: 'Líder de Proyecto', tarifaInterna: 1.0, iniciales: 'SV' },
+  { id: 1, nombre: 'Cristóbal Ríos', cargo: 'Arquitecto', categoria: 'Ingeniero Senior', tarifaInterna: 0.75, iniciales: 'CR', proyectosAsignados: [] },
+  { id: 2, nombre: 'Dominique Thompson', cargo: 'Arquitecta', categoria: 'Proyectista', tarifaInterna: 0.5, iniciales: 'DT', proyectosAsignados: [] },
+  { id: 3, nombre: 'Sebastián Vizcarra', cargo: 'Arquitecto', categoria: 'Líder de Proyecto', tarifaInterna: 1.0, iniciales: 'SV', proyectosAsignados: [] },
 ];
 
 // Entregables del proyecto (35 documentos)
@@ -463,6 +463,16 @@ export default function MatrizIntranet() {
   // Helpers de rol
   const isAdmin = currentUser?.rol === 'admin';
   const canEdit = () => currentUser?.rol === 'admin';
+
+  // Helper para filtrar proyectos según rol y asignación
+  const currentColaborador = currentUser ? profesionales.find(c => c.id === currentUser.profesionalId) : null;
+  const proyectosVisibles = proyectos.filter(p => {
+    if (isAdmin) return true; // Admin ve todos
+    if (!currentColaborador) return false;
+    const asignados = currentColaborador.proyectosAsignados || [];
+    return asignados.includes(p.id); // Solo ve proyectos asignados
+  });
+  const proyectosActivosVisibles = proyectosVisibles.filter(p => p.estado === 'Activo');
 
   // Login handlers
   const handleLogin = () => {
@@ -1010,7 +1020,7 @@ export default function MatrizIntranet() {
               <FolderKanban className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{proyectos.filter(p => p.estado === 'Activo').length}</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">{proyectosActivosVisibles.length}</p>
               <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Proyectos</p>
             </div>
           </div>
@@ -1050,49 +1060,58 @@ export default function MatrizIntranet() {
           </Button>
         </div>
         
-        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
-          {proyectos.filter(p => p.estado === 'Activo').map(proyecto => (
-            <Card 
-              key={proyecto.id} 
-              className="p-3 sm:p-4"
-              onClick={() => {
-                setSelectedProject(proyecto.id);
-                setCurrentPage('proyecto-detail');
-              }}
-            >
-              <div className="flex items-start justify-between mb-2 sm:mb-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-orange-500 font-mono text-xs sm:text-sm">{proyecto.id}</span>
-                    <Badge variant="success">Activo</Badge>
+        {proyectosActivosVisibles.length === 0 ? (
+          <Card className="p-6 text-center">
+            <FolderKanban className="w-10 h-10 mx-auto text-neutral-300 dark:text-neutral-600 mb-3" />
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+              {!isAdmin ? 'No tienes proyectos asignados. Contacta al administrador.' : 'No hay proyectos activos.'}
+            </p>
+          </Card>
+        ) : (
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+            {proyectosActivosVisibles.map(proyecto => (
+              <Card
+                key={proyecto.id}
+                className="p-3 sm:p-4"
+                onClick={() => {
+                  setSelectedProject(proyecto.id);
+                  setCurrentPage('proyecto-detail');
+                }}
+              >
+                <div className="flex items-start justify-between mb-2 sm:mb-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-500 font-mono text-xs sm:text-sm">{proyecto.id}</span>
+                      <Badge variant="success">Activo</Badge>
+                    </div>
+                    <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre}</h3>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente}</p>
                   </div>
-                  <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre}</h3>
-                  <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente}</p>
+                  <ChevronRight className="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0 ml-2" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0 ml-2" />
-              </div>
-              
-              <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500 dark:text-neutral-400">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(proyecto.inicio).toLocaleDateString('es-CL')}
-                </span>
-                <span className="flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  {proyecto.avance.toFixed(1)}%
-                </span>
-              </div>
-              
-              {/* Barra de avance */}
-              <div className="mt-2 sm:mt-3 h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-orange-500 rounded-full transition-all"
-                  style={{ width: `${proyecto.avance}%` }}
-                />
-              </div>
-            </Card>
-          ))}
-        </div>
+
+                <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500 dark:text-neutral-400">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(proyecto.inicio).toLocaleDateString('es-CL')}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                    {proyecto.avance.toFixed(1)}%
+                  </span>
+                </div>
+
+                {/* Barra de avance */}
+                <div className="mt-2 sm:mt-3 h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-orange-500 rounded-full transition-all"
+                    style={{ width: `${proyecto.avance}%` }}
+                  />
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Accesos Rápidos */}
@@ -1137,79 +1156,94 @@ export default function MatrizIntranet() {
           <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Proyectos</h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm">Gestión de proyectos activos e históricos</p>
         </div>
-        <Button onClick={() => setShowNewProject(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Proyecto
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setShowNewProject(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Proyecto
+          </Button>
+        )}
       </div>
 
-      <div className="space-y-3">
-        {proyectos.map(proyecto => (
-          <Card 
-            key={proyecto.id} 
-            className="p-4"
-            onClick={() => {
-              setSelectedProject(proyecto.id);
-              setCurrentPage('proyecto-detail');
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-orange-500/20 rounded-lg">
-                  <Building2 className="w-6 h-6 text-orange-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-orange-500 font-mono">{proyecto.id}</span>
-                    <Badge variant={proyecto.estado === 'Activo' ? 'success' : 'default'}>
-                      {proyecto.estado}
-                    </Badge>
+      {proyectosVisibles.length === 0 ? (
+        <Card className="p-8 text-center">
+          <FolderKanban className="w-12 h-12 mx-auto text-neutral-300 dark:text-neutral-600 mb-3" />
+          <p className="text-neutral-500 dark:text-neutral-400">
+            {!isAdmin ? 'No tienes proyectos asignados. Contacta al administrador para que te asigne acceso.' : 'No hay proyectos creados.'}
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {proyectosVisibles.map(proyecto => (
+            <Card
+              key={proyecto.id}
+              className="p-4"
+              onClick={() => {
+                setSelectedProject(proyecto.id);
+                setCurrentPage('proyecto-detail');
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-orange-500/20 rounded-lg">
+                    <Building2 className="w-6 h-6 text-orange-500" />
                   </div>
-                  <h3 className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.nombre}</h3>
-                  <p className="text-neutral-500 dark:text-neutral-400 text-xs">{proyecto.cliente}</p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-500 font-mono">{proyecto.id}</span>
+                      <Badge variant={proyecto.estado === 'Activo' ? 'success' : 'default'}>
+                        {proyecto.estado}
+                      </Badge>
+                    </div>
+                    <h3 className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.nombre}</h3>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs">{proyecto.cliente}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.avance.toFixed(1)}%</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs">Avance</p>
+                  </div>
+                  <div className="w-24 sm:w-32 h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden hidden sm:block">
+                    <div
+                      className="h-full bg-orange-500 rounded-full"
+                      style={{ width: `${proyecto.avance}%` }}
+                    />
+                  </div>
+                  {isAdmin && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditProject(proyecto);
+                        }}
+                        className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
+                        title="Editar proyecto"
+                      >
+                        <Pencil className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-blue-500" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectToDelete(proyecto);
+                          setDeleteConfirmOpen(true);
+                        }}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
+                        title="Eliminar proyecto"
+                      >
+                        <Trash2 className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-red-500" />
+                      </button>
+                    </>
+                  )}
+                  <ChevronRight className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
                 </div>
               </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="text-right hidden sm:block">
-                  <p className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.avance.toFixed(1)}%</p>
-                  <p className="text-neutral-500 dark:text-neutral-400 text-xs">Avance</p>
-                </div>
-                <div className="w-24 sm:w-32 h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden hidden sm:block">
-                  <div 
-                    className="h-full bg-orange-500 rounded-full"
-                    style={{ width: `${proyecto.avance}%` }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditProject(proyecto);
-                  }}
-                  className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
-                  title="Editar proyecto"
-                >
-                  <Pencil className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-blue-500" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setProjectToDelete(proyecto);
-                    setDeleteConfirmOpen(true);
-                  }}
-                  className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
-                  title="Eliminar proyecto"
-                >
-                  <Trash2 className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-red-500" />
-                </button>
-                <ChevronRight className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -1319,8 +1353,8 @@ export default function MatrizIntranet() {
               </Select>
               
               <Select label="Proyecto" value={proyecto} onChange={e => { setProyecto(e.target.value); setEntregable(''); }}>
-                <option value="">Seleccionar...</option>
-                {proyectos.filter(p => p.estado === 'Activo').map(p => (
+                <option value="">{proyectosActivosVisibles.length === 0 ? 'Sin proyectos asignados' : 'Seleccionar...'}</option>
+                {proyectosActivosVisibles.map(p => (
                   <option key={p.id} value={p.id}>{p.id} - {p.nombre}</option>
                 ))}
               </Select>
@@ -2985,9 +3019,10 @@ export default function MatrizIntranet() {
                 )}
                 
                 {/* Lista de profesionales */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {profesionales.map(col => {
                     const usuarioCol = usuarios.find(u => u.profesionalId === col.id);
+                    const proyectosAsig = col.proyectosAsignados || [];
                     return (
                     <Card key={col.id} className="p-3">
                       <div className="flex items-center justify-between">
@@ -3024,6 +3059,55 @@ export default function MatrizIntranet() {
                           >
                             <Trash2 className="w-4 h-4 text-neutral-400 dark:text-neutral-500 hover:text-red-500" />
                           </button>
+                        </div>
+                      </div>
+
+                      {/* Proyectos asignados */}
+                      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-700">
+                        <p className="text-xs font-medium text-neutral-500 mb-2">📁 Proyectos asignados:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {proyectosAsig.length === 0 ? (
+                            <span className="text-xs text-neutral-400 italic">Sin proyectos asignados</span>
+                          ) : (
+                            proyectosAsig.map(pId => {
+                              const proy = proyectos.find(p => p.id === pId);
+                              return (
+                                <span key={pId} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                                  {pId}
+                                  <button
+                                    onClick={async () => {
+                                      const nuevosProyectos = proyectosAsig.filter(id => id !== pId);
+                                      const colActualizado = { ...col, proyectosAsignados: nuevosProyectos };
+                                      await saveColaborador(colActualizado);
+                                      showNotification('success', `Proyecto ${pId} removido`);
+                                    }}
+                                    className="hover:text-red-500"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              );
+                            })
+                          )}
+                          {/* Selector para agregar proyecto */}
+                          <select
+                            className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 bg-white dark:bg-neutral-700 dark:border-neutral-600"
+                            value=""
+                            onChange={async (e) => {
+                              const pId = e.target.value;
+                              if (pId && !proyectosAsig.includes(pId)) {
+                                const nuevosProyectos = [...proyectosAsig, pId];
+                                const colActualizado = { ...col, proyectosAsignados: nuevosProyectos };
+                                await saveColaborador(colActualizado);
+                                showNotification('success', `Proyecto ${pId} asignado`);
+                              }
+                            }}
+                          >
+                            <option value="">+ Agregar...</option>
+                            {proyectos.filter(p => !proyectosAsig.includes(p.id)).map(p => (
+                              <option key={p.id} value={p.id}>{p.id} - {p.nombre}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </Card>

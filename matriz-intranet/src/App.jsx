@@ -522,7 +522,7 @@ export default function MatrizIntranet() {
     const asignados = currentColaborador.proyectosAsignados || [];
     return asignados.includes(p.id); // Solo ve proyectos asignados
   });
-  const proyectosActivosVisibles = proyectosVisibles.filter(p => p.estado === 'Activo');
+  const proyectosActivosVisibles = proyectosVisibles.filter(p => !p.estado || p.estado?.toLowerCase() === 'activo');
 
   // ============================================
   // FIRESTORE SUBSCRIPTIONS

@@ -199,14 +199,26 @@ const PROYECTOS_INICIALES = [
   },
 ];
 
-// Obtener semanas del mes actual
+// Obtener número de semana del año (ISO 8601)
+const getWeekOfYear = (date) => {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+};
+
+// Obtener semana actual del año
+const getCurrentWeekOfYear = () => getWeekOfYear(new Date());
+
+// Obtener semanas del mes actual (con números de semana del año)
 const getWeeksOfMonth = () => {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  
+
   const weeks = [];
   let weekStart = new Date(firstDay);
   // Ajustar al lunes
@@ -214,19 +226,18 @@ const getWeeksOfMonth = () => {
   if (dayOfWeek !== 1) {
     weekStart.setDate(weekStart.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
   }
-  
-  let weekNum = 1;
+
   while (weekStart <= lastDay) {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 4); // Viernes
+    const weekOfYear = getWeekOfYear(weekStart); // Usar número de semana del año
     weeks.push({
-      num: weekNum,
+      num: weekOfYear, // Ahora es el número de semana del año
       start: new Date(weekStart),
       end: weekEnd,
-      label: `Semana ${weekNum} (${weekStart.getDate()}/${weekStart.getMonth()+1} - ${weekEnd.getDate()}/${weekEnd.getMonth()+1})`
+      label: `S${weekOfYear} (${weekStart.getDate()}/${weekStart.getMonth()+1} - ${weekEnd.getDate()}/${weekEnd.getMonth()+1})`
     });
     weekStart.setDate(weekStart.getDate() + 7);
-    weekNum++;
   }
   return weeks;
 };
@@ -2116,7 +2127,7 @@ export default function MatrizIntranet() {
                                 onBlur={e => updateEntregable(selectedProyectoEdit, ent.id, { weekStart: parseInt(e.target.value) || 1 })}
                               />
                             ) : (
-                              <span className="text-neutral-500">S{ent.weekStart || ent.secuencia || 1}</span>
+                              <span className="text-neutral-500">S{getWeekOfYear(new Date(proyectoEdit?.inicio || dashboardStartDate)) + (ent.weekStart || ent.secuencia || 1) - 1}</span>
                             )}
                           </td>
                           <td className="py-2 text-right">
@@ -3538,11 +3549,18 @@ export default function MatrizIntranet() {
                               projectedData.push({ week: w, value: progress });
                             }
                             
-                            // Calcular semana actual
+                            // Calcular semanas del año (continuidad anual)
                             const startDate = new Date(dashboardStartDate);
                             const today = new Date();
+                            const startWeekOfYear = getWeekOfYear(startDate); // Semana del año en que inició el proyecto
+                            const currentWeekOfYearValue = getCurrentWeekOfYear(); // Semana actual del año
+
+                            // Semana relativa al proyecto (para cálculos internos)
                             const diffTime = today - startDate;
-                            const currentWeek = Math.max(1, Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)));
+                            const projectWeek = Math.max(1, Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000)));
+
+                            // La posición en el gráfico es relativa al proyecto
+                            const currentWeek = projectWeek;
 
                             // Calcular avance real basado en entregas completadas
                             const realData = [];
@@ -3596,16 +3614,16 @@ export default function MatrizIntranet() {
                                     </g>
                                   ))}
 
-                                  {/* Etiquetas semanas - mostrar todas */}
+                                  {/* Etiquetas semanas del año (continuidad anual) */}
                                   {Array.from({ length: weeksToShow + 1 }, (_, i) => i).map(w => (
-                                    <text key={w} x={xScale(w)} y={chartHeight - 15} textAnchor="middle" fontSize="7" fill="#9ca3af" fontWeight="300">S{w}</text>
+                                    <text key={w} x={xScale(w)} y={chartHeight - 15} textAnchor="middle" fontSize="7" fill="#9ca3af" fontWeight="300">S{startWeekOfYear + w}</text>
                                   ))}
                                   
-                                  {/* Línea vertical HOY */}
+                                  {/* Línea vertical HOY - muestra semana del año */}
                                   {currentWeek >= 0 && currentWeek <= weeksToShow && (
                                     <>
                                       <line x1={xScale(currentWeek)} y1={padding.top} x2={xScale(currentWeek)} y2={chartHeight - padding.bottom} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4,3" />
-                                      <text x={xScale(currentWeek)} y={padding.top - 5} textAnchor="middle" fontSize="7" fill="#ef4444" fontWeight="500">S{currentWeek}</text>
+                                      <text x={xScale(currentWeek)} y={padding.top - 5} textAnchor="middle" fontSize="7" fill="#ef4444" fontWeight="500">S{currentWeekOfYearValue}</text>
                                     </>
                                   )}
 
@@ -3725,7 +3743,7 @@ export default function MatrizIntranet() {
                                     {d.nombre || d.name}
                                     {d.frozen && <Snowflake className="w-3 h-3 inline ml-1 text-blue-400" />}
                                   </td>
-                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{d.weekStart || d.secuencia}</td>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{getWeekOfYear(new Date(dashboardStartDate)) + (d.weekStart || d.secuencia) - 1}</td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevA)}</td>
@@ -3833,9 +3851,11 @@ export default function MatrizIntranet() {
                               const rowHeight = 28;
                               const labelWidth = 150;
                               
+                              // Usar semanas del año (continuidad anual)
+                              const startWeekOfYear = getWeekOfYear(startDate);
                               const weeks = Array.from({ length: weeksToShow }, (_, i) => {
                                 const weekDate = addWeeks(startDate, i);
-                                return { num: i + 1, date: weekDate };
+                                return { num: startWeekOfYear + i, date: weekDate };
                               });
                               
                               // Función para determinar el estado visual de cada entregable

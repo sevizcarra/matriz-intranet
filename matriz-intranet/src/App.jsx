@@ -1063,6 +1063,97 @@ export default function MatrizIntranet() {
         </Card>
       </div>
 
+      {/* Alertas de Vencimiento */}
+      {(() => {
+        const today = new Date();
+        const alertas = [];
+
+        proyectosActivosVisibles.forEach(proyecto => {
+          const entregables = proyecto.entregables || [];
+          entregables.forEach(ent => {
+            if (ent.frozen) return;
+            const deadlines = calculateDeadlines(proyecto.inicio || dashboardStartDate, ent.weekStart || ent.secuencia);
+            const statusKey = `${proyecto.id}_${ent.id}`;
+            const status = statusData[statusKey] || {};
+
+            // Determinar qué revisión está pendiente
+            let pendingRev = null;
+            let deadline = null;
+
+            if (!status.sentRev0) {
+              if (!status.sentRevA) {
+                pendingRev = 'REV_A';
+                deadline = new Date(deadlines.revA);
+              } else if (!status.sentRevB && status.comentariosARecibidos) {
+                pendingRev = 'REV_B';
+                deadline = new Date(deadlines.revB);
+              } else if (status.comentariosBRecibidos) {
+                pendingRev = 'REV_0';
+                deadline = new Date(deadlines.rev0);
+              }
+            }
+
+            if (pendingRev && deadline) {
+              const diffDays = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+              if (diffDays <= 7) {
+                alertas.push({
+                  proyecto: proyecto.id,
+                  proyectoNombre: proyecto.nombre,
+                  entregable: ent.nombre || ent.codigo,
+                  codigo: ent.codigo,
+                  revision: pendingRev,
+                  deadline: deadline,
+                  diffDays: diffDays,
+                  atrasado: diffDays < 0
+                });
+              }
+            }
+          });
+        });
+
+        // Ordenar: primero atrasados, luego por días restantes
+        alertas.sort((a, b) => a.diffDays - b.diffDays);
+
+        if (alertas.length === 0) return null;
+
+        return (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-orange-500" />
+              <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Alertas de Vencimiento</h2>
+              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{alertas.length}</span>
+            </div>
+            <Card className="divide-y divide-neutral-200 dark:divide-neutral-700">
+              {alertas.slice(0, 5).map((alerta, i) => (
+                <div key={i} className={`p-3 flex items-center justify-between ${alerta.atrasado ? 'bg-red-50 dark:bg-red-900/20' : ''}`}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-500 font-mono text-xs">{alerta.proyecto}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${alerta.atrasado ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'}`}>
+                        {alerta.revision}
+                      </span>
+                    </div>
+                    <p className="text-neutral-800 dark:text-neutral-100 text-sm truncate">{alerta.entregable}</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs">{alerta.codigo}</p>
+                  </div>
+                  <div className="text-right ml-3">
+                    <p className={`text-sm font-medium ${alerta.atrasado ? 'text-red-600' : alerta.diffDays <= 3 ? 'text-orange-600' : 'text-neutral-600 dark:text-neutral-300'}`}>
+                      {alerta.atrasado ? `${Math.abs(alerta.diffDays)}d atrasado` : alerta.diffDays === 0 ? 'Hoy' : `${alerta.diffDays}d restantes`}
+                    </p>
+                    <p className="text-neutral-400 text-xs">{alerta.deadline.toLocaleDateString('es-CL')}</p>
+                  </div>
+                </div>
+              ))}
+              {alertas.length > 5 && (
+                <div className="p-2 text-center">
+                  <span className="text-neutral-500 dark:text-neutral-400 text-xs">+{alertas.length - 5} alertas más</span>
+                </div>
+              )}
+            </Card>
+          </div>
+        );
+      })()}
+
       {/* Proyectos Activos */}
       <div>
         <div className="flex items-center justify-between mb-3">

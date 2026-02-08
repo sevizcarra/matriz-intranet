@@ -464,16 +464,6 @@ export default function MatrizIntranet() {
   const isAdmin = currentUser?.rol === 'admin';
   const canEdit = () => currentUser?.rol === 'admin';
 
-  // Helper para filtrar proyectos según rol y asignación
-  const currentColaborador = currentUser ? profesionales.find(c => c.id === currentUser.profesionalId) : null;
-  const proyectosVisibles = proyectos.filter(p => {
-    if (isAdmin) return true; // Admin ve todos
-    if (!currentColaborador) return false;
-    const asignados = currentColaborador.proyectosAsignados || [];
-    return asignados.includes(p.id); // Solo ve proyectos asignados
-  });
-  const proyectosActivosVisibles = proyectosVisibles.filter(p => p.estado === 'Activo');
-
   // Login handlers
   const handleLogin = () => {
     if (!loginEmail || !loginPassword) {
@@ -512,6 +502,16 @@ export default function MatrizIntranet() {
   const [firestoreReady, setFirestoreReady] = useState(false);
   // Estado persistente para Facturación (evita reset al re-render)
   const [selectedProyectoFacturacion, setSelectedProyectoFacturacion] = useState('');
+
+  // Helper para filtrar proyectos según rol y asignación
+  const currentColaborador = currentUser ? profesionales.find(c => c.id === currentUser.profesionalId) : null;
+  const proyectosVisibles = proyectos.filter(p => {
+    if (isAdmin) return true; // Admin ve todos
+    if (!currentColaborador) return false;
+    const asignados = currentColaborador.proyectosAsignados || [];
+    return asignados.includes(p.id); // Solo ve proyectos asignados
+  });
+  const proyectosActivosVisibles = proyectosVisibles.filter(p => p.estado === 'Activo');
 
   // ============================================
   // FIRESTORE SUBSCRIPTIONS

@@ -1248,30 +1248,34 @@ export default function MatrizIntranet() {
       {/* Accesos Rápidos */}
       <div>
         <h2 className="text-neutral-700 dark:text-neutral-200 text-sm font-medium mb-3">Accesos Rápidos</h2>
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <Card 
+        <div className={`grid gap-2 sm:gap-3 ${isAdmin ? 'grid-cols-3' : 'grid-cols-1'}`}>
+          <Card
             className="p-3 sm:p-4 text-center"
             onClick={() => setCurrentPage('horas')}
           >
             <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500 mx-auto mb-1 sm:mb-2" />
             <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Cargar Horas</p>
           </Card>
-          
-          <Card 
-            className="p-3 sm:p-4 text-center"
-            onClick={() => setShowNewProject(true)}
-          >
-            <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 mx-auto mb-1 sm:mb-2" />
-            <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Nuevo Proyecto</p>
-          </Card>
-          
-          <Card
-            className="p-3 sm:p-4 text-center"
-            onClick={() => setCurrentPage('facturacion')}
-          >
-            <FileSpreadsheet className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500 mx-auto mb-1 sm:mb-2" />
-            <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Adm. Proyectos</p>
-          </Card>
+
+          {isAdmin && (
+            <Card
+              className="p-3 sm:p-4 text-center"
+              onClick={() => setShowNewProject(true)}
+            >
+              <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 mx-auto mb-1 sm:mb-2" />
+              <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Nuevo Proyecto</p>
+            </Card>
+          )}
+
+          {isAdmin && (
+            <Card
+              className="p-3 sm:p-4 text-center"
+              onClick={() => setCurrentPage('facturacion')}
+            >
+              <FileSpreadsheet className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500 mx-auto mb-1 sm:mb-2" />
+              <p className="text-neutral-800 dark:text-neutral-100 text-xs sm:text-sm">Adm. Proyectos</p>
+            </Card>
+          )}
         </div>
       </div>
     </div>

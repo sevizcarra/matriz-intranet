@@ -492,13 +492,23 @@ export default function MatrizIntranet() {
       setTimeout(() => setLoginError(''), 3000);
       return;
     }
-    const user = usuarios.find(u => u.email === loginEmail && u.password === loginPassword);
+    // Buscar usuario por email
+    const user = usuarios.find(u => u.email === loginEmail);
     if (user) {
-      setCurrentUser(user);
-      setLoginEmail('');
-      setLoginPassword('');
-      setLoginError('');
-      // EDP siempre requiere clave, incluso para admin
+      // Para admin, verificar contra adminStoredPassword
+      const passwordValid = user.rol === 'admin'
+        ? loginPassword === adminStoredPassword
+        : loginPassword === user.password;
+
+      if (passwordValid) {
+        setCurrentUser(user);
+        setLoginEmail('');
+        setLoginPassword('');
+        setLoginError('');
+      } else {
+        setLoginError('Email o contraseña incorrectos');
+        setTimeout(() => setLoginError(''), 3000);
+      }
     } else {
       setLoginError('Email o contraseña incorrectos');
       setTimeout(() => setLoginError(''), 3000);
@@ -508,7 +518,6 @@ export default function MatrizIntranet() {
   const handleLogout = () => {
     setCurrentUser(null);
     setCurrentPage('home');
-    setEdpUnlocked(false);
   };
 
   // ============================================
@@ -594,13 +603,11 @@ export default function MatrizIntranet() {
     };
   }, []);
 
-  // Estados para EDP
-  const [edpUnlocked, setEdpUnlocked] = useState(false);
-  const [edpPassword, setEdpPassword] = useState('');
+  // Estados para contraseña admin
   const [showPassword, setShowPassword] = useState(false);
-  const [currentEdpPassword, setCurrentEdpPassword] = useState(''); // Para verificar antes de cambiar
-  const [newEdpPassword, setNewEdpPassword] = useState('');
-  const [edpStoredPassword, setEdpStoredPassword] = useState('matriz2026'); // Contraseña guardada
+  const [currentAdminPassword, setCurrentAdminPassword] = useState(''); // Para verificar antes de cambiar
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [adminStoredPassword, setAdminStoredPassword] = useState('admin123'); // Contraseña del admin
   
   // Estados para formularios
   const [showNewProject, setShowNewProject] = useState(false);
@@ -990,6 +997,13 @@ export default function MatrizIntranet() {
         iniciales: getIniciales(profesionalToEdit.nombre)
       };
 
+      // Si se proporcionó una nueva contraseña, actualizarla
+      if (profesionalToEdit.newPassword && profesionalToEdit.newPassword.trim() !== '') {
+        profesionalActualizado.password = profesionalToEdit.newPassword;
+      }
+      // Limpiar el campo temporal newPassword antes de guardar
+      delete profesionalActualizado.newPassword;
+
       // Guardar en Firestore
       await saveColaborador(profesionalActualizado);
 
@@ -1004,7 +1018,7 @@ export default function MatrizIntranet() {
     { id: 'home', label: 'Home', icon: Home, adminOnly: false },
     { id: 'proyectos', label: 'Proyectos', icon: FolderKanban, adminOnly: false },
     { id: 'horas', label: 'Carga HsH', icon: Clock, adminOnly: false },
-    { id: 'facturacion', label: 'Adm. Proyectos', icon: FileSpreadsheet, locked: true, adminOnly: true },
+    { id: 'facturacion', label: 'Adm. Proyectos', icon: FileSpreadsheet, adminOnly: true },
     { id: 'config', label: 'Config', icon: Settings, adminOnly: true },
   ];
   const navItems = isAdmin ? allNavItems : allNavItems.filter(item => !item.adminOnly);
@@ -2076,6 +2090,31 @@ export default function MatrizIntranet() {
 
       const mesNombre = new Date(selectedMonth + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
 
+      // Calcular totales para el resumen
+      let totalProyectoHsH = 0;
+      let mesAnteriorHsH = 0;
+      const mesEnCursoHsH = entregables.reduce((s, e) => s + e.valor, 0);
+
+      const porProyectoExcel = agruparPorProyecto(entregables);
+      Object.entries(porProyectoExcel).forEach(([pid, pdata]) => {
+        const proyecto = proyectos.find(p => p.id === pid);
+        if (proyecto && proyecto.entregables) {
+          proyecto.entregables.forEach(ent => {
+            if (!ent.frozen) {
+              totalProyectoHsH += (ent.valorRevA || 0) + (ent.valorRevB || 0) + (ent.valorRev0 || 0);
+              const avanceAnterior = (ent.avanceAnterior || 0) / 100;
+              const valorTotal = (ent.valorRevA || 0) + (ent.valorRevB || 0) + (ent.valorRev0 || 0);
+              mesAnteriorHsH += valorTotal * avanceAnterior;
+            }
+          });
+        }
+      });
+      const totalPendienteHsH = Math.max(0, totalProyectoHsH - mesAnteriorHsH - mesEnCursoHsH);
+
+      // Obtener jefe de proyecto si hay un proyecto seleccionado
+      const proyectoSelEDP = selectedProyectoEDP !== 'all' ? proyectos.find(p => p.id === selectedProyectoEDP) : null;
+      const jefeProyectoNombre = proyectoSelEDP?.jefeProyecto || '';
+
       // Crear datos para Excel (formato del usuario: C.COSTO, TIPO, CODIGO, DESCRIPCIÓN, REV, FECHA, HsH, OBS)
       const data = [
         ['ESTADO DE PAGO - ' + mesNombre.toUpperCase()],
@@ -2092,7 +2131,20 @@ export default function MatrizIntranet() {
           e.observacion || ''
         ]),
         [''],
-        ['', '', '', '', '', 'TOTAL:', entregables.reduce((s, e) => s + e.valor, 0).toFixed(2) + ' HsH', '']
+        ['', '', '', '', '', 'TOTAL:', mesEnCursoHsH.toFixed(2) + ' HsH', ''],
+        [''],
+        [''],
+        ['RESUMEN DE HORAS'],
+        ['Total Proyecto:', totalProyectoHsH.toFixed(1) + ' HsH'],
+        ['Mes Anterior:', mesAnteriorHsH.toFixed(1) + ' HsH'],
+        ['Mes en Curso:', mesEnCursoHsH.toFixed(1) + ' HsH'],
+        ['Total Pendiente:', totalPendienteHsH.toFixed(1) + ' HsH'],
+        [''],
+        [''],
+        [''],
+        ['_______________________________', '', '', '_______________________________'],
+        ['Jefe de Proyecto' + (selectedProyectoEDP !== 'all' ? ' ' + selectedProyectoEDP : ''), '', '', 'Líder de Arquitectura'],
+        [jefeProyectoNombre, '', '', 'Sebastián A. Vizcarra']
       ];
 
       const ws = window.XLSX.utils.aoa_to_sheet(data);
@@ -3235,10 +3287,10 @@ export default function MatrizIntranet() {
                 <Card className="p-4">
                   <h3 className="font-medium text-neutral-800 dark:text-neutral-100 mb-3 flex items-center gap-2">
                     <Lock className="w-4 h-4" />
-                    Cambiar Contraseña EDP
+                    Cambiar Contraseña Admin
                   </h3>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-                    Para cambiar la contraseña del módulo EDP, ingresa tu contraseña actual.
+                    Para cambiar tu contraseña de acceso a la intranet, ingresa tu contraseña actual.
                   </p>
                   <div className="space-y-3 max-w-sm">
                     <div>
@@ -3246,8 +3298,8 @@ export default function MatrizIntranet() {
                       <input
                         type="password"
                         placeholder="••••••••"
-                        value={currentEdpPassword}
-                        onChange={e => setCurrentEdpPassword(e.target.value)}
+                        value={currentAdminPassword}
+                        onChange={e => setCurrentAdminPassword(e.target.value)}
                         className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
@@ -3256,27 +3308,27 @@ export default function MatrizIntranet() {
                       <input
                         type="password"
                         placeholder="••••••••"
-                        value={newEdpPassword}
-                        onChange={e => setNewEdpPassword(e.target.value)}
+                        value={newAdminPassword}
+                        onChange={e => setNewAdminPassword(e.target.value)}
                         className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
-                    <Button 
+                    <Button
                       onClick={() => {
-                        if (currentEdpPassword !== edpStoredPassword) {
+                        if (currentAdminPassword !== adminStoredPassword) {
                           showNotification('error', 'La contraseña actual es incorrecta');
                           return;
                         }
-                        if (newEdpPassword.trim().length < 4) {
+                        if (newAdminPassword.trim().length < 4) {
                           showNotification('error', 'La nueva contraseña debe tener al menos 4 caracteres');
                           return;
                         }
-                        setEdpStoredPassword(newEdpPassword.trim());
-                        showNotification('success', 'Contraseña actualizada correctamente');
-                        setCurrentEdpPassword('');
-                        setNewEdpPassword('');
+                        setAdminStoredPassword(newAdminPassword.trim());
+                        showNotification('success', 'Contraseña de admin actualizada correctamente');
+                        setCurrentAdminPassword('');
+                        setNewAdminPassword('');
                       }}
-                      disabled={!currentEdpPassword.trim() || !newEdpPassword.trim()}
+                      disabled={!currentAdminPassword.trim() || !newAdminPassword.trim()}
                     >
                       <Save className="w-4 h-4 mr-2" />
                       Guardar Contraseña
@@ -3382,6 +3434,17 @@ export default function MatrizIntranet() {
                         onChange={e => setProfesionalToEdit(prev => ({ ...prev, tarifaInterna: e.target.value }))}
                         className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Nueva Contraseña (opcional)</label>
+                      <input
+                        type="password"
+                        placeholder="Dejar vacío para mantener actual"
+                        value={profesionalToEdit.newPassword || ''}
+                        onChange={e => setProfesionalToEdit(prev => ({ ...prev, newPassword: e.target.value }))}
+                        className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      <p className="text-xs text-neutral-500 mt-1">Solo el admin puede establecer contraseñas</p>
                     </div>
                   </div>
                   

@@ -598,6 +598,7 @@ export default function MatrizIntranet() {
     id: '',
     nombre: '',
     cliente: '',
+    jefeProyecto: '',
     tarifaVenta: 1.2,
     entregables: [] // Array de { id, codigo, nombre, secuencia, valorRevA, valorRevB, valorRev0 }
   });
@@ -2664,6 +2665,24 @@ export default function MatrizIntranet() {
                     </div>
                   </div>
 
+                  {/* Sección de Firmas */}
+                  <div className="mt-8 pt-4 border-t border-neutral-300">
+                    <div className="grid grid-cols-2 gap-8">
+                      {/* Firma Jefe de Proyecto */}
+                      <div className="text-center">
+                        <div className="border-b border-neutral-400 h-12 mb-2"></div>
+                        <p className="text-[10px] font-bold text-neutral-700">Jefe de Proyecto {selectedProyectoEDP !== 'all' ? selectedProyectoEDP : ''}</p>
+                        <p className="text-[9px] text-neutral-600">{selectedProyectoEDP !== 'all' ? (proyectos.find(p => p.id === selectedProyectoEDP)?.jefeProyecto || '') : ''}</p>
+                      </div>
+                      {/* Firma Líder de Arquitectura */}
+                      <div className="text-center">
+                        <div className="border-b border-neutral-400 h-12 mb-2"></div>
+                        <p className="text-[10px] font-bold text-neutral-700">Líder de Arquitectura</p>
+                        <p className="text-[9px] text-neutral-600">Sebastián A. Vizcarra</p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Footer */}
                   <div className="mt-6 pt-4 border-t border-neutral-200 text-[8px] text-neutral-400 flex justify-between">
                     <span>Generado: {new Date().toLocaleString('es-CL')}</span>
@@ -4058,6 +4077,13 @@ export default function MatrizIntranet() {
                 onChange={e => setNewProject(prev => ({ ...prev, cliente: e.target.value }))}
               />
 
+              <Input
+                label="Jefe de Proyecto"
+                placeholder="Ej: Juan Pérez"
+                value={newProject.jefeProyecto}
+                onChange={e => setNewProject(prev => ({ ...prev, jefeProyecto: e.target.value }))}
+              />
+
               {/* Campo de carga de Excel */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -4128,6 +4154,7 @@ export default function MatrizIntranet() {
                         id: newProject.id,
                         nombre: newProject.nombre,
                         cliente: newProject.cliente,
+                        jefeProyecto: newProject.jefeProyecto,
                         tarifaVenta: newProject.tarifaVenta,
                         estado: 'Activo',
                         inicio: new Date().toISOString().split('T')[0],
@@ -4162,7 +4189,7 @@ export default function MatrizIntranet() {
                       setStatusData(newStatusData);
 
                       // Limpiar formulario
-                      setNewProject({ id: '', nombre: '', cliente: '', tarifaVenta: 1.2, entregables: [] });
+                      setNewProject({ id: '', nombre: '', cliente: '', jefeProyecto: '', tarifaVenta: 1.2, entregables: [] });
                       setExcelFileName('');
                       setExcelError('');
                       setShowNewProject(false);

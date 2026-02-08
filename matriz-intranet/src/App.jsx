@@ -211,11 +211,21 @@ const getWeekOfYear = (date) => {
 // Obtener semana actual del año
 const getCurrentWeekOfYear = () => getWeekOfYear(new Date());
 
-// Obtener semanas del mes actual (con números de semana del año)
-const getWeeksOfMonth = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
+// Obtener semanas de un mes específico (con números de semana del año)
+// Si no se pasa parámetro, usa el mes actual
+const getWeeksOfMonth = (mesString = null) => {
+  let year, month;
+  if (mesString) {
+    // Formato: "2026-02"
+    const [y, m] = mesString.split('-').map(Number);
+    year = y;
+    month = m - 1; // JavaScript months are 0-indexed
+  } else {
+    const now = new Date();
+    year = now.getFullYear();
+    month = now.getMonth();
+  }
+
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
 
@@ -1362,8 +1372,12 @@ export default function MatrizIntranet() {
     const [revision, setRevision] = useState('REV_A');
     const [tipoCarga, setTipoCarga] = useState('PLA'); // PLA, DOC, INF, REU, VIS
     const [descripcionCarga, setDescripcionCarga] = useState(''); // Para REU y VIS
-    
-    const weeks = getWeeksOfMonth();
+    const [mesHoras, setMesHoras] = useState(() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    });
+
+    const weeks = getWeeksOfMonth(mesHoras);
 
     // Entregables dinámicos del proyecto seleccionado
     const proyectoSeleccionado = proyectos.find(p => p.id === proyecto);
@@ -1407,6 +1421,10 @@ export default function MatrizIntranet() {
         }
       }
 
+      // Crear fecha basada en el mes seleccionado (día 15 del mes para evitar problemas de timezone)
+      const [yearSel, monthSel] = mesHoras.split('-').map(Number);
+      const fechaRegistro = new Date(yearSel, monthSel - 1, 15);
+
       const nuevoRegistro = {
         id: Date.now(),
         profesionalId: parseInt(profesional),
@@ -1416,7 +1434,8 @@ export default function MatrizIntranet() {
         entregable: esReunionOVisita ? descripcionCarga : entregable,
         revision: esReunionOVisita ? null : revision,
         horas: parseFloat(horas),
-        fecha: new Date().toISOString(),
+        fecha: fechaRegistro.toISOString(),
+        mesRegistro: mesHoras, // Guardar también el mes explícitamente
       };
 
       // Guardar en Firestore
@@ -1431,16 +1450,43 @@ export default function MatrizIntranet() {
     
     const horasDelMes = horasRegistradas.filter(h => {
       const fecha = new Date(h.fecha);
-      const now = new Date();
-      // Mostrar todas las horas del mes actual (el filtro de Sebastián solo aplica en EDP)
-      return fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear();
+      const [yearSel, monthSel] = mesHoras.split('-').map(Number);
+      // Filtrar por el mes seleccionado
+      return fecha.getMonth() === (monthSel - 1) && fecha.getFullYear() === yearSel;
     });
     
     return (
       <div className="space-y-4 sm:space-y-6">
-        <div>
-          <h1 className="text-lg sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium">Carga HsH</h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm">Registro semanal por proyecto</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium">Carga HsH</h1>
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm">Registro semanal por proyecto</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const [y, m] = mesHoras.split('-').map(Number);
+                const prev = new Date(y, m - 2, 1);
+                setMesHoras(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`);
+              }}
+              className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+            </button>
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200 min-w-[100px] text-center">
+              {new Date(mesHoras + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
+            </span>
+            <button
+              onClick={() => {
+                const [y, m] = mesHoras.split('-').map(Number);
+                const next = new Date(y, m, 1);
+                setMesHoras(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`);
+              }}
+              className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full transition-colors"
+            >
+              <ChevronRight className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
@@ -1537,7 +1583,7 @@ export default function MatrizIntranet() {
           {/* Resumen del mes */}
           <Card className="p-3 sm:p-4 lg:col-span-2">
             <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">
-              Horas - {new Date().toLocaleDateString('es-CL', { month: 'short', year: 'numeric' })}
+              Horas - {new Date(mesHoras + '-01').toLocaleDateString('es-CL', { month: 'short', year: 'numeric' })}
             </h2>
             
             {horasDelMes.length === 0 ? (

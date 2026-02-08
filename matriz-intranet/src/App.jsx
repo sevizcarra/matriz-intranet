@@ -2140,6 +2140,10 @@ export default function MatrizIntranet() {
         ['Mes en Curso:', mesEnCursoHsH.toFixed(1) + ' HsH'],
         ['Total Pendiente:', totalPendienteHsH.toFixed(1) + ' HsH'],
         [''],
+        ['FACTURACIÓN'],
+        ['HsH Mes en Curso:', mesEnCursoHsH.toFixed(1)],
+        ['Factor:', '1,5'],
+        ['Valor Bruto HsH:', (mesEnCursoHsH * 1.5).toFixed(1)],
         [''],
         [''],
         ['_______________________________', '', '', '_______________________________'],
@@ -2719,6 +2723,22 @@ export default function MatrizIntranet() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Resumen con Factor */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-center">
+                      <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-1">HsH Mes en Curso</p>
+                      <p className="text-xl font-bold text-neutral-800 dark:text-neutral-100">{totalGeneral.toFixed(1)}</p>
+                    </div>
+                    <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-center">
+                      <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-1">Factor</p>
+                      <p className="text-xl font-bold text-blue-600">1,5</p>
+                    </div>
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 text-center">
+                      <p className="text-orange-600 dark:text-orange-400 text-xs mb-1">Valor Bruto HsH</p>
+                      <p className="text-xl font-bold text-orange-600">{(totalGeneral * 1.5).toFixed(1)}</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </Card>
@@ -2845,6 +2865,22 @@ export default function MatrizIntranet() {
                           </>
                         );
                       })()}
+                    </div>
+
+                    {/* Segunda fila: Factor y Valor Bruto */}
+                    <div className="grid grid-cols-3 gap-2 text-[9px] mt-2">
+                      <div className="text-center p-1.5 bg-white rounded border">
+                        <p className="text-neutral-500 text-[8px]">HsH Mes en Curso</p>
+                        <p className="font-bold text-neutral-800 text-xs">{totalGeneral.toFixed(1)}</p>
+                      </div>
+                      <div className="text-center p-1.5 bg-white rounded border">
+                        <p className="text-neutral-500 text-[8px]">Factor</p>
+                        <p className="font-bold text-blue-600 text-xs">1,5</p>
+                      </div>
+                      <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
+                        <p className="text-orange-600 text-[8px]">Valor Bruto HsH</p>
+                        <p className="font-bold text-orange-600 text-sm">{(totalGeneral * 1.5).toFixed(1)}</p>
+                      </div>
                     </div>
                   </div>
 

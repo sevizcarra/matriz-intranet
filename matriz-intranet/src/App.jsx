@@ -2605,39 +2605,51 @@ export default function MatrizIntranet() {
                   {/* Resumen compacto */}
                   <div className="mt-3 p-2 bg-neutral-50 border border-neutral-200 rounded">
                     <div className="grid grid-cols-4 gap-2 text-[9px]">
-                      <div className="text-center p-1.5 bg-white rounded border">
-                        <p className="text-neutral-500 text-[8px]">Total Proyecto</p>
-                        <p className="font-bold text-neutral-800 text-xs">
-                          {(() => {
-                            // Calcular total del proyecto completo (todas las revisiones de todos los entregables)
-                            const factor = 1.30;
-                            let totalProyectoUF = 0;
-                            Object.entries(porProyecto).forEach(([pid, pdata]) => {
-                              const proyecto = proyectos.find(p => p.id === pid);
-                              if (proyecto && proyecto.entregables) {
-                                proyecto.entregables.forEach(ent => {
-                                  if (!ent.frozen) {
-                                    totalProyectoUF += (ent.valorRevA || 0) + (ent.valorRevB || 0) + (ent.valorRev0 || 0);
-                                  }
-                                });
+                      {(() => {
+                        // Calcular totales para el resumen
+                        let totalProyectoHsH = 0;
+                        let mesAnteriorHsH = 0;
+                        const mesEnCursoHsH = totalGeneral;
+
+                        Object.entries(porProyecto).forEach(([pid, pdata]) => {
+                          const proyecto = proyectos.find(p => p.id === pid);
+                          if (proyecto && proyecto.entregables) {
+                            proyecto.entregables.forEach(ent => {
+                              if (!ent.frozen) {
+                                // Total presupuestado del proyecto
+                                totalProyectoHsH += (ent.valorRevA || 0) + (ent.valorRevB || 0) + (ent.valorRev0 || 0);
+                                // Mes anterior: lo que ya se facturó (avance anterior)
+                                const avanceAnterior = (ent.avanceAnterior || 0) / 100;
+                                const valorTotal = (ent.valorRevA || 0) + (ent.valorRevB || 0) + (ent.valorRev0 || 0);
+                                mesAnteriorHsH += valorTotal * avanceAnterior;
                               }
                             });
-                            return totalProyectoUF.toFixed(1);
-                          })()}
-                        </p>
-                      </div>
-                      <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
-                        <p className="text-orange-600 text-[8px]">HsH Mes</p>
-                        <p className="font-bold text-orange-600 text-sm">{totalGeneral.toFixed(1)}</p>
-                      </div>
-                      <div className="text-center p-1.5 bg-white rounded border">
-                        <p className="text-neutral-500 text-[8px]">Factor</p>
-                        <p className="font-bold text-neutral-600 text-xs">1.30 UF/HsH</p>
-                      </div>
-                      <div className="text-center p-1.5 bg-orange-100 rounded border border-orange-300">
-                        <p className="text-orange-700 text-[8px]">Total Bruto</p>
-                        <p className="font-bold text-orange-600 text-sm">{(totalGeneral * 1.30).toFixed(2)} UF</p>
-                      </div>
+                          }
+                        });
+
+                        const totalPendienteHsH = Math.max(0, totalProyectoHsH - mesAnteriorHsH - mesEnCursoHsH);
+
+                        return (
+                          <>
+                            <div className="text-center p-1.5 bg-white rounded border">
+                              <p className="text-neutral-500 text-[8px]">Total Proyecto</p>
+                              <p className="font-bold text-neutral-800 text-xs">{totalProyectoHsH.toFixed(1)}</p>
+                            </div>
+                            <div className="text-center p-1.5 bg-white rounded border">
+                              <p className="text-neutral-500 text-[8px]">Mes Anterior</p>
+                              <p className="font-bold text-neutral-600 text-xs">{mesAnteriorHsH.toFixed(1)}</p>
+                            </div>
+                            <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
+                              <p className="text-orange-600 text-[8px]">Mes en Curso</p>
+                              <p className="font-bold text-orange-600 text-sm">{mesEnCursoHsH.toFixed(1)}</p>
+                            </div>
+                            <div className="text-center p-1.5 bg-orange-100 rounded border border-orange-300">
+                              <p className="text-orange-700 text-[8px]">Total Pendiente</p>
+                              <p className="font-bold text-orange-600 text-sm">{totalPendienteHsH.toFixed(1)}</p>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -3450,6 +3462,7 @@ export default function MatrizIntranet() {
                   inProgress: deliverables.filter(d => d.statusInfo.status === 'En Proceso').length,
                   delayed: deliverables.filter(d => d.statusInfo.status === 'ATRASADO').length,
                   pending: deliverables.filter(d => d.statusInfo.status === 'Pendiente').length,
+                  frozen: deliverables.filter(d => d.frozen).length,
                 };
 
                 return (
@@ -3661,6 +3674,15 @@ export default function MatrizIntranet() {
                               </div>
                             ))}
                             {stats.delayed === 0 && <p className="text-neutral-500 dark:text-neutral-400">Ninguno</p>}
+                          </Accordion>
+                          <Accordion title="Frozen" count={stats.frozen} color="bg-blue-500">
+                            {deliverables.filter(d => d.frozen).map(d => (
+                              <div key={d.id} className="py-1 text-neutral-600 dark:text-neutral-300 flex justify-between">
+                                <span>{d.nombre || d.name}<span className="text-blue-600 font-medium">{getDocumentSuffix(d.status)}</span></span>
+                                <span className="text-blue-600 text-xs">❄ Frozen</span>
+                              </div>
+                            ))}
+                            {stats.frozen === 0 && <p className="text-neutral-500 dark:text-neutral-400">Ninguno</p>}
                           </Accordion>
                         </div>
                       </div>

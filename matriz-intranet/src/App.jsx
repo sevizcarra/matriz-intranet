@@ -614,6 +614,10 @@ export default function MatrizIntranet() {
   });
   const [excelFileName, setExcelFileName] = useState('');
   const [excelError, setExcelError] = useState('');
+  const [mesHoras, setMesHoras] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   // Función para parsear Excel de entregables
   const parseExcelFile = async (file) => {
@@ -1372,10 +1376,6 @@ export default function MatrizIntranet() {
     const [revision, setRevision] = useState('REV_A');
     const [tipoCarga, setTipoCarga] = useState('PLA'); // PLA, DOC, INF, REU, VIS
     const [descripcionCarga, setDescripcionCarga] = useState(''); // Para REU y VIS
-    const [mesHoras, setMesHoras] = useState(() => {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    });
 
     const weeks = getWeeksOfMonth(mesHoras);
 
@@ -2130,15 +2130,9 @@ export default function MatrizIntranet() {
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Administración de Proyectos</h1>
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm">Gestión de entregables, EDP y control de proyectos</p>
-          </div>
-          <Button variant="ghost" onClick={() => setEdpUnlocked(false)}>
-            <Lock className="w-4 h-4 mr-2" />
-            Bloquear
-          </Button>
+        <div>
+          <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Administración de Proyectos</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm">Gestión de entregables, EDP y control de proyectos</p>
         </div>
 
         {/* Tabs */}
@@ -2999,68 +2993,7 @@ export default function MatrizIntranet() {
         {currentPage === 'home' && <HomePage />}
         {currentPage === 'proyectos' && <ProyectosPage />}
         {currentPage === 'horas' && <HorasPage />}
-        {currentPage === 'facturacion' && !edpUnlocked && (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm p-6 sm:p-8 max-w-sm w-full">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-8 h-8 text-orange-500" />
-                </div>
-                <h2 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium">Acceso Restringido</h2>
-                <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Módulo de Administración protegido</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 dark:text-neutral-300 font-medium">Contraseña</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={edpPassword}
-                      onChange={e => setEdpPassword(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          if (edpPassword === edpStoredPassword) {
-                            setEdpUnlocked(true);
-                            setEdpPassword('');
-                          } else {
-                            showNotification('error', 'Contraseña incorrecta');
-                          }
-                        }
-                      }}
-                      placeholder="Ingresa la contraseña"
-                      autoComplete="off"
-                      className="w-full bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2.5 text-neutral-800 dark:text-neutral-100 text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:text-neutral-100 p-1"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (edpPassword === edpStoredPassword) {
-                      setEdpUnlocked(true);
-                      setEdpPassword('');
-                    } else {
-                      showNotification('error', 'Contraseña incorrecta');
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white rounded font-medium text-sm transition-colors"
-                >
-                  Desbloquear
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {currentPage === 'facturacion' && edpUnlocked && <FacturacionPage />}
+        {currentPage === 'facturacion' && <FacturacionPage />}
         {currentPage === 'config' && (
           <div className="p-4 sm:p-6 max-w-4xl mx-auto">
             <div className="flex items-center gap-3 mb-6">

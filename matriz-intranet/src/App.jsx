@@ -555,6 +555,13 @@ export default function MatrizIntranet() {
   const [selectedTareaId, setSelectedTareaId] = useState(null);
   const [showNewTarea, setShowNewTarea] = useState(false);
   const [filtroEstadoTareas, setFiltroEstadoTareas] = useState('todas');
+  // Estados persistentes para Carga de Horas (evita reset al re-render por heartbeat)
+  const [horasFormProfesional, setHorasFormProfesional] = useState('');
+  const [horasFormProyecto, setHorasFormProyecto] = useState('');
+  const [horasFormSemana, setHorasFormSemana] = useState('');
+  const [horasFormEntregable, setHorasFormEntregable] = useState('');
+  const [horasFormTipoCarga, setHorasFormTipoCarga] = useState('PLA');
+  const [horasFormRevision, setHorasFormRevision] = useState('REV_A');
 
   // Helper para filtrar proyectos según rol y asignación
   const currentColaborador = currentUser ? profesionales.find(c => c.id === currentUser.profesionalId) : null;
@@ -1606,14 +1613,22 @@ export default function MatrizIntranet() {
   // PÁGINA: CARGA DE HORAS
   // ============================================
   const HorasPage = () => {
-    const [profesional, setProfesional] = useState('');
-    const [proyecto, setProyecto] = useState('');
-    const [semana, setSemana] = useState('');
-    const [entregable, setEntregable] = useState('');
+    // Usar estados globales para persistencia (evita reset por heartbeat)
+    const profesional = horasFormProfesional;
+    const setProfesional = setHorasFormProfesional;
+    const proyecto = horasFormProyecto;
+    const setProyecto = setHorasFormProyecto;
+    const semana = horasFormSemana;
+    const setSemana = setHorasFormSemana;
+    const entregable = horasFormEntregable;
+    const setEntregable = setHorasFormEntregable;
+    const tipoCarga = horasFormTipoCarga;
+    const setTipoCarga = setHorasFormTipoCarga;
+    const revision = horasFormRevision;
+    const setRevision = setHorasFormRevision;
+    // Estados locales (pueden resetearse sin problema)
     const [horas, setHoras] = useState('');
-    const [revision, setRevision] = useState('REV_A');
-    const [tipoCarga, setTipoCarga] = useState('PLA'); // PLA, DOC, INF, REU, VIS
-    const [descripcionCarga, setDescripcionCarga] = useState(''); // Para REU y VIS
+    const [descripcionCarga, setDescripcionCarga] = useState('');
 
     const weeks = getWeeksOfMonth(mesHoras);
 

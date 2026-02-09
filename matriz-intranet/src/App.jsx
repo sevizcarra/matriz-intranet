@@ -549,6 +549,10 @@ export default function MatrizIntranet() {
   const [firestoreReady, setFirestoreReady] = useState(false);
   // Estado persistente para Facturación (evita reset al re-render)
   const [selectedProyectoFacturacion, setSelectedProyectoFacturacion] = useState('');
+  // Estados persistentes para Tareas (evita reset al re-render por heartbeat)
+  const [selectedTareaId, setSelectedTareaId] = useState(null);
+  const [showNewTarea, setShowNewTarea] = useState(false);
+  const [filtroEstadoTareas, setFiltroEstadoTareas] = useState('todas');
 
   // Helper para filtrar proyectos según rol y asignación
   const currentColaborador = currentUser ? profesionales.find(c => c.id === currentUser.profesionalId) : null;
@@ -1936,21 +1940,25 @@ export default function MatrizIntranet() {
   // PÁGINA: TAREAS
   // ============================================
   const TareasPage = () => {
-    const [showNewTarea, setShowNewTarea] = useState(false);
-    const [selectedTarea, setSelectedTarea] = useState(null);
+    // Estados locales (no críticos, pueden resetearse)
     const [nuevoComentario, setNuevoComentario] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('todas'); // todas, pendiente, en_progreso, completada
-
-    // Estados para nueva tarea
     const [nuevaTarea, setNuevaTarea] = useState({
       titulo: '',
       descripcion: '',
       asignadoA: '',
       proyectoId: '',
       entregableId: '',
-      prioridad: 'media', // baja, media, alta
+      prioridad: 'media',
       fechaLimite: ''
     });
+
+    // Usar estados globales para persistencia
+    const filtroEstado = filtroEstadoTareas;
+    const setFiltroEstado = setFiltroEstadoTareas;
+
+    // Derivar selectedTarea del ID global
+    const selectedTarea = selectedTareaId ? tareas.find(t => t._docId === selectedTareaId) : null;
+    const setSelectedTarea = (tarea) => setSelectedTareaId(tarea?._docId || null);
 
     // Filtrar tareas según rol
     const misTareas = isAdmin
@@ -3687,55 +3695,58 @@ export default function MatrizIntranet() {
   if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden" style={{background: 'radial-gradient(ellipse at center, #ea580c 0%, #c2410c 25%, #431407 60%, #0a0a0a 100%)'}}>
-        {/* Estilos de animación */}
+        {/* Estilos de animación - Solo una vez, elegantes */}
         <style>{`
           @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
+            from { opacity: 0; transform: translateY(40px); }
             to { opacity: 1; transform: translateY(0); }
           }
           @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-20px); }
+            from { opacity: 0; transform: translateY(-30px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          @keyframes pulse-glow {
-            0%, 100% { text-shadow: 0 0 20px rgba(251, 146, 60, 0.5), 0 0 40px rgba(251, 146, 60, 0.3); }
-            50% { text-shadow: 0 0 30px rgba(251, 146, 60, 0.8), 0 0 60px rgba(251, 146, 60, 0.5); }
+          @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
           }
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+          @keyframes glowOnce {
+            0% { text-shadow: 0 0 0 transparent; }
+            50% { text-shadow: 0 0 40px rgba(251, 146, 60, 0.9), 0 0 80px rgba(251, 146, 60, 0.5); }
+            100% { text-shadow: 0 0 20px rgba(251, 146, 60, 0.4); }
           }
-          @keyframes shimmer {
-            0% { background-position: -200% center; }
-            100% { background-position: 200% center; }
+          @keyframes expandIn {
+            from { opacity: 0; transform: scaleX(0); }
+            to { opacity: 1; transform: scaleX(1); }
           }
-          .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
-          .animate-fadeInDown { animation: fadeInDown 0.6s ease-out forwards; }
-          .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
-          .animate-float { animation: float 4s ease-in-out infinite; }
-          .animate-shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
+          .animate-fadeInUp { animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+          .animate-fadeInDown { animation: fadeInDown 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+          .animate-scaleIn { animation: scaleIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+          .animate-glowOnce { animation: glowOnce 1.5s ease-out forwards; animation-delay: 0.5s; }
+          .animate-expandIn { animation: expandIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+          .animate-fadeIn { animation: fadeIn 1s ease-out forwards; opacity: 0; }
         `}</style>
 
-        {/* Partículas de fondo decorativas */}
+        {/* Partículas de fondo decorativas - estáticas, sin animación infinita */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-          <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-orange-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}}></div>
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl animate-fadeIn" style={{animationDelay: '0.3s'}}></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl animate-fadeIn" style={{animationDelay: '0.6s'}}></div>
+          <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-orange-400/5 rounded-full blur-2xl animate-fadeIn" style={{animationDelay: '0.9s'}}></div>
         </div>
 
         <div className="w-full max-w-md relative z-10">
-          <div className="text-center mb-8 animate-fadeInDown">
-            <div className="text-4xl font-light tracking-widest mb-2 animate-float">
+          <div className="text-center mb-8">
+            <div className="animate-scaleIn text-4xl font-light tracking-widest mb-2">
               <span className="text-white">M</span>
-              <span className="text-orange-300 animate-pulse-glow">A</span>
+              <span className="text-orange-300 animate-glowOnce">A</span>
               <span className="text-white">TRIZ</span>
             </div>
-            <p className="text-orange-200/60 text-xs tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
-            <h1 className="text-xl text-white font-medium mt-4">Intranet</h1>
+            <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-orange-400 to-transparent mx-auto mb-3 animate-expandIn" style={{animationDelay: '0.4s'}}></div>
+            <p className="text-orange-200/60 text-xs tracking-wider animate-fadeInDown" style={{animationDelay: '0.3s'}}>ARCHITECTURE FOR ENGINEERING</p>
+            <h1 className="text-xl text-white font-medium mt-4 animate-fadeInDown" style={{animationDelay: '0.5s'}}>Intranet</h1>
           </div>
 
           <div className="bg-white/95 dark:bg-neutral-800/95 backdrop-blur border border-white/20 dark:border-neutral-700 rounded-lg shadow-2xl p-6 animate-fadeInUp" style={{animationDelay: '0.2s'}}>

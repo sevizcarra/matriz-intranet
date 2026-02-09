@@ -1363,7 +1363,7 @@ export default function MatrizIntranet() {
                   </span>
                   <span className="flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" />
-                    {proyecto.avance.toFixed(1)}%
+                    {(proyecto.avance || 0).toFixed(1)}%
                   </span>
                 </div>
 
@@ -1371,7 +1371,7 @@ export default function MatrizIntranet() {
                 <div className="mt-2 sm:mt-3 h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-orange-500 rounded-full transition-all"
-                    style={{ width: `${proyecto.avance}%` }}
+                    style={{ width: `${proyecto.avance || 0}%` }}
                   />
                 </div>
               </Card>
@@ -1543,8 +1543,8 @@ export default function MatrizIntranet() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-orange-500 font-mono">{proyecto.id}</span>
-                      <Badge variant={proyecto.estado === 'Activo' ? 'success' : 'default'}>
-                        {proyecto.estado}
+                      <Badge variant={proyecto.estado?.toLowerCase() === 'activo' ? 'success' : 'default'}>
+                        {proyecto.estado || 'Activo'}
                       </Badge>
                     </div>
                     <h3 className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.nombre}</h3>
@@ -1554,13 +1554,13 @@ export default function MatrizIntranet() {
 
                 <div className="flex items-center gap-4">
                   <div className="text-right hidden sm:block">
-                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.avance.toFixed(1)}%</p>
+                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{(proyecto.avance || 0).toFixed(1)}%</p>
                     <p className="text-neutral-500 dark:text-neutral-400 text-xs">Avance</p>
                   </div>
                   <div className="w-24 sm:w-32 h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden hidden sm:block">
                     <div
                       className="h-full bg-orange-500 rounded-full"
-                      style={{ width: `${proyecto.avance}%` }}
+                      style={{ width: `${proyecto.avance || 0}%` }}
                     />
                   </div>
                   {isAdmin && (

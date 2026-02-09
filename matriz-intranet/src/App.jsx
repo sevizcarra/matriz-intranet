@@ -4,13 +4,15 @@ import {
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
   Building2, User, DollarSign, FileText, Check, X, Pencil, Trash2, Settings,
   BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2,
-  Moon, Sun, Snowflake
+  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi
 } from 'lucide-react';
 import {
   subscribeToProyectos,
   subscribeToColaboradores,
   subscribeToHoras,
   subscribeToStatusData,
+  subscribeToTareas,
+  subscribeToPresencia,
   saveProyecto,
   deleteProyecto as deleteProyectoFS,
   saveColaborador,
@@ -18,6 +20,10 @@ import {
   saveHora,
   deleteHora as deleteHoraFS,
   saveStatusData,
+  saveTarea,
+  deleteTarea as deleteTareaFS,
+  updatePresencia,
+  setOffline,
   saveAllProyectos,
   saveAllColaboradores
 } from './firestoreService';
@@ -486,7 +492,7 @@ export default function MatrizIntranet() {
   const canEdit = () => currentUser?.rol === 'admin';
 
   // Login handlers
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!loginEmail || !loginPassword) {
       setLoginError('Ingresa email y contraseña');
       setTimeout(() => setLoginError(''), 3000);
@@ -505,6 +511,11 @@ export default function MatrizIntranet() {
         setLoginEmail('');
         setLoginPassword('');
         setLoginError('');
+        // Actualizar presencia al iniciar sesión
+        await updatePresencia(user.profesionalId, {
+          pagina: 'home',
+          navegador: navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Desktop'
+        });
       } else {
         setLoginError('Email o contraseña incorrectos');
         setTimeout(() => setLoginError(''), 3000);
@@ -515,7 +526,11 @@ export default function MatrizIntranet() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Marcar como offline antes de cerrar sesión
+    if (currentUser) {
+      await setOffline(currentUser.profesionalId);
+    }
     setCurrentUser(null);
     setCurrentPage('home');
   };
@@ -527,6 +542,8 @@ export default function MatrizIntranet() {
   const [proyectos, setProyectos] = useState([]);
   const [profesionales, setProfesionales] = useState([]);
   const [horasRegistradas, setHorasRegistradas] = useState([]);
+  const [tareas, setTareas] = useState([]);
+  const [presenciaUsuarios, setPresenciaUsuarios] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [firestoreReady, setFirestoreReady] = useState(false);
@@ -589,6 +606,14 @@ export default function MatrizIntranet() {
       setHorasRegistradas(data);
     });
 
+    const unsubTareas = subscribeToTareas((data) => {
+      setTareas(data);
+    });
+
+    const unsubPresencia = subscribeToPresencia((data) => {
+      setPresenciaUsuarios(data);
+    });
+
     // Marcar como listo después de un momento
     setTimeout(() => {
       setIsLoading(false);
@@ -600,8 +625,65 @@ export default function MatrizIntranet() {
       unsubProyectos();
       unsubProfesionales();
       unsubHoras();
+      unsubTareas();
+      unsubPresencia();
     };
   }, []);
+
+  // ============================================
+  // PRESENCIA - Heartbeat y tracking de página
+  // ============================================
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Actualizar presencia cuando cambia la página
+    const paginaLabel = {
+      'home': 'Inicio',
+      'proyectos': 'Proyectos',
+      'proyecto-detail': 'Detalle Proyecto',
+      'horas': 'Carga HsH',
+      'tareas': 'Tareas',
+      'facturacion': 'Adm. Proyectos',
+      'config': 'Configuración'
+    };
+
+    updatePresencia(currentUser.profesionalId, {
+      pagina: paginaLabel[currentPage] || currentPage,
+      navegador: navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Desktop'
+    });
+
+    // Heartbeat cada 30 segundos
+    const heartbeatInterval = setInterval(() => {
+      updatePresencia(currentUser.profesionalId, {
+        pagina: paginaLabel[currentPage] || currentPage,
+        navegador: navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Desktop'
+      });
+    }, 30000);
+
+    // Detectar cuando el usuario cierra la pestaña/navegador
+    const handleBeforeUnload = () => {
+      setOffline(currentUser.profesionalId);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [currentUser, currentPage]);
+
+  // Helper para determinar si un usuario está "online" (activo en los últimos 2 minutos)
+  const isUsuarioOnline = (profesionalId) => {
+    const presencia = presenciaUsuarios.find(p => p.profesionalId === profesionalId);
+    if (!presencia || !presencia.online) return false;
+    const ultimaActividad = new Date(presencia.ultimaActividad);
+    const ahora = new Date();
+    const diffMinutos = (ahora - ultimaActividad) / (1000 * 60);
+    return diffMinutos < 2; // Considera online si la última actividad fue hace menos de 2 minutos
+  };
+
+  // Obtener usuarios online
+  const usuariosOnline = profesionales.filter(p => isUsuarioOnline(p.id));
 
   // Estados para contraseña admin
   const [showPassword, setShowPassword] = useState(false);
@@ -1018,6 +1100,7 @@ export default function MatrizIntranet() {
     { id: 'home', label: 'Home', icon: Home, adminOnly: false },
     { id: 'proyectos', label: 'Proyectos', icon: FolderKanban, adminOnly: false },
     { id: 'horas', label: 'Carga HsH', icon: Clock, adminOnly: false },
+    { id: 'tareas', label: 'Tareas', icon: ClipboardList, adminOnly: false },
     { id: 'facturacion', label: 'Adm. Proyectos', icon: FileSpreadsheet, adminOnly: true },
     { id: 'config', label: 'Config', icon: Settings, adminOnly: true },
   ];
@@ -1090,6 +1173,54 @@ export default function MatrizIntranet() {
           </div>
         </Card>
       </div>
+
+      {/* Usuarios en Línea */}
+      {usuariosOnline.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative">
+              <Wifi className="w-4 h-4 text-green-500" />
+            </div>
+            <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">En Línea Ahora</h2>
+            <span className="bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{usuariosOnline.length}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {usuariosOnline.map(user => {
+              const presencia = presenciaUsuarios.find(p => p.profesionalId === user.id);
+              const esYo = user.id === currentUser?.profesionalId;
+              return (
+                <div
+                  key={user.id}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full ${
+                    esYo
+                      ? 'bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700'
+                      : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700'
+                  }`}
+                  title={`${user.nombre} - ${presencia?.pagina || 'Navegando'}`}
+                >
+                  <div className="relative">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${
+                      esYo ? 'bg-orange-500' : 'bg-neutral-200 dark:bg-neutral-700'
+                    }`}>
+                      <span className={`text-xs font-medium ${esYo ? 'text-white' : 'text-neutral-600 dark:text-neutral-300'}`}>
+                        {user.nombre?.charAt(0) || 'U'}
+                      </span>
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-neutral-800"></span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className={`text-sm font-medium ${esYo ? 'text-orange-700 dark:text-orange-300' : 'text-neutral-700 dark:text-neutral-200'}`}>
+                      {user.nombre?.split(' ')[0]}
+                      {esYo && <span className="text-[10px] ml-1 opacity-60">(tú)</span>}
+                    </span>
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400">{presencia?.pagina || 'Navegando'}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Alertas de Vencimiento */}
       {(() => {
@@ -1244,6 +1375,89 @@ export default function MatrizIntranet() {
           </div>
         )}
       </div>
+
+      {/* Mis Tareas Pendientes */}
+      {(() => {
+        const misTareasPendientes = tareas.filter(t =>
+          t.asignadoA === currentUser?.profesionalId &&
+          t.estado !== 'completada'
+        ).sort((a, b) => {
+          // Primero por prioridad (alta > media > baja)
+          const prioridadOrder = { alta: 0, media: 1, baja: 2 };
+          return prioridadOrder[a.prioridad] - prioridadOrder[b.prioridad];
+        });
+
+        if (misTareasPendientes.length === 0) return null;
+
+        const getPrioridadColor = (prioridad) => {
+          switch (prioridad) {
+            case 'alta': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+            case 'media': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+            case 'baja': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+            default: return 'bg-neutral-100 text-neutral-700';
+          }
+        };
+
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-purple-500" />
+                <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Mis Tareas Pendientes</h2>
+                <span className="bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{misTareasPendientes.length}</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setCurrentPage('tareas')}>
+                Ver todas <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+            <Card className="divide-y divide-neutral-200 dark:divide-neutral-700">
+              {misTareasPendientes.slice(0, 4).map(tarea => {
+                const proyecto = proyectos.find(p => p.id === tarea.proyectoId);
+                return (
+                  <div
+                    key={tarea._docId}
+                    className="p-3 flex items-center justify-between cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                    onClick={() => setCurrentPage('tareas')}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getPrioridadColor(tarea.prioridad)}`}>
+                          {tarea.prioridad}
+                        </span>
+                        {proyecto && (
+                          <span className="text-orange-500 font-mono text-xs">{proyecto.id}</span>
+                        )}
+                      </div>
+                      <p className="text-neutral-800 dark:text-neutral-100 text-sm truncate mt-1">{tarea.titulo}</p>
+                      {tarea.entregableId && (
+                        <p className="text-neutral-500 dark:text-neutral-400 text-xs">{tarea.entregableId}</p>
+                      )}
+                    </div>
+                    <div className="text-right ml-3">
+                      {tarea.fechaLimite && (
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {new Date(tarea.fechaLimite).toLocaleDateString('es-CL')}
+                        </p>
+                      )}
+                      {(tarea.comentarios?.length || 0) > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-neutral-400 mt-1 justify-end">
+                          <MessageSquare className="w-3 h-3" />
+                          {tarea.comentarios.length}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {misTareasPendientes.length > 4 && (
+                <div className="p-2 text-center">
+                  <span className="text-neutral-500 dark:text-neutral-400 text-xs">+{misTareasPendientes.length - 4} tareas más</span>
+                </div>
+              )}
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Accesos Rápidos */}
       <div>
@@ -1714,6 +1928,531 @@ export default function MatrizIntranet() {
             })}
           </div>
         </Card>
+      </div>
+    );
+  };
+
+  // ============================================
+  // PÁGINA: TAREAS
+  // ============================================
+  const TareasPage = () => {
+    const [showNewTarea, setShowNewTarea] = useState(false);
+    const [selectedTarea, setSelectedTarea] = useState(null);
+    const [nuevoComentario, setNuevoComentario] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState('todas'); // todas, pendiente, en_progreso, completada
+
+    // Estados para nueva tarea
+    const [nuevaTarea, setNuevaTarea] = useState({
+      titulo: '',
+      descripcion: '',
+      asignadoA: '',
+      proyectoId: '',
+      entregableId: '',
+      prioridad: 'media', // baja, media, alta
+      fechaLimite: ''
+    });
+
+    // Filtrar tareas según rol
+    const misTareas = isAdmin
+      ? tareas
+      : tareas.filter(t => t.asignadoA === currentUser?.profesionalId);
+
+    // Filtrar por estado
+    const tareasFiltradas = filtroEstado === 'todas'
+      ? misTareas
+      : misTareas.filter(t => t.estado === filtroEstado);
+
+    // Ordenar por fecha de creación (más recientes primero)
+    const tareasOrdenadas = [...tareasFiltradas].sort((a, b) =>
+      new Date(b.fechaCreacion) - new Date(a.fechaCreacion)
+    );
+
+    const crearTarea = async () => {
+      if (!nuevaTarea.titulo || !nuevaTarea.asignadoA) {
+        showNotification('error', 'Título y asignado son requeridos');
+        return;
+      }
+
+      const tarea = {
+        ...nuevaTarea,
+        estado: 'pendiente',
+        fechaCreacion: new Date().toISOString(),
+        creadoPor: currentUser.profesionalId,
+        comentarios: []
+      };
+
+      const success = await saveTarea(tarea);
+      if (success) {
+        showNotification('success', 'Tarea creada exitosamente');
+        setShowNewTarea(false);
+        setNuevaTarea({
+          titulo: '',
+          descripcion: '',
+          asignadoA: '',
+          proyectoId: '',
+          entregableId: '',
+          prioridad: 'media',
+          fechaLimite: ''
+        });
+      } else {
+        showNotification('error', 'Error al crear la tarea');
+      }
+    };
+
+    const cambiarEstadoTarea = async (tarea, nuevoEstado) => {
+      const tareaActualizada = { ...tarea, estado: nuevoEstado };
+      if (nuevoEstado === 'completada') {
+        tareaActualizada.fechaCompletada = new Date().toISOString();
+      }
+      const success = await saveTarea(tareaActualizada);
+      if (success) {
+        showNotification('success', `Tarea marcada como ${nuevoEstado.replace('_', ' ')}`);
+        if (selectedTarea?._docId === tarea._docId) {
+          setSelectedTarea(tareaActualizada);
+        }
+      }
+    };
+
+    const agregarComentario = async () => {
+      if (!nuevoComentario.trim() || !selectedTarea) return;
+
+      const comentario = {
+        id: Date.now(),
+        texto: nuevoComentario,
+        autorId: currentUser.profesionalId,
+        fecha: new Date().toISOString()
+      };
+
+      const tareaActualizada = {
+        ...selectedTarea,
+        comentarios: [...(selectedTarea.comentarios || []), comentario]
+      };
+
+      const success = await saveTarea(tareaActualizada);
+      if (success) {
+        setSelectedTarea(tareaActualizada);
+        setNuevoComentario('');
+        showNotification('success', 'Comentario agregado');
+      }
+    };
+
+    const eliminarTarea = async (tareaId) => {
+      if (!window.confirm('¿Eliminar esta tarea?')) return;
+      const success = await deleteTareaFS(tareaId);
+      if (success) {
+        showNotification('success', 'Tarea eliminada');
+        setSelectedTarea(null);
+      }
+    };
+
+    const getPrioridadColor = (prioridad) => {
+      switch (prioridad) {
+        case 'alta': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+        case 'media': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+        case 'baja': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+        default: return 'bg-neutral-100 text-neutral-700';
+      }
+    };
+
+    const getEstadoColor = (estado) => {
+      switch (estado) {
+        case 'pendiente': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+        case 'en_progreso': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+        case 'completada': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+        default: return 'bg-neutral-100 text-neutral-700';
+      }
+    };
+
+    const getEstadoLabel = (estado) => {
+      switch (estado) {
+        case 'pendiente': return 'Pendiente';
+        case 'en_progreso': return 'En Progreso';
+        case 'completada': return 'Completada';
+        default: return estado;
+      }
+    };
+
+    // Obtener entregables del proyecto seleccionado
+    const proyectoSeleccionado = proyectos.find(p => p.id === nuevaTarea.proyectoId);
+    const entregablesProyecto = proyectoSeleccionado?.entregables || [];
+
+    return (
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <ClipboardList className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100">Tareas</h1>
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+                {isAdmin ? 'Gestiona las tareas del equipo' : 'Mis tareas asignadas'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            {/* Filtro de estado */}
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="px-3 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800"
+            >
+              <option value="todas">Todas</option>
+              <option value="pendiente">Pendientes</option>
+              <option value="en_progreso">En Progreso</option>
+              <option value="completada">Completadas</option>
+            </select>
+
+            {isAdmin && (
+              <Button onClick={() => setShowNewTarea(true)} className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Nueva Tarea
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Grid de tareas */}
+        <div className="grid lg:grid-cols-2 gap-4">
+          {/* Lista de tareas */}
+          <Card className="p-4">
+            <h3 className="font-medium mb-4 text-neutral-800 dark:text-neutral-200">
+              {filtroEstado === 'todas' ? 'Todas las tareas' : `Tareas ${getEstadoLabel(filtroEstado).toLowerCase()}`}
+              <span className="ml-2 text-sm text-neutral-500">({tareasOrdenadas.length})</span>
+            </h3>
+
+            {tareasOrdenadas.length === 0 ? (
+              <p className="text-neutral-500 text-center py-8">No hay tareas para mostrar</p>
+            ) : (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                {tareasOrdenadas.map(tarea => {
+                  const asignado = profesionales.find(p => p.id === tarea.asignadoA);
+                  const proyecto = proyectos.find(p => p.id === tarea.proyectoId);
+                  const isSelected = selectedTarea?._docId === tarea._docId;
+
+                  return (
+                    <div
+                      key={tarea._docId}
+                      onClick={() => setSelectedTarea(tarea)}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                          : 'border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-neutral-800 dark:text-neutral-200 truncate">
+                            {tarea.titulo}
+                          </h4>
+                          {tarea.descripcion && (
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                              {tarea.descripcion}
+                            </p>
+                          )}
+                        </div>
+                        <span className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${getPrioridadColor(tarea.prioridad)}`}>
+                          {tarea.prioridad}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                        <span className={`px-2 py-0.5 rounded-full ${getEstadoColor(tarea.estado)}`}>
+                          {getEstadoLabel(tarea.estado)}
+                        </span>
+                        {proyecto && (
+                          <span className="text-neutral-500 dark:text-neutral-400">
+                            📁 {proyecto.nombre}
+                          </span>
+                        )}
+                        {asignado && (
+                          <span className="text-neutral-500 dark:text-neutral-400">
+                            👤 {asignado.nombre?.split(' ')[0]}
+                          </span>
+                        )}
+                        {(tarea.comentarios?.length || 0) > 0 && (
+                          <span className="text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            {tarea.comentarios.length}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          {/* Detalle de tarea seleccionada */}
+          <Card className="p-4">
+            {selectedTarea ? (
+              <div className="h-full flex flex-col">
+                <div className="flex items-start justify-between gap-2 mb-4">
+                  <div>
+                    <h3 className="font-semibold text-lg text-neutral-800 dark:text-neutral-200">
+                      {selectedTarea.titulo}
+                    </h3>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${getEstadoColor(selectedTarea.estado)}`}>
+                        {getEstadoLabel(selectedTarea.estado)}
+                      </span>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${getPrioridadColor(selectedTarea.prioridad)}`}>
+                        Prioridad: {selectedTarea.prioridad}
+                      </span>
+                    </div>
+                  </div>
+
+                  {isAdmin && (
+                    <button
+                      onClick={() => eliminarTarea(selectedTarea._docId)}
+                      className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {selectedTarea.descripcion && (
+                  <p className="text-neutral-600 dark:text-neutral-400 mb-4">
+                    {selectedTarea.descripcion}
+                  </p>
+                )}
+
+                {/* Info adicional */}
+                <div className="grid grid-cols-2 gap-2 text-sm mb-4 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
+                  <div>
+                    <span className="text-neutral-500">Asignado a:</span>
+                    <p className="font-medium">{profesionales.find(p => p.id === selectedTarea.asignadoA)?.nombre || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">Proyecto:</span>
+                    <p className="font-medium">{proyectos.find(p => p.id === selectedTarea.proyectoId)?.nombre || '-'}</p>
+                  </div>
+                  {selectedTarea.entregableId && (
+                    <div>
+                      <span className="text-neutral-500">Entregable:</span>
+                      <p className="font-medium">{selectedTarea.entregableId}</p>
+                    </div>
+                  )}
+                  {selectedTarea.fechaLimite && (
+                    <div>
+                      <span className="text-neutral-500">Fecha límite:</span>
+                      <p className="font-medium">{new Date(selectedTarea.fechaLimite).toLocaleDateString('es-CL')}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Botones de cambio de estado */}
+                <div className="flex gap-2 mb-4">
+                  {selectedTarea.estado !== 'pendiente' && (
+                    <button
+                      onClick={() => cambiarEstadoTarea(selectedTarea, 'pendiente')}
+                      className="flex-1 py-2 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors"
+                    >
+                      Pendiente
+                    </button>
+                  )}
+                  {selectedTarea.estado !== 'en_progreso' && (
+                    <button
+                      onClick={() => cambiarEstadoTarea(selectedTarea, 'en_progreso')}
+                      className="flex-1 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                    >
+                      En Progreso
+                    </button>
+                  )}
+                  {selectedTarea.estado !== 'completada' && (
+                    <button
+                      onClick={() => cambiarEstadoTarea(selectedTarea, 'completada')}
+                      className="flex-1 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                    >
+                      Completar
+                    </button>
+                  )}
+                </div>
+
+                {/* Comentarios */}
+                <div className="flex-1 flex flex-col min-h-0">
+                  <h4 className="font-medium text-sm mb-2 text-neutral-700 dark:text-neutral-300">
+                    Comentarios ({selectedTarea.comentarios?.length || 0})
+                  </h4>
+
+                  <div className="flex-1 overflow-y-auto space-y-2 mb-3 max-h-[200px]">
+                    {(selectedTarea.comentarios || []).map(comentario => {
+                      const autor = profesionales.find(p => p.id === comentario.autorId);
+                      return (
+                        <div
+                          key={comentario.id}
+                          className={`p-2 rounded-lg text-sm ${
+                            comentario.autorId === currentUser?.profesionalId
+                              ? 'bg-purple-100 dark:bg-purple-900/30 ml-4'
+                              : 'bg-neutral-100 dark:bg-neutral-800 mr-4'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium text-xs">
+                              {autor?.nombre?.split(' ')[0] || 'Usuario'}
+                            </span>
+                            <span className="text-xs text-neutral-500">
+                              {new Date(comentario.fecha).toLocaleDateString('es-CL', {
+                                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-neutral-700 dark:text-neutral-300">{comentario.texto}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Input de nuevo comentario */}
+                  <div className="flex gap-2 mt-auto">
+                    <input
+                      type="text"
+                      value={nuevoComentario}
+                      onChange={(e) => setNuevoComentario(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && agregarComentario()}
+                      placeholder="Escribe un comentario..."
+                      className="flex-1 px-3 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800"
+                    />
+                    <button
+                      onClick={agregarComentario}
+                      disabled={!nuevoComentario.trim()}
+                      className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-neutral-500">
+                <div className="text-center">
+                  <ClipboardList className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p>Selecciona una tarea para ver los detalles</p>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Modal Nueva Tarea */}
+        {showNewTarea && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Nueva Tarea</h3>
+                <button onClick={() => setShowNewTarea(false)} className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Título *</label>
+                  <input
+                    type="text"
+                    value={nuevaTarea.titulo}
+                    onChange={(e) => setNuevaTarea({...nuevaTarea, titulo: e.target.value})}
+                    className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800"
+                    placeholder="Ej: Revisar planos estructurales"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Descripción</label>
+                  <textarea
+                    value={nuevaTarea.descripcion}
+                    onChange={(e) => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}
+                    className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 h-20 resize-none"
+                    placeholder="Detalles adicionales..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Asignar a *</label>
+                  <select
+                    value={nuevaTarea.asignadoA}
+                    onChange={(e) => setNuevaTarea({...nuevaTarea, asignadoA: Number(e.target.value)})}
+                    className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800"
+                  >
+                    <option value="">Seleccionar profesional</option>
+                    {profesionales.map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Proyecto</label>
+                    <select
+                      value={nuevaTarea.proyectoId}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, proyectoId: e.target.value, entregableId: ''})}
+                      className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800"
+                    >
+                      <option value="">Opcional</option>
+                      {proyectos.map(p => (
+                        <option key={p.id} value={p.id}>{p.id} - {p.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Entregable</label>
+                    <select
+                      value={nuevaTarea.entregableId}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, entregableId: e.target.value})}
+                      className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800"
+                      disabled={!nuevaTarea.proyectoId}
+                    >
+                      <option value="">Opcional</option>
+                      {entregablesProyecto.map(e => (
+                        <option key={e.codigo} value={e.codigo}>{e.codigo} - {e.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Prioridad</label>
+                    <select
+                      value={nuevaTarea.prioridad}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, prioridad: e.target.value})}
+                      className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800"
+                    >
+                      <option value="baja">Baja</option>
+                      <option value="media">Media</option>
+                      <option value="alta">Alta</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Fecha límite</label>
+                    <input
+                      type="date"
+                      value={nuevaTarea.fechaLimite}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, fechaLimite: e.target.value})}
+                      className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-6">
+                <Button variant="outline" onClick={() => setShowNewTarea(false)} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button onClick={crearTarea} className="flex-1">
+                  Crear Tarea
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3097,6 +3836,58 @@ export default function MatrizIntranet() {
                 {item.locked && <Lock className="w-3 h-3" />}
               </button>
             ))}
+            {/* Indicador de usuarios en línea */}
+            <div className="relative group">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 sm:py-2 rounded text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 ml-1 transition-colors"
+                title={`${usuariosOnline.length} usuario${usuariosOnline.length !== 1 ? 's' : ''} en línea`}
+              >
+                <div className="relative">
+                  <Wifi className="w-4 h-4" />
+                  <span className="absolute -top-1 -right-1.5 bg-green-500 text-white text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center font-medium">
+                    {usuariosOnline.length}
+                  </span>
+                </div>
+                <span className="hidden sm:inline">En línea</span>
+              </button>
+              {/* Dropdown con usuarios */}
+              <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-neutral-800 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <div className="p-2 border-b border-neutral-200 dark:border-neutral-700">
+                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Usuarios conectados</span>
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {usuariosOnline.length === 0 ? (
+                    <p className="p-3 text-sm text-neutral-500 text-center">Nadie más está en línea</p>
+                  ) : (
+                    usuariosOnline.map(user => {
+                      const presencia = presenciaUsuarios.find(p => p.profesionalId === user.id);
+                      return (
+                        <div key={user.id} className="px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                          <div className="relative">
+                            <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                              <span className="text-orange-600 dark:text-orange-400 text-sm font-medium">
+                                {user.nombre?.charAt(0) || 'U'}
+                              </span>
+                            </div>
+                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-neutral-800"></span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">
+                              {user.nombre?.split(' ')[0]}
+                              {user.id === currentUser?.profesionalId && <span className="text-neutral-400 ml-1">(Tú)</span>}
+                            </p>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                              {presencia?.pagina || 'Navegando'}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
             {/* Botón de modo oscuro */}
             <button
               type="button"
@@ -3125,6 +3916,7 @@ export default function MatrizIntranet() {
         {currentPage === 'home' && <HomePage />}
         {currentPage === 'proyectos' && <ProyectosPage />}
         {currentPage === 'horas' && <HorasPage />}
+        {currentPage === 'tareas' && <TareasPage />}
         {currentPage === 'facturacion' && <FacturacionPage />}
         {currentPage === 'config' && (
           <div className="p-4 sm:p-6 max-w-4xl mx-auto">

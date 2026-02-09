@@ -22,7 +22,9 @@ const COLLECTIONS = {
   COLABORADORES: 'colaboradores',
   HORAS: 'horas',
   STATUS_DATA: 'statusData',
-  CONFIG: 'config'
+  CONFIG: 'config',
+  TAREAS: 'tareas',
+  PRESENCIA: 'presencia'
 };
 
 // ============================================
@@ -187,6 +189,91 @@ export const subscribeToStatusData = (callback) => {
     } else {
       callback({});
     }
+  });
+};
+
+// ============================================
+// TAREAS
+// ============================================
+export const getTareas = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.TAREAS));
+    return querySnapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
+  } catch (error) {
+    console.error('Error getting tareas:', error);
+    return [];
+  }
+};
+
+export const saveTarea = async (tarea) => {
+  try {
+    if (tarea._docId) {
+      // Actualizar tarea existente
+      await setDoc(doc(db, COLLECTIONS.TAREAS, tarea._docId), tarea);
+    } else {
+      // Nueva tarea - generar ID automático
+      await addDoc(collection(db, COLLECTIONS.TAREAS), tarea);
+    }
+    return true;
+  } catch (error) {
+    console.error('Error saving tarea:', error);
+    return false;
+  }
+};
+
+export const deleteTarea = async (tareaDocId) => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.TAREAS, tareaDocId));
+    return true;
+  } catch (error) {
+    console.error('Error deleting tarea:', error);
+    return false;
+  }
+};
+
+export const subscribeToTareas = (callback) => {
+  return onSnapshot(collection(db, COLLECTIONS.TAREAS), (snapshot) => {
+    const tareas = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
+    callback(tareas);
+  });
+};
+
+// ============================================
+// PRESENCIA (Usuarios en línea)
+// ============================================
+export const updatePresencia = async (profesionalId, datos) => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.PRESENCIA, String(profesionalId)), {
+      ...datos,
+      profesionalId,
+      ultimaActividad: new Date().toISOString(),
+      online: true
+    });
+    return true;
+  } catch (error) {
+    console.error('Error updating presencia:', error);
+    return false;
+  }
+};
+
+export const setOffline = async (profesionalId) => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.PRESENCIA, String(profesionalId)), {
+      profesionalId,
+      ultimaActividad: new Date().toISOString(),
+      online: false
+    }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error('Error setting offline:', error);
+    return false;
+  }
+};
+
+export const subscribeToPresencia = (callback) => {
+  return onSnapshot(collection(db, COLLECTIONS.PRESENCIA), (snapshot) => {
+    const presencia = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    callback(presencia);
   });
 };
 

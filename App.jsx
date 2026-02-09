@@ -1632,18 +1632,13 @@ export default function MatrizIntranet() {
     const [showConfirmacion, setShowConfirmacion] = useState(false);
     const [registroPendiente, setRegistroPendiente] = useState(null);
 
-    // Auto-actualizar al mes actual si está muy desactualizado (más de 1 mes atrás)
+    // Auto-actualizar al mes actual si está atrasado
     useEffect(() => {
       const now = new Date();
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const [mesYear, mesMonth] = mesHoras.split('-').map(Number);
-      const [curYear, curMonth] = currentMonth.split('-').map(Number);
 
-      // Calcular diferencia en meses
-      const diffMonths = (curYear - mesYear) * 12 + (curMonth - mesMonth);
-
-      // Si está más de 1 mes atrasado, actualizar al mes actual
-      if (diffMonths > 1) {
+      // Si el mes seleccionado no es el actual, actualizar
+      if (mesHoras < currentMonth) {
         setMesHoras(currentMonth);
       }
     }, []);

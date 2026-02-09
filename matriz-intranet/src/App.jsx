@@ -1350,8 +1350,8 @@ export default function MatrizIntranet() {
                       <span className="text-orange-500 font-mono text-xs sm:text-sm">{proyecto.id}</span>
                       <Badge variant="success">Activo</Badge>
                     </div>
-                    <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre}</h3>
-                    <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente}</p>
+                    <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre || 'Sin nombre'}</h3>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente || ''}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0 ml-2" />
                 </div>
@@ -1359,7 +1359,7 @@ export default function MatrizIntranet() {
                 <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500 dark:text-neutral-400">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {new Date(proyecto.inicio).toLocaleDateString('es-CL')}
+                    {proyecto.inicio ? new Date(proyecto.inicio).toLocaleDateString('es-CL') : 'Sin fecha'}
                   </span>
                   <span className="flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" />
@@ -4427,10 +4427,10 @@ export default function MatrizIntranet() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-orange-500 font-mono text-sm sm:text-lg font-semibold">{proyecto.id}</span>
-                      <Badge variant="success">{proyecto.estado}</Badge>
+                      <Badge variant={proyecto.estado?.toLowerCase() === 'activo' ? 'success' : 'default'}>{proyecto.estado || 'Activo'}</Badge>
                     </div>
-                    <h1 className="text-sm sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium mt-1">{proyecto.nombre}</h1>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{proyecto.cliente}</p>
+                    <h1 className="text-sm sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium mt-1">{proyecto.nombre || 'Sin nombre'}</h1>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{proyecto.cliente || 'Sin cliente'}</p>
                   </div>
                   
                   <button 

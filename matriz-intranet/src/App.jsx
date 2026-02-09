@@ -422,9 +422,10 @@ const calculateDeadlines = (projectStart, weekStart) => {
 
 const calculateStatus = (status, deadlines) => {
   const today = new Date();
+  if (!status) return { status: 'Pendiente', color: 'bg-neutral-50 dark:bg-neutral-800/500' };
   if (status.sentRev0) return { status: 'TERMINADO', color: 'bg-green-500' };
   if (status.sentRevB || status.sentRevA || status.sentIniciado) {
-    const nextDeadline = !status.sentRevA ? deadlines.deadlineRevA : 
+    const nextDeadline = !status.sentRevA ? deadlines.deadlineRevA :
                        !status.sentRevB ? deadlines.deadlineRevB : deadlines.deadlineRev0;
     if (today > nextDeadline) return { status: 'ATRASADO', color: 'bg-red-500' };
     return { status: 'En Proceso', color: 'bg-orange-500' };
@@ -434,6 +435,7 @@ const calculateStatus = (status, deadlines) => {
 };
 
 const getDocumentSuffix = (status) => {
+  if (!status) return "";
   if (status.sentRev0 || status.comentariosBRecibidos) return "_0";
   if (status.comentariosARecibidos) return "_B";
   if (status.sentIniciado || status.sentRevA) return "_A";
@@ -4497,7 +4499,7 @@ export default function MatrizIntranet() {
                   const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
                   // Usar clave compuesta para proyectos con entregables personalizados
                   const statusKey = usaEntregablesPersonalizados ? `${selectedProject}_${d.id}` : d.id;
-                  const status = statusData[statusKey];
+                  const status = statusData[statusKey] || {};
                   const statusInfo = calculateStatus(status, deadlines);
                   return { ...d, ...deadlines, status, statusInfo, statusKey };
                 });

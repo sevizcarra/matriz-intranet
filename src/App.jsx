@@ -2472,7 +2472,7 @@ export default function MatrizIntranet() {
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
   const FacturacionPage = () => {
-    const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp'
+    const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp' | 'cot'
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [showPreview, setShowPreview] = useState(false);
     const [selectedProyectoEDP, setSelectedProyectoEDP] = useState('all');
@@ -2962,6 +2962,16 @@ export default function MatrizIntranet() {
             }`}
           >
             EDP
+          </button>
+          <button
+            onClick={() => setFacturacionTab('cot')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              facturacionTab === 'cot'
+                ? 'bg-white dark:bg-neutral-800 text-orange-600 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100'
+            }`}
+          >
+            COT
           </button>
         </div>
 
@@ -3661,6 +3671,189 @@ export default function MatrizIntranet() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ==================== PESTAÑA COT (COTIZACIÓN) ==================== */}
+        {facturacionTab === 'cot' && (
+          <Card className="p-4 sm:p-6">
+            <div className="mb-6">
+              <h3 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium mb-1">Generar Cotización</h3>
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">Crea una propuesta comercial en PDF a partir de un listado de documentos</p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Datos del Cliente */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
+                    Nombre del Cliente *
+                  </label>
+                  <input
+                    type="text"
+                    value={cotCliente}
+                    onChange={e => setCotCliente(e.target.value)}
+                    placeholder="Ej: BHP Billiton"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
+                    Nombre del Proyecto *
+                  </label>
+                  <input
+                    type="text"
+                    value={cotProyectoNombre}
+                    onChange={e => setCotProyectoNombre(e.target.value)}
+                    placeholder="Ej: Ampliación Planta Concentradora"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+
+              {/* Carga de Excel */}
+              <div>
+                <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
+                  Listado de Documentos (Excel) *
+                </label>
+                <div className="border-2 border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg p-6 text-center hover:border-orange-500 transition-colors">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setCotExcelFileName(file.name);
+                        const reader = new FileReader();
+                        reader.onload = async (evt) => {
+                          const processExcelCot = () => {
+                            try {
+                              const data = new Uint8Array(evt.target.result);
+                              const workbook = window.XLSX.read(data, { type: 'array' });
+                              const sheetName = workbook.SheetNames[0];
+                              const worksheet = workbook.Sheets[sheetName];
+                              const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                              setCotExcelData(jsonData);
+                              showNotification('success', 'Excel cargado correctamente');
+                            } catch (error) {
+                              showNotification('error', 'Error al leer el archivo Excel');
+                            }
+                          };
+                          if (!window.XLSX) {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+                            script.onload = processExcelCot;
+                            script.onerror = () => showNotification('error', 'Error cargando librería Excel');
+                            document.head.appendChild(script);
+                          } else {
+                            processExcelCot();
+                          }
+                        };
+                        reader.readAsArrayBuffer(file);
+                      }
+                    }}
+                    className="hidden"
+                    id="cotExcelInputAdmin"
+                  />
+                  <label htmlFor="cotExcelInputAdmin" className="cursor-pointer">
+                    <FileSpreadsheet className="w-12 h-12 mx-auto mb-3 text-neutral-400" />
+                    {cotExcelFileName ? (
+                      <div>
+                        <p className="text-neutral-800 dark:text-neutral-100 font-medium">{cotExcelFileName}</p>
+                        <p className="text-green-600 text-sm mt-1">✓ Archivo cargado</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-neutral-600 dark:text-neutral-300 font-medium">Haz clic para subir</p>
+                        <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">o arrastra tu archivo Excel aquí</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Preview de datos */}
+              {cotExcelData && (
+                <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4">
+                  <h4 className="text-neutral-800 dark:text-neutral-100 font-medium text-sm mb-2">Vista Previa</h4>
+                  <div className="max-h-48 overflow-y-auto text-xs">
+                    <table className="w-full">
+                      <tbody>
+                        {cotExcelData.slice(0, 10).map((row, i) => (
+                          <tr key={i} className={i === 0 ? 'font-bold bg-neutral-200 dark:bg-neutral-700' : ''}>
+                            {row.slice(0, 5).map((cell, j) => (
+                              <td key={j} className="px-2 py-1 border-b border-neutral-200 dark:border-neutral-700 truncate max-w-[150px]">
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {cotExcelData.length > 10 && (
+                      <p className="text-neutral-500 text-center mt-2">... y {cotExcelData.length - 10} filas más</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Resumen de forma de pago */}
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                <h4 className="text-orange-800 dark:text-orange-300 font-medium text-sm mb-2">Forma de Pago (por revisiones)</h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">70%</p>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_A</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">20%</p>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_B</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">10%</p>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_0</p>
+                  </div>
+                </div>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 text-center">
+                  Validez: 90 días | Revisiones posteriores mantienen valor REV_0
+                </p>
+              </div>
+
+              {/* Botón Generar */}
+              <button
+                onClick={() => {
+                  if (!cotCliente || !cotProyectoNombre || !cotExcelData) {
+                    showNotification('error', 'Completa todos los campos requeridos');
+                    return;
+                  }
+                  setCotGenerando(true);
+                  // Simular generación (en producción aquí iría la llamada al backend)
+                  setTimeout(() => {
+                    setCotGenerando(false);
+                    showNotification('success', 'Cotización generada exitosamente');
+                    // Aquí se descargaría el PDF
+                  }, 2000);
+                }}
+                disabled={cotGenerando || !cotCliente || !cotProyectoNombre || !cotExcelData}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+                  cotGenerando || !cotCliente || !cotProyectoNombre || !cotExcelData
+                    ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                    : 'bg-orange-600 hover:bg-orange-700 text-white'
+                }`}
+              >
+                {cotGenerando ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Generando PDF...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-5 h-5" />
+                    Generar Cotización PDF
+                  </>
+                )}
+              </button>
+            </div>
+          </Card>
         )}
       </div>
     );
@@ -4442,7 +4635,7 @@ export default function MatrizIntranet() {
               </div>
               
               {/* Tabs */}
-              <div className="grid grid-cols-5 gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
+              <div className="grid grid-cols-4 gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
                 <button
                   onClick={() => setDashboardTab('resumen')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
@@ -4478,15 +4671,6 @@ export default function MatrizIntranet() {
                 >
                   <Calendar className="w-4 h-4" />
                   <span>Carta</span>
-                </button>
-                <button
-                  onClick={() => setDashboardTab('cot')}
-                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
-                    dashboardTab === 'cot' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-700'
-                  }`}
-                >
-                  <DollarSign className="w-4 h-4" />
-                  <span>COT</span>
                 </button>
               </div>
               
@@ -5055,185 +5239,6 @@ export default function MatrizIntranet() {
                       </Card>
                     )}
 
-                    {/* Tab: Cotización (COT) */}
-                    {dashboardTab === 'cot' && (
-                      <Card className="p-4 sm:p-6">
-                        <div className="mb-6">
-                          <h3 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium mb-1">Generar Cotización</h3>
-                          <p className="text-neutral-500 dark:text-neutral-400 text-sm">Crea una propuesta comercial en PDF</p>
-                        </div>
-
-                        <div className="space-y-4">
-                          {/* Datos del Cliente */}
-                          <div className="grid sm:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
-                                Nombre del Cliente *
-                              </label>
-                              <input
-                                type="text"
-                                value={cotCliente}
-                                onChange={e => setCotCliente(e.target.value)}
-                                placeholder="Ej: BHP Billiton"
-                                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
-                                Nombre del Proyecto *
-                              </label>
-                              <input
-                                type="text"
-                                value={cotProyectoNombre}
-                                onChange={e => setCotProyectoNombre(e.target.value)}
-                                placeholder="Ej: Ampliación Planta Concentradora"
-                                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Carga de Excel */}
-                          <div>
-                            <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
-                              Listado de Documentos (Excel) *
-                            </label>
-                            <div className="border-2 border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg p-6 text-center hover:border-orange-500 transition-colors">
-                              <input
-                                type="file"
-                                accept=".xlsx,.xls"
-                                onChange={async (e) => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    setCotExcelFileName(file.name);
-                                    const reader = new FileReader();
-                                    reader.onload = async (evt) => {
-                                      const processExcelCot = () => {
-                                        try {
-                                          const data = new Uint8Array(evt.target.result);
-                                          const workbook = window.XLSX.read(data, { type: 'array' });
-                                          const sheetName = workbook.SheetNames[0];
-                                          const worksheet = workbook.Sheets[sheetName];
-                                          const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                                          setCotExcelData(jsonData);
-                                          showNotification('success', 'Excel cargado correctamente');
-                                        } catch (error) {
-                                          showNotification('error', 'Error al leer el archivo Excel');
-                                        }
-                                      };
-                                      if (!window.XLSX) {
-                                        const script = document.createElement('script');
-                                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-                                        script.onload = processExcelCot;
-                                        script.onerror = () => showNotification('error', 'Error cargando librería Excel');
-                                        document.head.appendChild(script);
-                                      } else {
-                                        processExcelCot();
-                                      }
-                                    };
-                                    reader.readAsArrayBuffer(file);
-                                  }
-                                }}
-                                className="hidden"
-                                id="cotExcelInput"
-                              />
-                              <label htmlFor="cotExcelInput" className="cursor-pointer">
-                                <FileSpreadsheet className="w-12 h-12 mx-auto mb-3 text-neutral-400" />
-                                {cotExcelFileName ? (
-                                  <div>
-                                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{cotExcelFileName}</p>
-                                    <p className="text-green-600 text-sm mt-1">✓ Archivo cargado</p>
-                                  </div>
-                                ) : (
-                                  <div>
-                                    <p className="text-neutral-600 dark:text-neutral-300 font-medium">Haz clic para subir</p>
-                                    <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">o arrastra tu archivo Excel aquí</p>
-                                  </div>
-                                )}
-                              </label>
-                            </div>
-                          </div>
-
-                          {/* Preview de datos */}
-                          {cotExcelData && (
-                            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4">
-                              <h4 className="text-neutral-800 dark:text-neutral-100 font-medium text-sm mb-2">Vista Previa</h4>
-                              <div className="max-h-48 overflow-y-auto text-xs">
-                                <table className="w-full">
-                                  <tbody>
-                                    {cotExcelData.slice(0, 10).map((row, i) => (
-                                      <tr key={i} className={i === 0 ? 'font-bold bg-neutral-200 dark:bg-neutral-700' : ''}>
-                                        {row.slice(0, 5).map((cell, j) => (
-                                          <td key={j} className="px-2 py-1 border-b border-neutral-200 dark:border-neutral-700 truncate max-w-[150px]">
-                                            {cell}
-                                          </td>
-                                        ))}
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                                {cotExcelData.length > 10 && (
-                                  <p className="text-neutral-500 text-center mt-2">... y {cotExcelData.length - 10} filas más</p>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Resumen de forma de pago */}
-                          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-                            <h4 className="text-orange-800 dark:text-orange-300 font-medium text-sm mb-2">Forma de Pago (por revisiones)</h4>
-                            <div className="grid grid-cols-3 gap-4 text-center">
-                              <div>
-                                <p className="text-2xl font-bold text-orange-600">70%</p>
-                                <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_A</p>
-                              </div>
-                              <div>
-                                <p className="text-2xl font-bold text-orange-600">20%</p>
-                                <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_B</p>
-                              </div>
-                              <div>
-                                <p className="text-2xl font-bold text-orange-600">10%</p>
-                                <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_0</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Botón Generar */}
-                          <button
-                            onClick={() => {
-                              if (!cotCliente || !cotProyectoNombre || !cotExcelData) {
-                                showNotification('error', 'Completa todos los campos requeridos');
-                                return;
-                              }
-                              setCotGenerando(true);
-                              // Simular generación (en producción aquí iría la llamada al backend)
-                              setTimeout(() => {
-                                setCotGenerando(false);
-                                showNotification('success', 'Cotización generada exitosamente');
-                                // Aquí se descargaría el PDF
-                              }, 2000);
-                            }}
-                            disabled={cotGenerando || !cotCliente || !cotProyectoNombre || !cotExcelData}
-                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
-                              cotGenerando || !cotCliente || !cotProyectoNombre || !cotExcelData
-                                ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 cursor-not-allowed'
-                                : 'bg-orange-600 hover:bg-orange-700 text-white'
-                            }`}
-                          >
-                            {cotGenerando ? (
-                              <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Generando PDF...
-                              </>
-                            ) : (
-                              <>
-                                <FileDown className="w-5 h-5" />
-                                Generar Cotización PDF
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </Card>
-                    )}
                   </>
                 );
               })()}

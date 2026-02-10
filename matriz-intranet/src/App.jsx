@@ -818,6 +818,7 @@ export default function MatrizIntranet() {
   const [dashboardStartDate, setDashboardStartDate] = useState('2026-01-05');
 
   // Estados para Cotización (COT)
+  const [facturacionTab, setFacturacionTab] = useState('entregables'); // Movido aquí para persistir entre re-renders
   const [cotCliente, setCotCliente] = useState('');
   const [cotProyectoNombre, setCotProyectoNombre] = useState('');
   const [cotExcelData, setCotExcelData] = useState(null);
@@ -2472,7 +2473,7 @@ export default function MatrizIntranet() {
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
   const FacturacionPage = () => {
-    const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp' | 'cot'
+    // facturacionTab y setFacturacionTab ahora vienen del estado del padre (App) para persistir entre re-renders
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [showPreview, setShowPreview] = useState(false);
     const [selectedProyectoEDP, setSelectedProyectoEDP] = useState('all');

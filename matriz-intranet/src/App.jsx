@@ -422,10 +422,9 @@ const calculateDeadlines = (projectStart, weekStart) => {
 
 const calculateStatus = (status, deadlines) => {
   const today = new Date();
-  if (!status) return { status: 'Pendiente', color: 'bg-neutral-50 dark:bg-neutral-800/500' };
   if (status.sentRev0) return { status: 'TERMINADO', color: 'bg-green-500' };
   if (status.sentRevB || status.sentRevA || status.sentIniciado) {
-    const nextDeadline = !status.sentRevA ? deadlines.deadlineRevA :
+    const nextDeadline = !status.sentRevA ? deadlines.deadlineRevA : 
                        !status.sentRevB ? deadlines.deadlineRevB : deadlines.deadlineRev0;
     if (today > nextDeadline) return { status: 'ATRASADO', color: 'bg-red-500' };
     return { status: 'En Proceso', color: 'bg-orange-500' };
@@ -435,7 +434,6 @@ const calculateStatus = (status, deadlines) => {
 };
 
 const getDocumentSuffix = (status) => {
-  if (!status) return "";
   if (status.sentRev0 || status.comentariosBRecibidos) return "_0";
   if (status.comentariosARecibidos) return "_B";
   if (status.sentIniciado || status.sentRevA) return "_A";
@@ -551,17 +549,6 @@ export default function MatrizIntranet() {
   const [firestoreReady, setFirestoreReady] = useState(false);
   // Estado persistente para Facturación (evita reset al re-render)
   const [selectedProyectoFacturacion, setSelectedProyectoFacturacion] = useState('');
-  // Estados persistentes para Tareas (evita reset al re-render por heartbeat)
-  const [selectedTareaId, setSelectedTareaId] = useState(null);
-  const [showNewTarea, setShowNewTarea] = useState(false);
-  const [filtroEstadoTareas, setFiltroEstadoTareas] = useState('todas');
-  // Estados persistentes para Carga de Horas (evita reset al re-render por heartbeat)
-  const [horasFormProfesional, setHorasFormProfesional] = useState('');
-  const [horasFormProyecto, setHorasFormProyecto] = useState('');
-  const [horasFormSemana, setHorasFormSemana] = useState('');
-  const [horasFormEntregable, setHorasFormEntregable] = useState('');
-  const [horasFormTipoCarga, setHorasFormTipoCarga] = useState('PLA');
-  const [horasFormRevision, setHorasFormRevision] = useState('REV_A');
 
   // Helper para filtrar proyectos según rol y asignación
   const currentColaborador = currentUser ? profesionales.find(c => c.id === currentUser.profesionalId) : null;
@@ -829,6 +816,13 @@ export default function MatrizIntranet() {
   // Estados para Dashboard del proyecto
   const [dashboardTab, setDashboardTab] = useState('resumen');
   const [dashboardStartDate, setDashboardStartDate] = useState('2026-01-05');
+
+  // Estados para Cotización (COT)
+  const [cotCliente, setCotCliente] = useState('');
+  const [cotProyectoNombre, setCotProyectoNombre] = useState('');
+  const [cotExcelData, setCotExcelData] = useState(null);
+  const [cotExcelFileName, setCotExcelFileName] = useState('');
+  const [cotGenerando, setCotGenerando] = useState(false);
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
@@ -1359,8 +1353,8 @@ export default function MatrizIntranet() {
                       <span className="text-orange-500 font-mono text-xs sm:text-sm">{proyecto.id}</span>
                       <Badge variant="success">Activo</Badge>
                     </div>
-                    <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre || 'Sin nombre'}</h3>
-                    <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente || ''}</p>
+                    <h3 className="text-neutral-800 dark:text-neutral-100 font-medium mt-1 text-sm sm:text-base truncate">{proyecto.nombre}</h3>
+                    <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{proyecto.cliente}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0 ml-2" />
                 </div>
@@ -1368,11 +1362,11 @@ export default function MatrizIntranet() {
                 <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500 dark:text-neutral-400">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {proyecto.inicio ? new Date(proyecto.inicio).toLocaleDateString('es-CL') : 'Sin fecha'}
+                    {new Date(proyecto.inicio).toLocaleDateString('es-CL')}
                   </span>
                   <span className="flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" />
-                    {(proyecto.avance || 0).toFixed(1)}%
+                    {proyecto.avance.toFixed(1)}%
                   </span>
                 </div>
 
@@ -1380,7 +1374,7 @@ export default function MatrizIntranet() {
                 <div className="mt-2 sm:mt-3 h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-orange-500 rounded-full transition-all"
-                    style={{ width: `${proyecto.avance || 0}%` }}
+                    style={{ width: `${proyecto.avance}%` }}
                   />
                 </div>
               </Card>
@@ -1552,8 +1546,8 @@ export default function MatrizIntranet() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-orange-500 font-mono">{proyecto.id}</span>
-                      <Badge variant={proyecto.estado?.toLowerCase() === 'activo' ? 'success' : 'default'}>
-                        {proyecto.estado || 'Activo'}
+                      <Badge variant={proyecto.estado === 'Activo' ? 'success' : 'default'}>
+                        {proyecto.estado}
                       </Badge>
                     </div>
                     <h3 className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.nombre}</h3>
@@ -1563,13 +1557,13 @@ export default function MatrizIntranet() {
 
                 <div className="flex items-center gap-4">
                   <div className="text-right hidden sm:block">
-                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{(proyecto.avance || 0).toFixed(1)}%</p>
+                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.avance.toFixed(1)}%</p>
                     <p className="text-neutral-500 dark:text-neutral-400 text-xs">Avance</p>
                   </div>
                   <div className="w-24 sm:w-32 h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden hidden sm:block">
                     <div
                       className="h-full bg-orange-500 rounded-full"
-                      style={{ width: `${proyecto.avance || 0}%` }}
+                      style={{ width: `${proyecto.avance}%` }}
                     />
                   </div>
                   {isAdmin && (
@@ -1613,22 +1607,14 @@ export default function MatrizIntranet() {
   // PÁGINA: CARGA DE HORAS
   // ============================================
   const HorasPage = () => {
-    // Usar estados globales para persistencia (evita reset por heartbeat)
-    const profesional = horasFormProfesional;
-    const setProfesional = setHorasFormProfesional;
-    const proyecto = horasFormProyecto;
-    const setProyecto = setHorasFormProyecto;
-    const semana = horasFormSemana;
-    const setSemana = setHorasFormSemana;
-    const entregable = horasFormEntregable;
-    const setEntregable = setHorasFormEntregable;
-    const tipoCarga = horasFormTipoCarga;
-    const setTipoCarga = setHorasFormTipoCarga;
-    const revision = horasFormRevision;
-    const setRevision = setHorasFormRevision;
-    // Estados locales (pueden resetearse sin problema)
+    const [profesional, setProfesional] = useState('');
+    const [proyecto, setProyecto] = useState('');
+    const [semana, setSemana] = useState('');
+    const [entregable, setEntregable] = useState('');
     const [horas, setHoras] = useState('');
-    const [descripcionCarga, setDescripcionCarga] = useState('');
+    const [revision, setRevision] = useState('REV_A');
+    const [tipoCarga, setTipoCarga] = useState('PLA'); // PLA, DOC, INF, REU, VIS
+    const [descripcionCarga, setDescripcionCarga] = useState(''); // Para REU y VIS
 
     const weeks = getWeeksOfMonth(mesHoras);
 
@@ -1957,25 +1943,21 @@ export default function MatrizIntranet() {
   // PÁGINA: TAREAS
   // ============================================
   const TareasPage = () => {
-    // Estados locales (no críticos, pueden resetearse)
+    const [showNewTarea, setShowNewTarea] = useState(false);
+    const [selectedTarea, setSelectedTarea] = useState(null);
     const [nuevoComentario, setNuevoComentario] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState('todas'); // todas, pendiente, en_progreso, completada
+
+    // Estados para nueva tarea
     const [nuevaTarea, setNuevaTarea] = useState({
       titulo: '',
       descripcion: '',
       asignadoA: '',
       proyectoId: '',
       entregableId: '',
-      prioridad: 'media',
+      prioridad: 'media', // baja, media, alta
       fechaLimite: ''
     });
-
-    // Usar estados globales para persistencia
-    const filtroEstado = filtroEstadoTareas;
-    const setFiltroEstado = setFiltroEstadoTareas;
-
-    // Derivar selectedTarea del ID global
-    const selectedTarea = selectedTareaId ? tareas.find(t => t._docId === selectedTareaId) : null;
-    const setSelectedTarea = (tarea) => setSelectedTareaId(tarea?._docId || null);
 
     // Filtrar tareas según rol
     const misTareas = isAdmin
@@ -2490,7 +2472,7 @@ export default function MatrizIntranet() {
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
   const FacturacionPage = () => {
-    const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp'
+    const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp' | 'cot'
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [showPreview, setShowPreview] = useState(false);
     const [selectedProyectoEDP, setSelectedProyectoEDP] = useState('all');
@@ -2980,6 +2962,16 @@ export default function MatrizIntranet() {
             }`}
           >
             EDP
+          </button>
+          <button
+            onClick={() => setFacturacionTab('cot')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              facturacionTab === 'cot'
+                ? 'bg-white dark:bg-neutral-800 text-orange-600 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100'
+            }`}
+          >
+            COT
           </button>
         </div>
 
@@ -3680,6 +3672,189 @@ export default function MatrizIntranet() {
             </div>
           </div>
         )}
+
+        {/* ==================== PESTAÑA COT (COTIZACIÓN) ==================== */}
+        {facturacionTab === 'cot' && (
+          <Card className="p-4 sm:p-6">
+            <div className="mb-6">
+              <h3 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium mb-1">Generar Cotización</h3>
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm">Crea una propuesta comercial en PDF a partir de un listado de documentos</p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Datos del Cliente */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
+                    Nombre del Cliente *
+                  </label>
+                  <input
+                    type="text"
+                    value={cotCliente}
+                    onChange={e => setCotCliente(e.target.value)}
+                    placeholder="Ej: BHP Billiton"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
+                    Nombre del Proyecto *
+                  </label>
+                  <input
+                    type="text"
+                    value={cotProyectoNombre}
+                    onChange={e => setCotProyectoNombre(e.target.value)}
+                    placeholder="Ej: Ampliación Planta Concentradora"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+
+              {/* Carga de Excel */}
+              <div>
+                <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
+                  Listado de Documentos (Excel) *
+                </label>
+                <div className="border-2 border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg p-6 text-center hover:border-orange-500 transition-colors">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setCotExcelFileName(file.name);
+                        const reader = new FileReader();
+                        reader.onload = async (evt) => {
+                          const processExcelCot = () => {
+                            try {
+                              const data = new Uint8Array(evt.target.result);
+                              const workbook = window.XLSX.read(data, { type: 'array' });
+                              const sheetName = workbook.SheetNames[0];
+                              const worksheet = workbook.Sheets[sheetName];
+                              const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                              setCotExcelData(jsonData);
+                              showNotification('success', 'Excel cargado correctamente');
+                            } catch (error) {
+                              showNotification('error', 'Error al leer el archivo Excel');
+                            }
+                          };
+                          if (!window.XLSX) {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+                            script.onload = processExcelCot;
+                            script.onerror = () => showNotification('error', 'Error cargando librería Excel');
+                            document.head.appendChild(script);
+                          } else {
+                            processExcelCot();
+                          }
+                        };
+                        reader.readAsArrayBuffer(file);
+                      }
+                    }}
+                    className="hidden"
+                    id="cotExcelInputAdmin"
+                  />
+                  <label htmlFor="cotExcelInputAdmin" className="cursor-pointer">
+                    <FileSpreadsheet className="w-12 h-12 mx-auto mb-3 text-neutral-400" />
+                    {cotExcelFileName ? (
+                      <div>
+                        <p className="text-neutral-800 dark:text-neutral-100 font-medium">{cotExcelFileName}</p>
+                        <p className="text-green-600 text-sm mt-1">✓ Archivo cargado</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-neutral-600 dark:text-neutral-300 font-medium">Haz clic para subir</p>
+                        <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">o arrastra tu archivo Excel aquí</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Preview de datos */}
+              {cotExcelData && (
+                <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4">
+                  <h4 className="text-neutral-800 dark:text-neutral-100 font-medium text-sm mb-2">Vista Previa</h4>
+                  <div className="max-h-48 overflow-y-auto text-xs">
+                    <table className="w-full">
+                      <tbody>
+                        {cotExcelData.slice(0, 10).map((row, i) => (
+                          <tr key={i} className={i === 0 ? 'font-bold bg-neutral-200 dark:bg-neutral-700' : ''}>
+                            {row.slice(0, 5).map((cell, j) => (
+                              <td key={j} className="px-2 py-1 border-b border-neutral-200 dark:border-neutral-700 truncate max-w-[150px]">
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {cotExcelData.length > 10 && (
+                      <p className="text-neutral-500 text-center mt-2">... y {cotExcelData.length - 10} filas más</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Resumen de forma de pago */}
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                <h4 className="text-orange-800 dark:text-orange-300 font-medium text-sm mb-2">Forma de Pago (por revisiones)</h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">70%</p>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_A</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">20%</p>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_B</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">10%</p>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_0</p>
+                  </div>
+                </div>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 text-center">
+                  Validez: 90 días | Revisiones posteriores mantienen valor REV_0
+                </p>
+              </div>
+
+              {/* Botón Generar */}
+              <button
+                onClick={() => {
+                  if (!cotCliente || !cotProyectoNombre || !cotExcelData) {
+                    showNotification('error', 'Completa todos los campos requeridos');
+                    return;
+                  }
+                  setCotGenerando(true);
+                  // Simular generación (en producción aquí iría la llamada al backend)
+                  setTimeout(() => {
+                    setCotGenerando(false);
+                    showNotification('success', 'Cotización generada exitosamente');
+                    // Aquí se descargaría el PDF
+                  }, 2000);
+                }}
+                disabled={cotGenerando || !cotCliente || !cotProyectoNombre || !cotExcelData}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+                  cotGenerando || !cotCliente || !cotProyectoNombre || !cotExcelData
+                    ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                    : 'bg-orange-600 hover:bg-orange-700 text-white'
+                }`}
+              >
+                {cotGenerando ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Generando PDF...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-5 h-5" />
+                    Generar Cotización PDF
+                  </>
+                )}
+              </button>
+            </div>
+          </Card>
+        )}
       </div>
     );
   };
@@ -3712,58 +3887,55 @@ export default function MatrizIntranet() {
   if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden" style={{background: 'radial-gradient(ellipse at center, #ea580c 0%, #c2410c 25%, #431407 60%, #0a0a0a 100%)'}}>
-        {/* Estilos de animación - Solo una vez, elegantes */}
+        {/* Estilos de animación */}
         <style>{`
           @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(40px); }
+            from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
           }
           @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-30px); }
+            from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.8); }
-            to { opacity: 1; transform: scale(1); }
+          @keyframes pulse-glow {
+            0%, 100% { text-shadow: 0 0 20px rgba(251, 146, 60, 0.5), 0 0 40px rgba(251, 146, 60, 0.3); }
+            50% { text-shadow: 0 0 30px rgba(251, 146, 60, 0.8), 0 0 60px rgba(251, 146, 60, 0.5); }
           }
-          @keyframes glowOnce {
-            0% { text-shadow: 0 0 0 transparent; }
-            50% { text-shadow: 0 0 40px rgba(251, 146, 60, 0.9), 0 0 80px rgba(251, 146, 60, 0.5); }
-            100% { text-shadow: 0 0 20px rgba(251, 146, 60, 0.4); }
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
           }
-          @keyframes expandIn {
-            from { opacity: 0; transform: scaleX(0); }
-            to { opacity: 1; transform: scaleX(1); }
+          @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
           }
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+          .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
+          .animate-fadeInDown { animation: fadeInDown 0.6s ease-out forwards; }
+          .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+          .animate-float { animation: float 4s ease-in-out infinite; }
+          .animate-shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
           }
-          .animate-fadeInUp { animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-          .animate-fadeInDown { animation: fadeInDown 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-          .animate-scaleIn { animation: scaleIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-          .animate-glowOnce { animation: glowOnce 1.5s ease-out forwards; animation-delay: 0.5s; }
-          .animate-expandIn { animation: expandIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-          .animate-fadeIn { animation: fadeIn 1s ease-out forwards; opacity: 0; }
         `}</style>
 
-        {/* Partículas de fondo decorativas - estáticas, sin animación infinita */}
+        {/* Partículas de fondo decorativas */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl animate-fadeIn" style={{animationDelay: '0.3s'}}></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl animate-fadeIn" style={{animationDelay: '0.6s'}}></div>
-          <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-orange-400/5 rounded-full blur-2xl animate-fadeIn" style={{animationDelay: '0.9s'}}></div>
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-orange-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}}></div>
         </div>
 
         <div className="w-full max-w-md relative z-10">
-          <div className="text-center mb-8">
-            <div className="animate-scaleIn text-4xl font-light tracking-widest mb-2">
+          <div className="text-center mb-8 animate-fadeInDown">
+            <div className="text-4xl font-light tracking-widest mb-2 animate-float">
               <span className="text-white">M</span>
-              <span className="text-orange-300 animate-glowOnce">A</span>
+              <span className="text-orange-300 animate-pulse-glow">A</span>
               <span className="text-white">TRIZ</span>
             </div>
-            <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-orange-400 to-transparent mx-auto mb-3 animate-expandIn" style={{animationDelay: '0.4s'}}></div>
-            <p className="text-orange-200/60 text-xs tracking-wider animate-fadeInDown" style={{animationDelay: '0.3s'}}>ARCHITECTURE FOR ENGINEERING</p>
-            <h1 className="text-xl text-white font-medium mt-4 animate-fadeInDown" style={{animationDelay: '0.5s'}}>Intranet</h1>
+            <p className="text-orange-200/60 text-xs tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
+            <h1 className="text-xl text-white font-medium mt-4">Intranet</h1>
           </div>
 
           <div className="bg-white/95 dark:bg-neutral-800/95 backdrop-blur border border-white/20 dark:border-neutral-700 rounded-lg shadow-2xl p-6 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
@@ -4444,10 +4616,10 @@ export default function MatrizIntranet() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-orange-500 font-mono text-sm sm:text-lg font-semibold">{proyecto.id}</span>
-                      <Badge variant={proyecto.estado?.toLowerCase() === 'activo' ? 'success' : 'default'}>{proyecto.estado || 'Activo'}</Badge>
+                      <Badge variant="success">{proyecto.estado}</Badge>
                     </div>
-                    <h1 className="text-sm sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium mt-1">{proyecto.nombre || 'Sin nombre'}</h1>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{proyecto.cliente || 'Sin cliente'}</p>
+                    <h1 className="text-sm sm:text-xl text-neutral-800 dark:text-neutral-100 font-medium mt-1">{proyecto.nombre}</h1>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{proyecto.cliente}</p>
                   </div>
                   
                   <button 
@@ -4514,7 +4686,7 @@ export default function MatrizIntranet() {
                   const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
                   // Usar clave compuesta para proyectos con entregables personalizados
                   const statusKey = usaEntregablesPersonalizados ? `${selectedProject}_${d.id}` : d.id;
-                  const status = statusData[statusKey] || {};
+                  const status = statusData[statusKey];
                   const statusInfo = calculateStatus(status, deadlines);
                   return { ...d, ...deadlines, status, statusInfo, statusKey };
                 });
@@ -5066,6 +5238,7 @@ export default function MatrizIntranet() {
                         </div>
                       </Card>
                     )}
+
                   </>
                 );
               })()}

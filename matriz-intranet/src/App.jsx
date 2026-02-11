@@ -817,15 +817,8 @@ export default function MatrizIntranet() {
   const [dashboardTab, setDashboardTab] = useState('resumen');
   const [dashboardStartDate, setDashboardStartDate] = useState('2026-01-05');
 
-  // Estados para Cotización (COT)
-  const [facturacionTab, setFacturacionTab] = useState('entregables'); // Movido aquí para persistir entre re-renders
-  const [cotCliente, setCotCliente] = useState('');
-  const [cotProyectoNombre, setCotProyectoNombre] = useState('');
-  const [cotLogo, setCotLogo] = useState(null); // Archivo del logo del cliente
-  const [cotLogoPreview, setCotLogoPreview] = useState(null); // URL para preview del logo
-  const [cotExcelData, setCotExcelData] = useState(null);
-  const [cotExcelFileName, setCotExcelFileName] = useState('');
-  const [cotGenerando, setCotGenerando] = useState(false);
+  // Estado para tab de facturación (debe estar aquí para persistir entre re-renders del heartbeat)
+  const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp' | 'cot'
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
@@ -2475,7 +2468,18 @@ export default function MatrizIntranet() {
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
   const FacturacionPage = () => {
-    // facturacionTab y setFacturacionTab ahora vienen del estado del padre (App) para persistir entre re-renders
+    // facturacionTab y setFacturacionTab vienen del estado del padre (App) para persistir entre re-renders del heartbeat
+
+    // Estados para COT (Cotización) - dentro del componente para evitar re-renders de App
+    const [cotCliente, setCotCliente] = useState('');
+    const [cotProyectoNombre, setCotProyectoNombre] = useState('');
+    const [cotLogo, setCotLogo] = useState(null);
+    const [cotLogoPreview, setCotLogoPreview] = useState(null);
+    const [cotExcelData, setCotExcelData] = useState(null);
+    const [cotExcelFileName, setCotExcelFileName] = useState('');
+    const [cotGenerando, setCotGenerando] = useState(false);
+    const [cotShowPreview, setCotShowPreview] = useState(false); // Para mostrar preview del PDF
+
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [showPreview, setShowPreview] = useState(false);
     const [selectedProyectoEDP, setSelectedProyectoEDP] = useState('all');
@@ -3877,42 +3881,171 @@ export default function MatrizIntranet() {
                 </p>
               </div>
 
-              {/* Botón Generar */}
+              {/* Botón Generar Preview */}
               <button
                 onClick={() => {
                   if (!cotCliente || !cotProyectoNombre || !cotExcelData) {
                     showNotification('error', 'Completa todos los campos requeridos');
                     return;
                   }
-                  setCotGenerando(true);
-                  // Simular generación (en producción aquí iría la llamada al backend)
-                  setTimeout(() => {
-                    setCotGenerando(false);
-                    showNotification('success', 'Cotización generada exitosamente');
-                    // Aquí se descargaría el PDF
-                  }, 2000);
+                  setCotShowPreview(true);
                 }}
-                disabled={cotGenerando || !cotCliente || !cotProyectoNombre || !cotExcelData}
+                disabled={!cotCliente || !cotProyectoNombre || !cotExcelData}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
-                  cotGenerando || !cotCliente || !cotProyectoNombre || !cotExcelData
+                  !cotCliente || !cotProyectoNombre || !cotExcelData
                     ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 cursor-not-allowed'
                     : 'bg-orange-600 hover:bg-orange-700 text-white'
                 }`}
               >
-                {cotGenerando ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Generando PDF...
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="w-5 h-5" />
-                    Generar Cotización PDF
-                  </>
-                )}
+                <Eye className="w-5 h-5" />
+                Ver Preview de Cotización
               </button>
             </div>
           </Card>
+        )}
+
+        {/* ==================== MODAL PREVIEW COTIZACIÓN ==================== */}
+        {cotShowPreview && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-auto">
+            <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-auto rounded-lg shadow-2xl">
+              {/* Header del modal */}
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+                <h3 className="text-lg font-semibold text-neutral-800">Preview de Cotización</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const printContent = document.getElementById('cotizacion-preview');
+                      const printWindow = window.open('', '_blank');
+                      printWindow.document.write(`
+                        <html>
+                          <head>
+                            <title>Cotización - ${cotCliente}</title>
+                            <style>
+                              body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+                              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                              th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                              th { background: #f5f5f5; font-weight: 600; }
+                              .header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px; }
+                              .logo { max-height: 60px; max-width: 200px; }
+                              .title { color: #ea580c; font-size: 24px; font-weight: bold; }
+                              .subtitle { color: #666; font-size: 14px; }
+                              .section { margin: 25px 0; }
+                              .section-title { font-size: 14px; font-weight: 600; color: #ea580c; margin-bottom: 10px; text-transform: uppercase; }
+                              .total-row { background: #fef3e7 !important; font-weight: bold; }
+                              .terms { background: #f9f9f9; padding: 15px; border-radius: 8px; font-size: 12px; color: #666; }
+                              @media print { body { padding: 20px; } }
+                            </style>
+                          </head>
+                          <body>
+                            ${printContent.innerHTML}
+                          </body>
+                        </html>
+                      `);
+                      printWindow.document.close();
+                      printWindow.print();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Imprimir
+                  </button>
+                  <button
+                    onClick={() => setCotShowPreview(false)}
+                    className="flex items-center gap-2 px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300"
+                  >
+                    <X className="w-4 h-4" />
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+
+              {/* Contenido del Preview */}
+              <div id="cotizacion-preview" className="p-8">
+                {/* Header con logos */}
+                <div className="flex justify-between items-start mb-8">
+                  <div>
+                    <div className="text-2xl font-bold text-orange-600">MATRIZ</div>
+                    <div className="text-sm text-neutral-500">Architecture for Engineering</div>
+                  </div>
+                  {cotLogoPreview && (
+                    <img src={cotLogoPreview} alt="Logo Cliente" className="max-h-16 max-w-[200px] object-contain" />
+                  )}
+                </div>
+
+                {/* Título */}
+                <div className="text-center mb-8">
+                  <h1 className="text-xl font-bold text-neutral-800 mb-2">PROPUESTA COMERCIAL</h1>
+                  <p className="text-neutral-600">{cotProyectoNombre}</p>
+                  <p className="text-sm text-neutral-500">Cliente: {cotCliente}</p>
+                  <p className="text-sm text-neutral-500">Fecha: {new Date().toLocaleDateString('es-CL')}</p>
+                </div>
+
+                {/* Tabla de items */}
+                <div className="mb-8">
+                  <h2 className="text-sm font-semibold text-orange-600 uppercase mb-3">Alcance y Valorización</h2>
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-neutral-100">
+                        <th className="border border-neutral-300 px-3 py-2 text-left">Item</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-left">Descripción</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-center">Tipo</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-right">REV_A (70%)</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-right">REV_B (20%)</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-right">REV_0 (10%)</th>
+                        <th className="border border-neutral-300 px-3 py-2 text-right">Total UF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cotExcelData && cotExcelData.slice(1).filter(row => row[0]).map((row, idx) => {
+                        const tipo = (row[2] || 'PLA').toUpperCase();
+                        const precio = tipo.includes('CRD') || tipo.includes('EETT') || tipo.includes('MTO') ? 40 :
+                                      tipo.includes('DET') ? 25 : 20;
+                        return (
+                          <tr key={idx} className="hover:bg-neutral-50">
+                            <td className="border border-neutral-300 px-3 py-2">{idx + 1}</td>
+                            <td className="border border-neutral-300 px-3 py-2">{row[1] || row[0]}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-center">{tipo}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precio * 0.7).toFixed(1)}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precio * 0.2).toFixed(1)}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precio * 0.1).toFixed(1)}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-right font-medium">{precio}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-orange-50 font-bold">
+                        <td colSpan="6" className="border border-neutral-300 px-3 py-2 text-right">TOTAL</td>
+                        <td className="border border-neutral-300 px-3 py-2 text-right">
+                          {cotExcelData ? cotExcelData.slice(1).filter(row => row[0]).reduce((sum, row) => {
+                            const tipo = (row[2] || 'PLA').toUpperCase();
+                            const precio = tipo.includes('CRD') || tipo.includes('EETT') || tipo.includes('MTO') ? 40 :
+                                          tipo.includes('DET') ? 25 : 20;
+                            return sum + precio;
+                          }, 0) : 0} UF
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Términos */}
+                <div className="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600">
+                  <h2 className="text-sm font-semibold text-orange-600 uppercase mb-2">Condiciones Comerciales</h2>
+                  <ul className="space-y-1">
+                    <li>• <strong>Forma de Pago:</strong> REV_A (70%) al envío, REV_B (20%) con comentarios, REV_0 (10%) aprobación final</li>
+                    <li>• <strong>Validez de la Oferta:</strong> 90 días corridos desde la fecha de emisión</li>
+                    <li>• <strong>Plazo de Entrega:</strong> A coordinar según alcance del proyecto</li>
+                    <li>• <strong>Revisiones Adicionales:</strong> Se valorarán al valor de REV_0</li>
+                  </ul>
+                </div>
+
+                {/* Firma */}
+                <div className="mt-8 pt-8 border-t text-center text-sm text-neutral-500">
+                  <p>MATRIZ - Architecture for Engineering</p>
+                  <p>www.matriz.cl | contacto@matriz.cl</p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );

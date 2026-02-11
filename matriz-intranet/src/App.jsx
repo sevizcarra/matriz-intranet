@@ -822,11 +822,12 @@ export default function MatrizIntranet() {
   // Estado para tab de facturación (debe estar aquí para persistir entre re-renders del heartbeat)
   const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp' | 'cot'
 
-  // Estados COT archivos a nivel de App (solo archivos para que persistan al re-montar)
+  // Estados COT a nivel de App para que persistan al re-montar (heartbeat cada 30s)
   const [cotLogo, setCotLogo] = useState(null);
   const [cotLogoPreview, setCotLogoPreview] = useState(null);
   const [cotExcelData, setCotExcelData] = useState(null);
   const [cotExcelFileName, setCotExcelFileName] = useState('');
+  const [cotShowPreview, setCotShowPreview] = useState(false);
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
@@ -2475,13 +2476,13 @@ export default function MatrizIntranet() {
   // Precios base: CRD/EETT/MTO = 40 UF, Detalle = 25 UF, Plano General = 20 UF
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
-  // Estados COT archivos están a nivel de App, estados de texto aquí para evitar re-renders globales
+  // Estados COT archivos y preview están a nivel de App, solo texto aquí para evitar re-renders globales
   const FacturacionPage = () => {
     // Estados locales de COT (texto) - no causan re-render de App
     const [cotCliente, setCotCliente] = useState('');
     const [cotProyectoNombre, setCotProyectoNombre] = useState('');
-    const [cotShowPreview, setCotShowPreview] = useState(false);
     const [cotGenerando, setCotGenerando] = useState(false);
+    // cotShowPreview viene del nivel de App para persistir entre re-renders del heartbeat
 
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [showPreview, setShowPreview] = useState(false);

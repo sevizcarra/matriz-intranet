@@ -3999,30 +3999,34 @@ export default function MatrizIntranet() {
                       </tr>
                     </thead>
                     <tbody>
-                      {cotExcelData && cotExcelData.slice(1).filter(row => row[0]).map((row, idx) => {
-                        const tipo = (row[2] || 'PLA').toUpperCase();
+                      {cotExcelData && cotExcelData.slice(1).filter(row => row[0] && row[3]).map((row, idx) => {
+                        // row[0]=N°, row[1]=CLASIFICACIÓN (GRL/DET/etc), row[2]=NOMBRE, row[3]=Descripción, row[4]=Cantidad
+                        const tipo = (row[1] || 'GRL').toUpperCase();
+                        const cantidad = parseInt(row[4]) || 1;
                         const precio = tipo.includes('CRD') || tipo.includes('EETT') || tipo.includes('MTO') ? 40 :
                                       tipo.includes('DET') ? 25 : 20;
+                        const precioTotal = precio * cantidad;
                         return (
                           <tr key={idx} className="hover:bg-neutral-50">
-                            <td className="border border-neutral-300 px-3 py-2">{idx + 1}</td>
-                            <td className="border border-neutral-300 px-3 py-2">{row[1] || row[0]}</td>
+                            <td className="border border-neutral-300 px-3 py-2">{row[0]}</td>
+                            <td className="border border-neutral-300 px-3 py-2">{row[3]}</td>
                             <td className="border border-neutral-300 px-3 py-2 text-center">{tipo}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precio * 0.7).toFixed(1)}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precio * 0.2).toFixed(1)}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precio * 0.1).toFixed(1)}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-right font-medium">{precio}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precioTotal * 0.7).toFixed(1)}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precioTotal * 0.2).toFixed(1)}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precioTotal * 0.1).toFixed(1)}</td>
+                            <td className="border border-neutral-300 px-3 py-2 text-right font-medium">{precioTotal}</td>
                           </tr>
                         );
                       })}
                       <tr className="bg-orange-50 font-bold">
                         <td colSpan="6" className="border border-neutral-300 px-3 py-2 text-right">TOTAL</td>
                         <td className="border border-neutral-300 px-3 py-2 text-right">
-                          {cotExcelData ? cotExcelData.slice(1).filter(row => row[0]).reduce((sum, row) => {
-                            const tipo = (row[2] || 'PLA').toUpperCase();
+                          {cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
+                            const tipo = (row[1] || 'GRL').toUpperCase();
+                            const cantidad = parseInt(row[4]) || 1;
                             const precio = tipo.includes('CRD') || tipo.includes('EETT') || tipo.includes('MTO') ? 40 :
                                           tipo.includes('DET') ? 25 : 20;
-                            return sum + precio;
+                            return sum + (precio * cantidad);
                           }, 0) : 0} UF
                         </td>
                       </tr>

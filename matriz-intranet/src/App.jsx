@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Home, FolderKanban, Clock, FileSpreadsheet, Users, Plus,
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
@@ -819,6 +819,15 @@ export default function MatrizIntranet() {
 
   // Estado para tab de facturación (debe estar aquí para persistir entre re-renders del heartbeat)
   const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp' | 'cot'
+
+  // Estados COT a nivel de App para que persistan (evita pérdida de archivos al re-montar)
+  const [cotCliente, setCotCliente] = useState('');
+  const [cotProyectoNombre, setCotProyectoNombre] = useState('');
+  const [cotLogo, setCotLogo] = useState(null);
+  const [cotLogoPreview, setCotLogoPreview] = useState(null);
+  const [cotExcelData, setCotExcelData] = useState(null);
+  const [cotExcelFileName, setCotExcelFileName] = useState('');
+  const [cotShowPreview, setCotShowPreview] = useState(false);
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
@@ -2469,17 +2478,11 @@ export default function MatrizIntranet() {
   // ============================================
   // useMemo para evitar que el componente se re-cree en cada render de App
   const FacturacionPage = useMemo(() => function FacturacionPageComponent() {
-    // facturacionTab y setFacturacionTab vienen del estado del padre (App) para persistir entre re-renders del heartbeat
+    // Estados COT ahora vienen del nivel de App para persistir entre re-renders del heartbeat
+    // cotCliente, cotProyectoNombre, cotLogo, cotLogoPreview, cotExcelData, cotExcelFileName, cotShowPreview
 
-    // Estados para COT (Cotización) - dentro del componente para evitar re-renders de App
-    const [cotCliente, setCotCliente] = useState('');
-    const [cotProyectoNombre, setCotProyectoNombre] = useState('');
-    const [cotLogo, setCotLogo] = useState(null);
-    const [cotLogoPreview, setCotLogoPreview] = useState(null);
-    const [cotExcelData, setCotExcelData] = useState(null);
-    const [cotExcelFileName, setCotExcelFileName] = useState('');
+    // Estado local solo para el spinner de generación
     const [cotGenerando, setCotGenerando] = useState(false);
-    const [cotShowPreview, setCotShowPreview] = useState(false); // Para mostrar preview del PDF
 
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [showPreview, setShowPreview] = useState(false);

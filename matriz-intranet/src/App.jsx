@@ -2476,11 +2476,8 @@ export default function MatrizIntranet() {
   // Precios base: CRD/EETT/MTO = 40 UF, Detalle = 25 UF, Plano General = 20 UF
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
-  // useMemo para evitar que el componente se re-cree en cada render de App
-  const FacturacionPage = useMemo(() => function FacturacionPageComponent() {
-    // Estados COT ahora vienen del nivel de App para persistir entre re-renders del heartbeat
-    // cotCliente, cotProyectoNombre, cotLogo, cotLogoPreview, cotExcelData, cotExcelFileName, cotShowPreview
-
+  // Estados COT están a nivel de App para persistir entre re-renders del heartbeat
+  const FacturacionPage = () => {
     // Estado local solo para el spinner de generación
     const [cotGenerando, setCotGenerando] = useState(false);
 
@@ -4053,7 +4050,7 @@ export default function MatrizIntranet() {
         )}
       </div>
     );
-  }, []); // Cerrar useMemo - array vacío porque las dependencias se capturan por closure
+  };
 
 
   // Modal Nuevo Proyecto se renderiza inline (ver abajo)

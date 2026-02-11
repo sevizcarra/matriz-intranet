@@ -422,9 +422,10 @@ const calculateDeadlines = (projectStart, weekStart) => {
 
 const calculateStatus = (status, deadlines) => {
   const today = new Date();
+  if (!status) return { status: 'Pendiente', color: 'bg-neutral-50 dark:bg-neutral-800/500' };
   if (status.sentRev0) return { status: 'TERMINADO', color: 'bg-green-500' };
   if (status.sentRevB || status.sentRevA || status.sentIniciado) {
-    const nextDeadline = !status.sentRevA ? deadlines.deadlineRevA : 
+    const nextDeadline = !status.sentRevA ? deadlines.deadlineRevA :
                        !status.sentRevB ? deadlines.deadlineRevB : deadlines.deadlineRev0;
     if (today > nextDeadline) return { status: 'ATRASADO', color: 'bg-red-500' };
     return { status: 'En Proceso', color: 'bg-orange-500' };
@@ -434,6 +435,7 @@ const calculateStatus = (status, deadlines) => {
 };
 
 const getDocumentSuffix = (status) => {
+  if (!status) return "";
   if (status.sentRev0 || status.comentariosBRecibidos) return "_0";
   if (status.comentariosARecibidos) return "_B";
   if (status.sentIniciado || status.sentRevA) return "_A";
@@ -820,14 +822,11 @@ export default function MatrizIntranet() {
   // Estado para tab de facturación (debe estar aquí para persistir entre re-renders del heartbeat)
   const [facturacionTab, setFacturacionTab] = useState('entregables'); // 'entregables' | 'edp' | 'cot'
 
-  // Estados COT a nivel de App para que persistan (evita pérdida de archivos al re-montar)
-  const [cotCliente, setCotCliente] = useState('');
-  const [cotProyectoNombre, setCotProyectoNombre] = useState('');
+  // Estados COT archivos a nivel de App (solo archivos para que persistan al re-montar)
   const [cotLogo, setCotLogo] = useState(null);
   const [cotLogoPreview, setCotLogoPreview] = useState(null);
   const [cotExcelData, setCotExcelData] = useState(null);
   const [cotExcelFileName, setCotExcelFileName] = useState('');
-  const [cotShowPreview, setCotShowPreview] = useState(false);
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
@@ -2476,9 +2475,12 @@ export default function MatrizIntranet() {
   // Precios base: CRD/EETT/MTO = 40 UF, Detalle = 25 UF, Plano General = 20 UF
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
-  // Estados COT están a nivel de App para persistir entre re-renders del heartbeat
+  // Estados COT archivos están a nivel de App, estados de texto aquí para evitar re-renders globales
   const FacturacionPage = () => {
-    // Estado local solo para el spinner de generación
+    // Estados locales de COT (texto) - no causan re-render de App
+    const [cotCliente, setCotCliente] = useState('');
+    const [cotProyectoNombre, setCotProyectoNombre] = useState('');
+    const [cotShowPreview, setCotShowPreview] = useState(false);
     const [cotGenerando, setCotGenerando] = useState(false);
 
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));

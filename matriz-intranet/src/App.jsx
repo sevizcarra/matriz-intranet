@@ -4989,9 +4989,9 @@ export default function MatrizIntranet() {
                                 const hasProgress = d.status?.sentRev0 || d.status?.sentRevB || d.status?.sentRevA || d.status?.sentIniciado;
                                 if (!hasProgress) return false;
                                 // Si tiene fecha, verificar si es antes de esta semana
-                                const completedDate = d.status.sentRev0Date ? new Date(d.status.sentRev0Date) :
-                                                     d.status.sentRevBDate ? new Date(d.status.sentRevBDate) :
-                                                     d.status.sentRevADate ? new Date(d.status.sentRevADate) : today;
+                                const completedDate = d.status?.sentRev0Date ? new Date(d.status.sentRev0Date) :
+                                                     d.status?.sentRevBDate ? new Date(d.status.sentRevBDate) :
+                                                     d.status?.sentRevADate ? new Date(d.status.sentRevADate) : today;
                                 const weeksSinceStart = Math.floor((completedDate - startDate) / (7 * 24 * 60 * 60 * 1000));
                                 return weeksSinceStart <= w;
                               }).length;
@@ -5225,14 +5225,14 @@ export default function MatrizIntranet() {
                                     {d.nombre || d.name}
                                     {d.frozen && <Snowflake className="w-3 h-3 inline ml-1 text-blue-400" />}
                                   </td>
-                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {d.frozen ? '-' : d.status.sentRevADate ? formatDateFull(d.status.sentRevADate) : '-'}
+                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status?.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
+                                    {d.frozen ? '-' : d.status?.sentRevADate ? formatDateFull(d.status.sentRevADate) : '-'}
                                   </td>
-                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {d.frozen ? '-' : d.status.sentRevBDate ? formatDateFull(d.status.sentRevBDate) : '-'}
+                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
+                                    {d.frozen ? '-' : d.status?.sentRevBDate ? formatDateFull(d.status.sentRevBDate) : '-'}
                                   </td>
-                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {d.frozen ? '-' : d.status.sentRev0Date ? formatDateFull(d.status.sentRev0Date) : '-'}
+                                  <td className={`p-2 text-center ${d.frozen ? 'text-neutral-400' : d.status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
+                                    {d.frozen ? '-' : d.status?.sentRev0Date ? formatDateFull(d.status.sentRev0Date) : '-'}
                                   </td>
                                   <td className="p-2 text-center">
                                     {d.frozen ? (
@@ -5283,7 +5283,7 @@ export default function MatrizIntranet() {
                                 const rev0Week = revBWeek + 3;
                                 
                                 // Si está TERMINADO (sentRev0 = true), mostrar barra verde completa
-                                if (d.status.sentRev0) {
+                                if (d.status?.sentRev0) {
                                   bars.push({
                                     start: revAWeek,
                                     width: rev0Week - revAWeek + 1,
@@ -5294,27 +5294,27 @@ export default function MatrizIntranet() {
                                 }
                                 
                                 // REV_A: desde weekStart hasta deadline REV_A (2 semanas)
-                                if (d.status.sentIniciado || d.status.sentRevA) {
+                                if (d.status?.sentIniciado || d.status?.sentRevA) {
                                   bars.push({
                                     start: revAWeek,
                                     width: 2,
-                                    color: d.status.sentRevA ? 'bg-green-500' : 'bg-orange-400',
-                                    label: d.status.sentRevA ? 'REV_A ✓' : 'REV_A en proceso'
+                                    color: d.status?.sentRevA ? 'bg-green-500' : 'bg-orange-400',
+                                    label: d.status?.sentRevA ? 'REV_A ✓' : 'REV_A en proceso'
                                   });
                                 }
-                                
+
                                 // REV_B: solo si ya se envió REV_A Y se recibieron comentarios A
-                                if (d.status.comentariosARecibidos) {
+                                if (d.status?.comentariosARecibidos) {
                                   bars.push({
                                     start: revBWeek,
                                     width: 3,
-                                    color: d.status.sentRevB ? 'bg-green-500' : 'bg-blue-400',
-                                    label: d.status.sentRevB ? 'REV_B ✓' : 'REV_B en proceso'
+                                    color: d.status?.sentRevB ? 'bg-green-500' : 'bg-blue-400',
+                                    label: d.status?.sentRevB ? 'REV_B ✓' : 'REV_B en proceso'
                                   });
                                 }
-                                
+
                                 // REV_0: solo si ya se envió REV_B Y se recibieron comentarios B
-                                if (d.status.comentariosBRecibidos) {
+                                if (d.status?.comentariosBRecibidos) {
                                   bars.push({
                                     start: rev0Week,
                                     width: 2,

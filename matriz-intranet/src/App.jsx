@@ -4123,7 +4123,9 @@ export default function MatrizIntranet() {
 
         <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-8 animate-fadeInDown">
-            <img src={LOGO_A4E} alt="A4E" className="h-20 mx-auto mb-2 animate-float" />
+            <div className="bg-white rounded-2xl p-4 w-28 h-28 mx-auto mb-4 flex items-center justify-center shadow-lg animate-float">
+              <img src={LOGO_A4E} alt="A4E" className="h-20" />
+            </div>
             <p className="text-orange-200/60 text-xs tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
             <h1 className="text-xl text-white font-medium mt-4">Intranet</h1>
           </div>

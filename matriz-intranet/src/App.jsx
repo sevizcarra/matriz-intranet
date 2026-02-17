@@ -4200,12 +4200,12 @@ export default function MatrizIntranet() {
       {/* Header */}
       <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-3 sm:px-4 py-3 shadow-sm sticky top-0 z-40 transition-colors duration-300">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MatrizLogo />
-            <span className="text-neutral-400 dark:text-neutral-500 text-xs">INTRANET</span>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <img src={LOGO_A4E} alt="A4E" className="h-6 sm:h-8" />
+            <span className="text-neutral-400 dark:text-neutral-500 text-[10px] sm:text-xs">INTRANET</span>
           </div>
 
-          <nav className="flex items-center gap-0.5 sm:gap-1">
+          <nav className="flex items-center gap-0.5 sm:gap-1 flex-wrap justify-end">
             {navItems.map(item => (
               <button
                 key={item.id}

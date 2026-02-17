@@ -4202,7 +4202,7 @@ export default function MatrizIntranet() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MatrizLogo />
-            <span className="text-neutral-400 dark:text-neutral-500 dark:text-neutral-500 dark:text-neutral-400 text-xs hidden sm:block">INTRANET</span>
+            <span className="text-neutral-400 dark:text-neutral-500 text-xs">INTRANET</span>
           </div>
 
           <nav className="flex items-center gap-0.5 sm:gap-1">

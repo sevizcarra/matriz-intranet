@@ -4065,7 +4065,7 @@ export default function MatrizIntranet() {
   // ============================================
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{background: '#f9f9f9'}}>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{background: '#ffffff'}}>
         <div className="text-center">
           <img src={LOGO_A4E} alt="A4E" className="h-24 mx-auto mb-4" />
           <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-3" />
@@ -4080,7 +4080,7 @@ export default function MatrizIntranet() {
   // ============================================
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden" style={{background: '#f9f9f9'}}>
+      <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden" style={{background: '#ffffff'}}>
         {/* Estilos de animación */}
         <style>{`
           @keyframes fadeInUp {

@@ -4065,11 +4065,11 @@ export default function MatrizIntranet() {
   // ============================================
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'radial-gradient(ellipse at center, #ea580c 0%, #c2410c 25%, #431407 60%, #0a0a0a 100%)'}}>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{background: '#f9f9f9'}}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-orange-300 animate-spin mx-auto mb-4" />
-          <img src={LOGO_A4E} alt="A4E" className="h-16 mx-auto mb-2" />
-          <p className="text-orange-200/60 text-sm">Conectando con la base de datos...</p>
+          <img src={LOGO_A4E} alt="A4E" className="h-24 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-3" />
+          <p className="text-neutral-400 text-sm">Conectando con la base de datos...</p>
         </div>
       </div>
     );

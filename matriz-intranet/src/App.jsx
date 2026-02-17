@@ -4080,7 +4080,7 @@ export default function MatrizIntranet() {
   // ============================================
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden" style={{background: 'radial-gradient(ellipse at center, #ea580c 0%, #c2410c 25%, #431407 60%, #0a0a0a 100%)'}}>
+      <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden" style={{background: '#f9f9f9'}}>
         {/* Estilos de animación */}
         <style>{`
           @keyframes fadeInUp {
@@ -4091,46 +4091,39 @@ export default function MatrizIntranet() {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          @keyframes pulse-glow {
-            0%, 100% { text-shadow: 0 0 20px rgba(251, 146, 60, 0.5), 0 0 40px rgba(251, 146, 60, 0.3); }
-            50% { text-shadow: 0 0 30px rgba(251, 146, 60, 0.8), 0 0 60px rgba(251, 146, 60, 0.5); }
-          }
           @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
           }
-          @keyframes shimmer {
-            0% { background-position: -200% center; }
-            100% { background-position: 200% center; }
-          }
           .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
           .animate-fadeInDown { animation: fadeInDown 0.6s ease-out forwards; }
-          .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
           .animate-float { animation: float 4s ease-in-out infinite; }
-          .animate-shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
+          .login-line {
+            width: 200px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #ea580c, transparent);
+          }
+          .login-dot {
+            width: 8px;
+            height: 8px;
+            background: #ea580c;
+            border-radius: 50%;
           }
         `}</style>
 
-        {/* Partículas de fondo decorativas */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-          <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-orange-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}}></div>
-        </div>
-
         <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-8 animate-fadeInDown">
-            <div className="bg-white rounded-2xl p-4 w-28 h-28 mx-auto mb-4 flex items-center justify-center shadow-lg animate-float">
-              <img src={LOGO_A4E} alt="A4E" className="h-20" />
+            <img src={LOGO_A4E} alt="A4E" className="h-32 mx-auto mb-4 animate-float" />
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="login-line"></div>
+              <div className="login-dot"></div>
+              <div className="login-line"></div>
             </div>
-            <p className="text-orange-200/60 text-xs tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
-            <h1 className="text-xl text-white font-medium mt-4">Intranet</h1>
+            <p className="text-neutral-500 text-xs tracking-[0.3em] uppercase">Architecture for Engineering</p>
+            <h1 className="text-lg text-neutral-700 font-medium mt-3">Intranet</h1>
           </div>
 
-          <div className="bg-white/95 dark:bg-neutral-800/95 backdrop-blur border border-white/20 dark:border-neutral-700 rounded-lg shadow-2xl p-6 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
+          <div className="bg-white border border-neutral-200 rounded-lg shadow-lg p-6 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
             {loginError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
                 <X className="w-4 h-4" />
@@ -4174,7 +4167,7 @@ export default function MatrizIntranet() {
               <button
                 type="button"
                 onClick={handleLogin}
-                className="w-full py-3 bg-orange-600 hover:bg-orange-700 hover:scale-[1.02] active:scale-[0.98] text-white rounded-lg font-medium cursor-pointer transition-all duration-200 shadow-lg hover:shadow-orange-500/30"
+                className="w-full py-3 bg-orange-600 hover:bg-orange-700 hover:scale-[1.02] active:scale-[0.98] text-white rounded-lg font-medium cursor-pointer transition-all duration-200 shadow-md hover:shadow-orange-500/20"
               >
                 Iniciar Sesión
               </button>

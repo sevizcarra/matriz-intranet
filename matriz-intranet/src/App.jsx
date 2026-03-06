@@ -547,6 +547,7 @@ export default function MatrizIntranet() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [firestoreReady, setFirestoreReady] = useState(false);
+  const [firestoreError, setFirestoreError] = useState(null);
   // Estado persistente para Facturación (evita reset al re-render)
   const [selectedProyectoFacturacion, setSelectedProyectoFacturacion] = useState('');
 
@@ -564,10 +565,14 @@ export default function MatrizIntranet() {
   // FIRESTORE SUBSCRIPTIONS
   // ============================================
   useEffect(() => {
+    // Flag para saber si ya recibimos datos del servidor (no solo caché)
+    let proyectosInitialized = false;
+    let colaboradoresInitialized = false;
+
     // Subscribe to Firestore collections
-    const unsubProyectos = subscribeToProyectos((data) => {
+    const unsubProyectos = subscribeToProyectos((data, fromCache) => {
       if (data.length > 0) {
-        // Mezclar entregables de PROYECTOS_INICIALES en proyectos sin entregables
+        // Hay datos en Firestore — usarlos siempre
         const proyectosMerged = data.map(p => {
           if (!p.entregables || p.entregables.length === 0) {
             const inicial = PROYECTOS_INICIALES.find(pi => pi.id === p.id);
@@ -578,28 +583,43 @@ export default function MatrizIntranet() {
           return p;
         });
         setProyectos(proyectosMerged);
-        // Guardar los proyectos actualizados con entregables
+        proyectosInitialized = true;
+        // Guardar los proyectos actualizados con entregables si faltaban
         proyectosMerged.forEach(p => {
           const original = data.find(d => d.id === p.id);
           if (original && (!original.entregables || original.entregables.length === 0) && p.entregables) {
             saveProyecto(p);
           }
         });
-      } else {
-        // Si no hay datos en Firestore, usar datos iniciales y guardarlos
+      } else if (!fromCache && !proyectosInitialized) {
+        // SOLO cargar datos iniciales si la respuesta viene del SERVIDOR (no caché)
+        // y nunca hemos recibido datos reales antes en esta sesión.
+        // Esto evita sobrescribir datos si Firestore temporalmente responde vacío.
+        console.log('Firestore vacío (confirmado por servidor) — cargando datos iniciales de proyectos');
         setProyectos(PROYECTOS_INICIALES);
         saveAllProyectos(PROYECTOS_INICIALES);
+        proyectosInitialized = true;
       }
+      // Si fromCache && data.length === 0: NO hacer nada, esperar respuesta del servidor
+    }, (error) => {
+      console.error('Error conectando con proyectos:', error);
+      setFirestoreError('Error de conexión con la base de datos');
     });
 
-    const unsubProfesionales = subscribeToColaboradores((data) => {
-      if (data.length >= COLABORADORES_INICIAL.length) {
+    const unsubProfesionales = subscribeToColaboradores((data, fromCache) => {
+      if (data.length > 0) {
         setProfesionales(data);
-      } else {
-        // Si faltan profesionales en Firestore, usar datos iniciales y guardarlos
+        colaboradoresInitialized = true;
+      } else if (!fromCache && !colaboradoresInitialized) {
+        // SOLO cargar datos iniciales si confirmado vacío por servidor
+        console.log('Firestore vacío (confirmado por servidor) — cargando colaboradores iniciales');
         setProfesionales(COLABORADORES_INICIAL);
         saveAllColaboradores(COLABORADORES_INICIAL);
+        colaboradoresInitialized = true;
       }
+    }, (error) => {
+      console.error('Error conectando con colaboradores:', error);
+      setFirestoreError('Error de conexión con la base de datos');
     });
 
     const unsubHoras = subscribeToHoras((data) => {
@@ -4194,6 +4214,15 @@ export default function MatrizIntranet() {
             <X className="w-5 h-5" />
           )}
           <span className="text-sm font-medium">{notification.message}</span>
+        </div>
+      )}
+
+      {/* Banner de error de conexión */}
+      {firestoreError && (
+        <div className="bg-red-600 text-white text-center text-sm py-2 px-4 sticky top-0 z-50 flex items-center justify-center gap-2">
+          <Wifi className="w-4 h-4" />
+          <span>Sin conexión a la base de datos — Los cambios podrían no guardarse</span>
+          <button onClick={() => setFirestoreError(null)} className="ml-2 hover:bg-red-700 rounded p-0.5"><X className="w-3 h-3" /></button>
         </div>
       )}
 

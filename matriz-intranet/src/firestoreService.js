@@ -62,10 +62,13 @@ export const deleteProyecto = async (proyectoId) => {
 };
 
 // Listener en tiempo real para proyectos
-export const subscribeToProyectos = (callback) => {
+export const subscribeToProyectos = (callback, onError) => {
   return onSnapshot(collection(db, COLLECTIONS.PROYECTOS), (snapshot) => {
     const proyectos = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
-    callback(proyectos);
+    callback(proyectos, snapshot.metadata.fromCache);
+  }, (error) => {
+    console.error('Error en subscripción proyectos:', error);
+    if (onError) onError(error);
   });
 };
 
@@ -103,10 +106,13 @@ export const deleteColaborador = async (colaboradorId) => {
   }
 };
 
-export const subscribeToColaboradores = (callback) => {
+export const subscribeToColaboradores = (callback, onError) => {
   return onSnapshot(collection(db, COLLECTIONS.COLABORADORES), (snapshot) => {
     const colaboradores = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
-    callback(colaboradores);
+    callback(colaboradores, snapshot.metadata.fromCache);
+  }, (error) => {
+    console.error('Error en subscripción colaboradores:', error);
+    if (onError) onError(error);
   });
 };
 

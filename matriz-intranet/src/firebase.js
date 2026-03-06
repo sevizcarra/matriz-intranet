@@ -5,7 +5,7 @@
 // (ver instrucciones en README.md)
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -24,4 +24,15 @@ const app = initializeApp(firebaseConfig);
 // Exportar servicios
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Habilitar persistencia offline - los datos se cachean en IndexedDB
+// Así la app funciona incluso sin conexión y no pierde datos
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('Persistencia offline no disponible: múltiples pestañas abiertas');
+  } else if (err.code === 'unimplemented') {
+    console.warn('Persistencia offline no soportada en este navegador');
+  }
+});
+
 export default app;

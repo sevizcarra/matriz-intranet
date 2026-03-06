@@ -325,3 +325,155 @@ export const saveAllHoras = async (horas) => {
     return false;
   }
 };
+
+// ============================================
+// BACKUP Y RESTAURACIÓN
+// ============================================
+
+// Exportar TODOS los datos como un objeto JSON completo
+export const exportFullBackup = async () => {
+  try {
+    const [proyectos, colaboradores, horas, tareas, statusData] = await Promise.all([
+      getDocs(collection(db, COLLECTIONS.PROYECTOS)),
+      getDocs(collection(db, COLLECTIONS.COLABORADORES)),
+      getDocs(collection(db, COLLECTIONS.HORAS)),
+      getDocs(collection(db, COLLECTIONS.TAREAS)),
+      getDoc(doc(db, COLLECTIONS.CONFIG, 'statusData'))
+    ]);
+
+    const backup = {
+      _meta: {
+        version: '1.0',
+        fecha: new Date().toISOString(),
+        totalProyectos: proyectos.docs.length,
+        totalColaboradores: colaboradores.docs.length,
+        totalHoras: horas.docs.length,
+        totalTareas: tareas.docs.length,
+      },
+      proyectos: proyectos.docs.map(d => ({ _docId: d.id, ...d.data() })),
+      colaboradores: colaboradores.docs.map(d => ({ _docId: d.id, ...d.data() })),
+      horas: horas.docs.map(d => ({ _docId: d.id, ...d.data() })),
+      tareas: tareas.docs.map(d => ({ _docId: d.id, ...d.data() })),
+      statusData: statusData.exists() ? statusData.data().data || {} : {},
+    };
+
+    return backup;
+  } catch (error) {
+    console.error('Error exportando backup:', error);
+    throw error;
+  }
+};
+
+// Restaurar datos desde un backup JSON
+export const restoreFromBackup = async (backup) => {
+  try {
+    let restored = { proyectos: 0, colaboradores: 0, horas: 0, tareas: 0, statusData: false };
+
+    // Restaurar proyectos
+    if (backup.proyectos && backup.proyectos.length > 0) {
+      for (const p of backup.proyectos) {
+        const id = p._docId || p.id;
+        if (id) {
+          const { _docId, ...data } = p;
+          await setDoc(doc(db, COLLECTIONS.PROYECTOS, id), data);
+          restored.proyectos++;
+        }
+      }
+    }
+
+    // Restaurar colaboradores
+    if (backup.colaboradores && backup.colaboradores.length > 0) {
+      for (const c of backup.colaboradores) {
+        const id = c._docId || String(c.id);
+        if (id) {
+          const { _docId, ...data } = c;
+          await setDoc(doc(db, COLLECTIONS.COLABORADORES, id), data);
+          restored.colaboradores++;
+        }
+      }
+    }
+
+    // Restaurar horas
+    if (backup.horas && backup.horas.length > 0) {
+      for (const h of backup.horas) {
+        if (h._docId) {
+          const { _docId, ...data } = h;
+          await setDoc(doc(db, COLLECTIONS.HORAS, _docId), data);
+        } else {
+          await addDoc(collection(db, COLLECTIONS.HORAS), h);
+        }
+        restored.horas++;
+      }
+    }
+
+    // Restaurar tareas
+    if (backup.tareas && backup.tareas.length > 0) {
+      for (const t of backup.tareas) {
+        if (t._docId) {
+          const { _docId, ...data } = t;
+          await setDoc(doc(db, COLLECTIONS.TAREAS, _docId), data);
+        } else {
+          await addDoc(collection(db, COLLECTIONS.TAREAS), t);
+        }
+        restored.tareas++;
+      }
+    }
+
+    // Restaurar statusData
+    if (backup.statusData && Object.keys(backup.statusData).length > 0) {
+      await setDoc(doc(db, COLLECTIONS.CONFIG, 'statusData'), { data: backup.statusData });
+      restored.statusData = true;
+    }
+
+    return restored;
+  } catch (error) {
+    console.error('Error restaurando backup:', error);
+    throw error;
+  }
+};
+
+// Guardar auto-backup en Firestore (colección backups)
+export const saveAutoBackup = async (backup) => {
+  try {
+    const fecha = new Date();
+    const backupId = `backup_${fecha.toISOString().split('T')[0]}`;
+    await setDoc(doc(db, 'backups', backupId), {
+      ...backup,
+      _meta: { ...backup._meta, tipo: 'auto', fecha: fecha.toISOString() }
+    });
+    return true;
+  } catch (error) {
+    console.error('Error guardando auto-backup:', error);
+    return false;
+  }
+};
+
+// Obtener lista de backups disponibles
+export const getBackupsList = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'backups'));
+    return querySnapshot.docs.map(d => ({
+      id: d.id,
+      fecha: d.data()._meta?.fecha,
+      tipo: d.data()._meta?.tipo,
+      totalProyectos: d.data()._meta?.totalProyectos,
+      totalColaboradores: d.data()._meta?.totalColaboradores,
+      totalHoras: d.data()._meta?.totalHoras,
+    })).sort((a, b) => b.fecha?.localeCompare(a.fecha));
+  } catch (error) {
+    console.error('Error obteniendo backups:', error);
+    return [];
+  }
+};
+
+// Obtener un backup específico para restaurar
+export const getBackup = async (backupId) => {
+  try {
+    const docSnap = await getDoc(doc(db, 'backups', backupId));
+    if (docSnap.exists()) return docSnap.data();
+    return null;
+  } catch (error) {
+    console.error('Error obteniendo backup:', error);
+    return null;
+  }
+};

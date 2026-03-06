@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
   Building2, User, DollarSign, FileText, Check, X, Pencil, Trash2, Settings,
   BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2,
-  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi
+  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi, Download, Upload, Database, Shield
 } from 'lucide-react';
 import {
   subscribeToProyectos,
@@ -25,7 +25,10 @@ import {
   updatePresencia,
   setOffline,
   saveAllProyectos,
-  saveAllColaboradores
+  saveAllColaboradores,
+  exportFullBackup,
+  restoreFromBackup,
+  saveAutoBackup
 } from './firestoreService';
 
 // ============================================
@@ -516,6 +519,21 @@ export default function MatrizIntranet() {
           pagina: 'home',
           navegador: navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Desktop'
         });
+        // Auto-backup diario al login de admin
+        if (user.rol === 'admin') {
+          const lastBackup = localStorage.getItem('a4e_last_auto_backup');
+          const today = new Date().toISOString().split('T')[0];
+          if (lastBackup !== today) {
+            try {
+              const backup = await exportFullBackup();
+              await saveAutoBackup(backup);
+              localStorage.setItem('a4e_last_auto_backup', today);
+              console.log('Auto-backup diario completado');
+            } catch (err) {
+              console.warn('Auto-backup falló:', err);
+            }
+          }
+        }
       } else {
         setLoginError('Email o contraseña incorrectos');
         setTimeout(() => setLoginError(''), 3000);
@@ -4349,6 +4367,7 @@ export default function MatrizIntranet() {
               {[
                 { id: 'profesionales', label: 'Profesionales', icon: Users },
                 { id: 'seguridad', label: 'Seguridad', icon: Lock },
+                { id: 'backup', label: 'Backup', icon: Database },
                 { id: 'sistema', label: 'Sistema', icon: Settings },
               ].map(tab => (
                 <button
@@ -4625,6 +4644,104 @@ export default function MatrizIntranet() {
             )}
             
             {/* Tab: Sistema */}
+            {configTab === 'backup' && (
+              <div className="space-y-4">
+                {/* Backup Manual */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Database className="w-5 h-5 text-orange-500" />
+                    <h3 className="font-medium text-neutral-800 dark:text-neutral-100">Respaldo de Datos</h3>
+                  </div>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+                    Descarga una copia completa de todos los datos de la intranet (proyectos, colaboradores, horas, tareas y avances).
+                    Guárdala en un lugar seguro para poder restaurar en caso de emergencia.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const backup = await exportFullBackup();
+                          const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `backup_a4e_intranet_${new Date().toISOString().split('T')[0]}.json`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          setNotification({ type: 'success', message: `Backup descargado — ${backup._meta.totalProyectos} proyectos, ${backup._meta.totalColaboradores} colaboradores, ${backup._meta.totalHoras} registros de horas` });
+                          setTimeout(() => setNotification(null), 5000);
+                        } catch (err) {
+                          setNotification({ type: 'error', message: 'Error al generar backup: ' + err.message });
+                          setTimeout(() => setNotification(null), 5000);
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Descargar Backup
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const backup = await exportFullBackup();
+                          await saveAutoBackup(backup);
+                          setNotification({ type: 'success', message: `Backup guardado en la nube — ${backup._meta.totalProyectos} proyectos, ${backup._meta.totalHoras} horas` });
+                          setTimeout(() => setNotification(null), 5000);
+                        } catch (err) {
+                          setNotification({ type: 'error', message: 'Error al guardar backup en la nube: ' + err.message });
+                          setTimeout(() => setNotification(null), 5000);
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <Shield className="w-4 h-4" />
+                      Guardar en la Nube
+                    </button>
+                  </div>
+                </Card>
+
+                {/* Restaurar Backup */}
+                <Card className="p-4 border-amber-200 bg-amber-50/50 dark:bg-amber-900/10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Upload className="w-5 h-5 text-amber-600" />
+                    <h3 className="font-medium text-neutral-800 dark:text-neutral-100">Restaurar Datos</h3>
+                  </div>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+                    Restaura datos desde un archivo de backup previamente descargado.
+                    <strong className="text-amber-700"> Esto sobrescribirá los datos actuales.</strong>
+                  </p>
+                  <label className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer w-fit">
+                    <Upload className="w-4 h-4" />
+                    Seleccionar archivo de backup
+                    <input
+                      type="file"
+                      accept=".json"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        try {
+                          const text = await file.text();
+                          const backup = JSON.parse(text);
+                          if (!backup._meta || !backup.proyectos) {
+                            throw new Error('Archivo no es un backup válido de A4E Intranet');
+                          }
+                          if (!confirm(`¿Restaurar backup del ${new Date(backup._meta.fecha).toLocaleDateString('es-CL')}?\n\nContenido:\n• ${backup._meta.totalProyectos} proyectos\n• ${backup._meta.totalColaboradores} colaboradores\n• ${backup._meta.totalHoras} registros de horas\n• ${backup._meta.totalTareas || 0} tareas\n\nEsto sobrescribirá los datos actuales.`)) return;
+                          const result = await restoreFromBackup(backup);
+                          setNotification({ type: 'success', message: `Restauración completa — ${result.proyectos} proyectos, ${result.colaboradores} colaboradores, ${result.horas} horas restauradas` });
+                          setTimeout(() => setNotification(null), 6000);
+                        } catch (err) {
+                          setNotification({ type: 'error', message: 'Error al restaurar: ' + err.message });
+                          setTimeout(() => setNotification(null), 5000);
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </Card>
+              </div>
+            )}
+
             {configTab === 'sistema' && (
               <div className="space-y-4">
                 <Card className="p-4">
@@ -4632,7 +4749,7 @@ export default function MatrizIntranet() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
                       <span className="text-neutral-500 dark:text-neutral-400">Versión</span>
-                      <span className="text-neutral-800 dark:text-neutral-100 font-mono">MATRIZ v1.0</span>
+                      <span className="text-neutral-800 dark:text-neutral-100 font-mono">A4E Intranet v1.1</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
                       <span className="text-neutral-500 dark:text-neutral-400">Proyectos</span>

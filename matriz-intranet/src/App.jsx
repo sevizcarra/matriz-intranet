@@ -3815,9 +3815,19 @@ export default function MatrizIntranet() {
 
               {/* Carga de Excel */}
               <div>
-                <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider mb-1">
-                  Listado de Documentos (Excel) *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-neutral-600 dark:text-neutral-300 font-medium text-xs uppercase tracking-wider">
+                    Listado de Documentos (Excel) *
+                  </label>
+                  <a
+                    href="/Cotizacion_Plantilla.xlsx"
+                    download="Cotizacion_Plantilla.xlsx"
+                    className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-medium"
+                  >
+                    <FileDown className="w-3 h-3" />
+                    Descargar plantilla
+                  </a>
+                </div>
                 <div className="border-2 border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg p-6 text-center hover:border-orange-500 transition-colors">
                   <input
                     type="file"

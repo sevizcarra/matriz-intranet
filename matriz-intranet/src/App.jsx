@@ -3943,8 +3943,22 @@ export default function MatrizIntranet() {
                 <h3 className="text-lg font-semibold text-neutral-800">Preview de Cotización</h3>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const printContent = document.getElementById('cotizacion-preview');
+                      // Convertir imágenes a base64 para que aparezcan al imprimir
+                      let html = printContent.innerHTML;
+                      const imgs = printContent.querySelectorAll('img');
+                      for (const img of imgs) {
+                        try {
+                          const canvas = document.createElement('canvas');
+                          canvas.width = img.naturalWidth;
+                          canvas.height = img.naturalHeight;
+                          const ctx = canvas.getContext('2d');
+                          ctx.drawImage(img, 0, 0);
+                          const dataUrl = canvas.toDataURL('image/png');
+                          html = html.replace(img.getAttribute('src'), dataUrl);
+                        } catch(e) { console.log('img convert error', e); }
+                      }
                       const printWindow = window.open('', '_blank');
                       printWindow.document.write(`
                         <html>
@@ -3961,16 +3975,17 @@ export default function MatrizIntranet() {
                               .total-row td { background: #fff7ed; font-weight: 700; border-top: 2px solid #E86B11; }
                               .firma-img { max-height: 55px; }
                               .no-print { display: none !important; }
+                              img { max-width: 100%; }
                               @media print { .no-print { display: none !important; } }
                             </style>
                           </head>
                           <body>
-                            ${printContent.innerHTML}
+                            ${html}
                           </body>
                         </html>
                       `);
                       printWindow.document.close();
-                      printWindow.print();
+                      setTimeout(() => printWindow.print(), 300);
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm"
                   >
@@ -4069,22 +4084,42 @@ export default function MatrizIntranet() {
                           </tr>
                         );
                       })}
-                      <tr className="total-row">
-                        <td colSpan="6" style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>TOTAL PROPUESTA</td>
-                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '14px', color: '#E86B11' }}>
-                          {cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
-                            const tipo = (row[1] || 'PLA GEN').toUpperCase();
-                            const cantidad = parseInt(row[4]) || 1;
-                            const precio = tipo.includes('DOC') ? 30 :
-                                          tipo.includes('PLA DET') ? 25 :
-                                          tipo.includes('PLA GEN') ? 20 :
-                                          tipo.includes('REU INT') ? 1 :
-                                          tipo.includes('REU CTTAL') ? 1 :
-                                          tipo.includes('VIS') ? 25 : 20;
-                            return sum + (precio * cantidad);
-                          }, 0) : 0} UF
-                        </td>
-                      </tr>
+                      {(() => {
+                        const subtotal = cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
+                          const tipo = (row[1] || 'PLA GEN').toUpperCase();
+                          const cantidad = parseInt(row[4]) || 1;
+                          const precio = tipo.includes('DOC') ? 30 :
+                                        tipo.includes('PLA DET') ? 25 :
+                                        tipo.includes('PLA GEN') ? 20 :
+                                        tipo.includes('REU INT') ? 1 :
+                                        tipo.includes('REU CTTAL') ? 1 :
+                                        tipo.includes('VIS') ? 25 : 20;
+                          return sum + (precio * cantidad);
+                        }, 0) : 0;
+                        const conFactor = subtotal * 1.5;
+                        const iva = conFactor * 0.19;
+                        const total = conFactor + iva;
+                        return (
+                          <>
+                            <tr>
+                              <td colSpan="6" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>Subtotal</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>{subtotal} UF</td>
+                            </tr>
+                            <tr>
+                              <td colSpan="6" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>Factor 1,5x</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', background: '#fff7ed', fontSize: '13px', color: '#E86B11' }}>{conFactor.toFixed(1)} UF</td>
+                            </tr>
+                            <tr>
+                              <td colSpan="6" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>IVA (19%)</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>{iva.toFixed(1)} UF</td>
+                            </tr>
+                            <tr className="total-row">
+                              <td colSpan="6" style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#E86B11', color: 'white', fontSize: '13px' }}>TOTAL PROPUESTA</td>
+                              <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#E86B11', color: 'white', fontSize: '15px' }}>{total.toFixed(1)} UF</td>
+                            </tr>
+                          </>
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </div>

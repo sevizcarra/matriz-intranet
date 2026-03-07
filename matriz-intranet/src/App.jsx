@@ -4064,21 +4064,29 @@ img{max-width:100%}
 <div style="font-size:11px;font-weight:600;margin-top:12px;opacity:.8">Desarrollo de Ingeniería Propio <span style="font-weight:400">(vía CHKING)</span></div>
 <table class="tt"><thead><tr><th>Año</th><th>Cliente</th><th>Proyecto</th></tr></thead><tbody>
 <tr><td class="y">2025</td><td class="c">CMM</td><td>Servicio Ingeniería IPS/SPS Proyecto Minero Las Yacas</td></tr>
-<tr><td class="y">2025</td><td class="c">BHP-COLOSO</td><td>Ingeniería Remediación Edificio CHO — Puerto Coloso</td></tr>
+<tr><td class="y">2025</td><td class="c">BHP-COLOSO</td><td>Ingeniería Remediación Edificio CHO — Puerto Coloso (Delivery)</td></tr>
 <tr><td class="y">2024</td><td class="c">BHP-MEL</td><td>Ingeniería SPS/DPS Facilities E-AT Stripping</td></tr>
 <tr><td class="y">2024</td><td class="c">BHP-MEL</td><td>AS Built EN-AT — Facilities Autonomía MEL</td></tr>
 <tr><td class="y">2023</td><td class="c">MECASFY</td><td>Edificio Puerta Sur</td></tr>
 <tr><td class="y">2022</td><td class="c">GT CHILE</td><td>Oficinas Corporativas GT Chile</td></tr>
 <tr><td class="y">2022</td><td class="c">BHP-MEL</td><td>Ingeniería Interim Facilities Autonomía MEL</td></tr>
+<tr><td class="y">2022</td><td class="c">BHP-MEL</td><td>Ingeniería DPS EN-AT</td></tr>
 <tr><td class="y">2022</td><td class="c">BHP-SPENCE</td><td>Ingeniería Sala de Control SMH</td></tr>
+<tr><td class="y">2021</td><td class="c">BHP-MEL</td><td>Logistic Solutions</td></tr>
+<tr><td class="y">2019</td><td class="c">BHP-MEL</td><td>Flowsheets 3D de Procesos</td></tr>
+<tr><td class="y">2019</td><td class="c">BHP-C.COLORADO</td><td>Idea Campamento Cerro Colorado</td></tr>
+<tr><td class="y">2019</td><td class="c">MECASFY</td><td>Ampliación Oficinas MECASFY</td></tr>
+<tr><td class="y">2018</td><td class="c">BHP-C.COLORADO</td><td>Garita de Accesos Cerro Colorado</td></tr>
+<tr><td class="y">2018</td><td class="c">CAL ALIANZA</td><td>Diagramas de Flujo Cal Alianza</td></tr>
 </tbody></table>
 <div style="font-size:11px;font-weight:600;margin-top:12px;opacity:.8">Contraparte / Revisión <span style="font-weight:400">(vía CHKING)</span></div>
 <table class="tt"><thead><tr><th>Año</th><th>Empresa</th><th>Proyecto</th></tr></thead><tbody>
 <tr><td class="y">2023</td><td class="c">HATCH</td><td>ILNSC — Innovación Lixiviación Nuevas Columnas de Simulación</td></tr>
 <tr><td class="y">2019</td><td class="c">ARCADIS</td><td>Bodega y Muestrera — Spence Growth Options</td></tr>
 <tr><td class="y">2018</td><td class="c">ATCO</td><td>Sala de Control Lixiviación — Spence Growth Options</td></tr>
+<tr><td class="y">2017</td><td class="c">ARCADIS</td><td>Instalaciones Auxiliares (Truckshop, RESPEL, etc.) — Spence Growth Options</td></tr>
 </tbody></table>
-<div class="ts"><div class="tsb"><div class="n">19</div><div class="l">proyectos</div></div><div class="tsb"><div class="n">10+</div><div class="l">años</div></div><div class="tsb"><div class="n">5</div><div class="l">clientes</div></div></div>
+<div class="ts"><div class="tsb"><div class="n">19</div><div class="l">proyectos</div></div><div class="tsb"><div class="n">10+</div><div class="l">años</div></div><div class="tsb"><div class="n">8</div><div class="l">clientes</div></div></div>
 </div>
 <!-- COTIZACIÓN -->
 <div class="pg cot">

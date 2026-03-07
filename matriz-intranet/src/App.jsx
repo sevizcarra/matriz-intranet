@@ -3755,7 +3755,7 @@ export default function MatrizIntranet() {
                   {/* Footer */}
                   <div className="mt-6 pt-4 border-t border-neutral-200 text-[8px] text-neutral-400 flex justify-between">
                     <span>Generado: {new Date().toLocaleString('es-CL')}</span>
-                    <span>MATRIZ Intranet v1.0</span>
+                    <span>A4E Intranet v1.0</span>
                   </div>
                 </div>
               </div>
@@ -6194,11 +6194,7 @@ ${cotHtml}
                   {/* Header Página 1 */}
                   <div className="flex justify-between items-start border-b-2 border-orange-500 pb-3 mb-4">
                     <div>
-                      <div className="text-xl font-light tracking-widest">
-                        <span className="text-neutral-800 dark:text-neutral-100">M</span>
-                        <span className="text-orange-500">A</span>
-                        <span className="text-neutral-800 dark:text-neutral-100">TRIZ</span>
-                      </div>
+                      <img src="/logo-a4e.png" alt="A4E" style={{ height: '40px' }} />
                       <span className="text-[8px] text-neutral-400 dark:text-neutral-500 tracking-wider">ARCHITECTURE FOR ENGINEERING</span>
                     </div>
                     <div className="text-right">
@@ -6304,7 +6300,7 @@ ${cotHtml}
                         </table>
 
                         <div className="flex justify-between text-[7px] text-neutral-400 dark:text-neutral-500 pt-2 border-t border-neutral-200 dark:border-neutral-700">
-                          <span>MATRIZ © 2026</span>
+                          <span>A4E © 2026</span>
                           <span>Página 1 de 2</span>
                         </div>
                       </>
@@ -6321,11 +6317,7 @@ ${cotHtml}
             <div className="print-page-2 bg-white shadow-xl w-full max-w-2xl" style={{ padding: '24px' }}>
               {/* Header Página 2 */}
               <div className="flex justify-between items-center border-b border-neutral-200 dark:border-neutral-700 pb-2 mb-3">
-                <div className="text-sm font-light tracking-widest">
-                  <span className="text-neutral-800 dark:text-neutral-100">M</span>
-                  <span className="text-orange-500">A</span>
-                  <span className="text-neutral-800 dark:text-neutral-100">TRIZ</span>
-                </div>
+                <img src="/logo-a4e.png" alt="A4E" style={{ height: '30px' }} />
                 <div className="text-[8px] text-neutral-500 dark:text-neutral-400">
                   {selectedProject} • Log de Avance • {new Date().toLocaleDateString('es-CL')}
                 </div>
@@ -6415,8 +6407,8 @@ ${cotHtml}
               <div className="border-t-2 border-orange-500 pt-2">
                 <div className="flex justify-between text-[7px] text-neutral-400 dark:text-neutral-500">
                   <div>
-                    <p className="font-medium text-neutral-600 dark:text-neutral-300">MATRIZ - Sistema de Gestión de Proyectos</p>
-                    <p>www.matriz.cl</p>
+                    <p className="font-medium text-neutral-600 dark:text-neutral-300">A4E - Architecture for Engineering</p>
+                    <p>www.a4e.cl</p>
                   </div>
                   <p>Página 2 de 2</p>
                 </div>
@@ -6587,7 +6579,7 @@ ${cotHtml}
 
       {/* Footer */}
       <footer className="border-t border-neutral-200 dark:border-neutral-700 py-4 text-center text-neutral-500 dark:text-neutral-400 text-xs">
-        MATRIZ © 2026 • {currentUser?.nombre} ({isAdmin ? 'Admin' : 'Profesional'})
+        A4E © 2026 • {currentUser?.nombre} ({isAdmin ? 'Admin' : 'Profesional'})
       </footer>
     </div>
   );

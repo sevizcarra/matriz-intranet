@@ -609,6 +609,9 @@ export default function MatrizIntranet() {
             saveProyecto(p);
           }
         });
+      } else if (!fromCache && proyectosInitialized) {
+        // Ya teníamos datos antes y ahora Firestore está vacío (el usuario borró todo)
+        setProyectos([]);
       } else if (!fromCache && !proyectosInitialized) {
         // SOLO cargar datos iniciales si la respuesta viene del SERVIDOR (no caché)
         // y nunca hemos recibido datos reales antes en esta sesión.
@@ -628,6 +631,9 @@ export default function MatrizIntranet() {
       if (data.length > 0) {
         setProfesionales(data);
         colaboradoresInitialized = true;
+      } else if (!fromCache && colaboradoresInitialized) {
+        // Ya teníamos datos antes y ahora Firestore está vacío (el usuario borró todo)
+        setProfesionales([]);
       } else if (!fromCache && !colaboradoresInitialized) {
         // SOLO cargar datos iniciales si confirmado vacío por servidor
         console.log('Firestore vacío (confirmado por servidor) — cargando colaboradores iniciales');
@@ -967,25 +973,39 @@ export default function MatrizIntranet() {
   // Función para eliminar proyecto
   const handleDeleteProject = async () => {
     if (projectToDelete) {
-      // Eliminar de Firestore
-      await deleteProyectoFS(projectToDelete.id);
-
-      // También eliminar horas registradas de ese proyecto de Firestore
-      const horasDelProyecto = horasRegistradas.filter(h => h.proyecto === projectToDelete.id);
-      for (const hora of horasDelProyecto) {
-        if (hora._docId) {
-          await deleteHoraFS(hora._docId);
+      try {
+        // Eliminar de Firestore
+        const success = await deleteProyectoFS(projectToDelete.id);
+        if (!success) {
+          showNotification('error', 'Error al eliminar el proyecto de la base de datos');
+          return;
         }
-      }
 
-      // Si el proyecto eliminado era el seleccionado, deseleccionar
-      if (selectedProject === projectToDelete.id) {
-        setSelectedProject(null);
-      }
+        // Actualizar estado local inmediatamente (no depender solo de la suscripción)
+        setProyectos(prev => prev.filter(p => p.id !== projectToDelete.id));
 
-      setDeleteConfirmOpen(false);
-      setProjectToDelete(null);
-      showNotification('success', 'Proyecto eliminado');
+        // También eliminar horas registradas de ese proyecto de Firestore
+        const horasDelProyecto = horasRegistradas.filter(h => h.proyecto === projectToDelete.id);
+        for (const hora of horasDelProyecto) {
+          if (hora._docId) {
+            await deleteHoraFS(hora._docId);
+          }
+        }
+        // Actualizar horas localmente
+        setHorasRegistradas(prev => prev.filter(h => h.proyecto !== projectToDelete.id));
+
+        // Si el proyecto eliminado era el seleccionado, deseleccionar
+        if (selectedProject === projectToDelete.id) {
+          setSelectedProject(null);
+        }
+
+        setDeleteConfirmOpen(false);
+        setProjectToDelete(null);
+        showNotification('success', 'Proyecto eliminado');
+      } catch (error) {
+        console.error('Error eliminando proyecto:', error);
+        showNotification('error', 'Error al eliminar el proyecto');
+      }
     }
   };
 
@@ -1109,11 +1129,22 @@ export default function MatrizIntranet() {
       showNotification('error', 'No se puede eliminar: este profesional tiene horas registradas.');
       return;
     }
-    // Eliminar de Firestore
-    await deleteColaboradorFS(id);
-    // También eliminar el usuario asociado
-    setUsuarios(prev => prev.filter(u => u.profesionalId !== id));
-    showNotification('success', 'Profesional y usuario eliminados');
+    try {
+      // Eliminar de Firestore
+      const success = await deleteColaboradorFS(id);
+      if (!success) {
+        showNotification('error', 'Error al eliminar el profesional');
+        return;
+      }
+      // Actualizar estado local inmediatamente
+      setColaboradores(prev => prev.filter(c => String(c.id) !== String(id)));
+      // También eliminar el usuario asociado
+      setUsuarios(prev => prev.filter(u => u.profesionalId !== id));
+      showNotification('success', 'Profesional y usuario eliminados');
+    } catch (error) {
+      console.error('Error eliminando profesional:', error);
+      showNotification('error', 'Error al eliminar el profesional');
+    }
   };
   
   const handleSaveProfesional = async () => {

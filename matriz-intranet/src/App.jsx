@@ -870,9 +870,10 @@ export default function MatrizIntranet() {
   const [cotExcelData, setCotExcelData] = useState(null);
   const [cotExcelFileName, setCotExcelFileName] = useState('');
   const [cotShowPreview, setCotShowPreview] = useState(false);
-  const [cotCliente, setCotCliente] = useState('');
-  const [cotProyectoNombre, setCotProyectoNombre] = useState('');
   const [cotGenerando, setCotGenerando] = useState(false);
+  // Refs para campos de texto COT: persisten entre remounts sin causar re-render de App al escribir
+  const cotClienteRef = React.useRef('');
+  const cotProyectoNombreRef = React.useRef('');
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
@@ -2546,8 +2547,13 @@ export default function MatrizIntranet() {
   // Precios base: DOC = 40 UF, PLA DET = 25 UF, PLA GEN = 20 UF, REU INT/CTTAL = 1 UF, VIS = 25 UF
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
-  // Todos los estados COT están a nivel de App para persistir entre re-renders del heartbeat
+  // Estados COT: archivos/preview en App (useState), texto en App (useRef) + local (useState)
   const FacturacionPage = () => {
+    // Estados locales de texto inicializados desde refs (persisten sin causar re-render de App)
+    const [cotCliente, setCotClienteLocal] = useState(cotClienteRef.current);
+    const [cotProyectoNombre, setCotProyectoNombreLocal] = useState(cotProyectoNombreRef.current);
+    const setCotCliente = (val) => { setCotClienteLocal(val); cotClienteRef.current = val; };
+    const setCotProyectoNombre = (val) => { setCotProyectoNombreLocal(val); cotProyectoNombreRef.current = val; };
 
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [showPreview, setShowPreview] = useState(false);

@@ -3989,18 +3989,14 @@ export default function MatrizIntranet() {
 
               {/* Contenido del Preview - formato apaisado A4E */}
               <div id="cotizacion-preview" style={{ minWidth: '900px', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
-                {/* Barra superior naranja */}
-                <div style={{ background: 'linear-gradient(135deg, #E86B11 0%, #D15E0E 100%)', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <img src="/logo-a4e.png" alt="A4E" style={{ width: '52px', height: '52px', borderRadius: '8px' }} />
-                    <div>
-                      <div style={{ color: 'white', fontSize: '22px', fontWeight: '700', letterSpacing: '2px' }}>A4E</div>
-                      <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', letterSpacing: '1px' }}>ARCHITECTURE FOR ENGINEERING</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', color: 'rgba(255,255,255,0.9)', fontSize: '12px' }}>
-                    <div style={{ fontSize: '11px', opacity: 0.8 }}>Fecha de emisión</div>
-                    <div style={{ fontWeight: '600', fontSize: '13px' }}>{new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+                {/* Franja naranja superior */}
+                <div style={{ height: '6px', background: 'linear-gradient(90deg, #E86B11, #D15E0E)' }}></div>
+                {/* Header con logo real */}
+                <div style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+                  <img src="/logo-a4e.png" alt="A4E" style={{ height: '60px' }} />
+                  <div style={{ textAlign: 'right', fontSize: '12px', color: '#666' }}>
+                    <div style={{ fontSize: '10px', color: '#999', textTransform: 'uppercase', letterSpacing: '1px' }}>Fecha de emisión</div>
+                    <div style={{ fontWeight: '600', fontSize: '13px', color: '#333' }}>{new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
                   </div>
                 </div>
 

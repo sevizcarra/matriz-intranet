@@ -662,7 +662,12 @@ export default function MatrizIntranet() {
     });
 
     const unsubCotizaciones = subscribeToCotizaciones((data) => {
-      setCotizaciones(data);
+      // Parsear excelDataJson → excelData (Firestore no acepta nested arrays)
+      const parsed = data.map(cot => ({
+        ...cot,
+        excelData: cot.excelDataJson ? JSON.parse(cot.excelDataJson) : (cot.excelData || null)
+      }));
+      setCotizaciones(parsed);
     });
 
     // Marcar como listo después de un momento
@@ -4059,14 +4064,14 @@ export default function MatrizIntranet() {
                       return;
                     }
                     setCotGenerando(true);
-                    // Sanitizar excelData: Firestore no acepta undefined
+                    // Serializar excelData como JSON string: Firestore no acepta nested arrays
                     const cleanExcelData = cotExcelData.map(row =>
                       row.map(cell => (cell === undefined || cell === null) ? '' : cell)
                     );
                     const cotData = {
                       cliente: cotCliente,
                       proyectoNombre: cotProyectoNombre,
-                      excelData: cleanExcelData,
+                      excelDataJson: JSON.stringify(cleanExcelData),
                       excelFileName: cotExcelFileName || '',
                       firmada: !!cotFirma,
                       fechaCreacion: cotMode === 'editar' && cotViewingId ? (cotizaciones.find(c => c._docId === cotViewingId)?.fechaCreacion || new Date().toISOString()) : new Date().toISOString(),

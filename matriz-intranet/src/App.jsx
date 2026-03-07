@@ -3945,19 +3945,40 @@ export default function MatrizIntranet() {
                   <button
                     onClick={async () => {
                       const printContent = document.getElementById('cotizacion-preview');
-                      // Convertir imágenes a base64 para que aparezcan al imprimir
+                      // Convertir TODAS las imágenes a base64 para que aparezcan al imprimir
                       let html = printContent.innerHTML;
                       const imgs = printContent.querySelectorAll('img');
+                      const imgMap = {};
                       for (const img of imgs) {
-                        try {
-                          const canvas = document.createElement('canvas');
-                          canvas.width = img.naturalWidth;
-                          canvas.height = img.naturalHeight;
-                          const ctx = canvas.getContext('2d');
-                          ctx.drawImage(img, 0, 0);
-                          const dataUrl = canvas.toDataURL('image/png');
-                          html = html.replace(img.getAttribute('src'), dataUrl);
-                        } catch(e) { console.log('img convert error', e); }
+                        const src = img.getAttribute('src');
+                        if (!imgMap[src]) {
+                          try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth || 200;
+                            canvas.height = img.naturalHeight || 200;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            imgMap[src] = canvas.toDataURL('image/png');
+                          } catch(e) { console.log('img convert error', e); }
+                        }
+                      }
+                      // También convertir el logo para la portada
+                      const logoImg = new Image();
+                      logoImg.crossOrigin = 'anonymous';
+                      const logoB64 = await new Promise((resolve) => {
+                        logoImg.onload = () => {
+                          const c = document.createElement('canvas');
+                          c.width = logoImg.naturalWidth;
+                          c.height = logoImg.naturalHeight;
+                          c.getContext('2d').drawImage(logoImg, 0, 0);
+                          resolve(c.toDataURL('image/png'));
+                        };
+                        logoImg.onerror = () => resolve('');
+                        logoImg.src = '/logo-a4e.png';
+                      });
+                      // Reemplazar src en HTML
+                      for (const [src, b64] of Object.entries(imgMap)) {
+                        html = html.split(src).join(b64);
                       }
                       const printWindow = window.open('', '_blank');
                       printWindow.document.write(`
@@ -3965,7 +3986,8 @@ export default function MatrizIntranet() {
                           <head>
                             <title>COT - ${cotCliente} - ${cotProyectoNombre}</title>
                             <style>
-                              @page { size: landscape; margin: 12mm; }
+                              @page { size: landscape; margin: 0; }
+                              @page:first { size: landscape; margin: 0; }
                               * { box-sizing: border-box; }
                               body { font-family: 'Segoe UI', Arial, sans-serif; padding: 0; margin: 0; color: #1a1a1a; font-size: 11px; }
                               table { width: 100%; border-collapse: collapse; }
@@ -3976,16 +3998,50 @@ export default function MatrizIntranet() {
                               .firma-img { max-height: 55px; }
                               .no-print { display: none !important; }
                               img { max-width: 100%; }
-                              @media print { .no-print { display: none !important; } }
+                              .portada {
+                                width: 100%; height: 100vh;
+                                display: flex; flex-direction: column; justify-content: center; align-items: center;
+                                background: white;
+                                page-break-after: always;
+                                position: relative;
+                                padding: 60px;
+                              }
+                              .portada .barra-top { position: absolute; top: 0; left: 0; right: 0; height: 8px; background: linear-gradient(90deg, #E86B11, #D15E0E); }
+                              .portada .barra-bot { position: absolute; bottom: 0; left: 0; right: 0; height: 8px; background: linear-gradient(90deg, #E86B11, #D15E0E); }
+                              .portada .logo { height: 100px; margin-bottom: 50px; }
+                              .portada .titulo { font-size: 32px; font-weight: 700; color: #E86B11; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; }
+                              .portada .proyecto { font-size: 26px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; }
+                              .portada .cliente { font-size: 18px; color: #666; margin-bottom: 40px; }
+                              .portada .fecha { font-size: 14px; color: #999; }
+                              .portada .linea { width: 80px; height: 3px; background: #E86B11; margin: 20px auto; }
+                              .portada .footer-port { position: absolute; bottom: 40px; text-align: center; font-size: 11px; color: #bbb; }
+                              .contenido { padding: 12mm; }
+                              @media print {
+                                .no-print { display: none !important; }
+                                .portada { height: 100vh; }
+                              }
                             </style>
                           </head>
                           <body>
-                            ${html}
+                            <div class="portada">
+                              <div class="barra-top"></div>
+                              ${logoB64 ? '<img src="' + logoB64 + '" class="logo" />' : ''}
+                              <div class="titulo">Propuesta Comercial</div>
+                              <div class="linea"></div>
+                              <div class="proyecto">${cotProyectoNombre || ''}</div>
+                              <div class="cliente">${cotCliente || ''}</div>
+                              <div class="fecha">${new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+                              <div class="footer-port">A4E — Architecture for Engineering<br/>www.a4e.cl | contacto@a4e.cl</div>
+                              <div class="barra-bot"></div>
+                            </div>
+                            <div class="contenido">
+                              ${html}
+                            </div>
                           </body>
                         </html>
                       `);
                       printWindow.document.close();
-                      setTimeout(() => printWindow.print(), 300);
+                      setTimeout(() => printWindow.print(), 500);
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm"
                   >
@@ -4146,7 +4202,7 @@ export default function MatrizIntranet() {
                   <div style={{ textAlign: 'center' }}>
                     {cotFirma ? (
                       <div>
-                        <img src={cotFirma} alt="Firma" style={{ height: '55px', marginBottom: '4px' }} className="firma-img" />
+                        <img src="/firma-sav.png" alt="Firma" style={{ height: '65px', marginBottom: '4px' }} className="firma-img" />
                         <div style={{ borderTop: '1.5px solid #333', paddingTop: '4px', paddingLeft: '16px', paddingRight: '16px' }}>
                           <div style={{ fontSize: '12px', fontWeight: '700', color: '#1a1a1a' }}>Sebastián A. Vizcarra B.</div>
                           <div style={{ fontSize: '10px', color: '#888' }}>Arquitecto Líder</div>
@@ -4156,7 +4212,7 @@ export default function MatrizIntranet() {
                       <div>
                         <div style={{ height: '55px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '4px' }}>
                           <button
-                            onClick={() => setCotFirma('/firma-sav.png')}
+                            onClick={() => setCotFirma(true)}
                             className="no-print"
                             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 20px', background: '#1e40af', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                           >

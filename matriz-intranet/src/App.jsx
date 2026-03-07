@@ -3944,104 +3944,159 @@ export default function MatrizIntranet() {
                 <div className="flex gap-2">
                   <button
                     onClick={async () => {
-                      const printContent = document.getElementById('cotizacion-preview');
-                      // Convertir TODAS las imágenes a base64 para que aparezcan al imprimir
-                      let html = printContent.innerHTML;
-                      const imgs = printContent.querySelectorAll('img');
+                      const el = document.getElementById('cotizacion-preview');
+                      let cotHtml = el.innerHTML;
+                      const imgs = el.querySelectorAll('img');
                       const imgMap = {};
-                      for (const img of imgs) {
-                        const src = img.getAttribute('src');
-                        if (!imgMap[src]) {
-                          try {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = img.naturalWidth || 200;
-                            canvas.height = img.naturalHeight || 200;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0);
-                            imgMap[src] = canvas.toDataURL('image/png');
-                          } catch(e) { console.log('img convert error', e); }
-                        }
-                      }
-                      // También convertir el logo para la portada
-                      const logoImg = new Image();
-                      logoImg.crossOrigin = 'anonymous';
-                      const logoB64 = await new Promise((resolve) => {
-                        logoImg.onload = () => {
-                          const c = document.createElement('canvas');
-                          c.width = logoImg.naturalWidth;
-                          c.height = logoImg.naturalHeight;
-                          c.getContext('2d').drawImage(logoImg, 0, 0);
-                          resolve(c.toDataURL('image/png'));
-                        };
-                        logoImg.onerror = () => resolve('');
-                        logoImg.src = '/logo-a4e.png';
-                      });
-                      // Reemplazar src en HTML
-                      for (const [src, b64] of Object.entries(imgMap)) {
-                        html = html.split(src).join(b64);
-                      }
-                      const printWindow = window.open('', '_blank');
-                      printWindow.document.write(`
-                        <html>
-                          <head>
-                            <title>COT - ${cotCliente} - ${cotProyectoNombre}</title>
-                            <style>
-                              @page { size: landscape; margin: 0; }
-                              @page:first { size: landscape; margin: 0; }
-                              * { box-sizing: border-box; }
-                              body { font-family: 'Segoe UI', Arial, sans-serif; padding: 0; margin: 0; color: #1a1a1a; font-size: 11px; }
-                              table { width: 100%; border-collapse: collapse; }
-                              th, td { padding: 6px 10px; text-align: left; font-size: 11px; }
-                              th { background: #E86B11; color: white; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-                              td { border-bottom: 1px solid #e5e5e5; }
-                              .total-row td { background: #fff7ed; font-weight: 700; border-top: 2px solid #E86B11; }
-                              .firma-img { max-height: 55px; }
-                              .no-print { display: none !important; }
-                              img { max-width: 100%; }
-                              .portada {
-                                width: 100%; height: 100vh;
-                                display: flex; flex-direction: column; justify-content: center; align-items: center;
-                                background: white;
-                                page-break-after: always;
-                                position: relative;
-                                padding: 60px;
-                              }
-                              .portada .barra-top { position: absolute; top: 0; left: 0; right: 0; height: 8px; background: linear-gradient(90deg, #E86B11, #D15E0E); }
-                              .portada .barra-bot { position: absolute; bottom: 0; left: 0; right: 0; height: 8px; background: linear-gradient(90deg, #E86B11, #D15E0E); }
-                              .portada .logo { height: 100px; margin-bottom: 50px; }
-                              .portada .titulo { font-size: 32px; font-weight: 700; color: #E86B11; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; }
-                              .portada .proyecto { font-size: 26px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; }
-                              .portada .cliente { font-size: 18px; color: #666; margin-bottom: 40px; }
-                              .portada .fecha { font-size: 14px; color: #999; }
-                              .portada .linea { width: 80px; height: 3px; background: #E86B11; margin: 20px auto; }
-                              .portada .footer-port { position: absolute; bottom: 40px; text-align: center; font-size: 11px; color: #bbb; }
-                              .contenido { padding: 12mm; }
-                              @media print {
-                                .no-print { display: none !important; }
-                                .portada { height: 100vh; }
-                              }
-                            </style>
-                          </head>
-                          <body>
-                            <div class="portada">
-                              <div class="barra-top"></div>
-                              ${logoB64 ? '<img src="' + logoB64 + '" class="logo" />' : ''}
-                              <div class="titulo">Propuesta Comercial</div>
-                              <div class="linea"></div>
-                              <div class="proyecto">${cotProyectoNombre || ''}</div>
-                              <div class="cliente">${cotCliente || ''}</div>
-                              <div class="fecha">${new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
-                              <div class="footer-port">A4E — Architecture for Engineering<br/>www.a4e.cl | contacto@a4e.cl</div>
-                              <div class="barra-bot"></div>
-                            </div>
-                            <div class="contenido">
-                              ${html}
-                            </div>
-                          </body>
-                        </html>
-                      `);
-                      printWindow.document.close();
-                      setTimeout(() => printWindow.print(), 500);
+                      for (const img of imgs) { const s = img.getAttribute('src'); if (!imgMap[s]) { try { const c = document.createElement('canvas'); c.width = img.naturalWidth||200; c.height = img.naturalHeight||200; c.getContext('2d').drawImage(img,0,0); imgMap[s] = c.toDataURL('image/png'); } catch(e){} } }
+                      const toB64 = (src) => new Promise(r => { const i = new Image(); i.crossOrigin='anonymous'; i.onload=()=>{ const c=document.createElement('canvas'); c.width=i.naturalWidth; c.height=i.naturalHeight; c.getContext('2d').drawImage(i,0,0); r(c.toDataURL('image/png')); }; i.onerror=()=>r(''); i.src=src; });
+                      const logoB64 = await toB64('/logo-a4e.png');
+                      for (const [s,b] of Object.entries(imgMap)) cotHtml = cotHtml.split(s).join(b);
+                      const fecha = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
+                      const pw = window.open('','_blank');
+                      pw.document.write(`<html><head><title>A4E — Propuesta ${cotCliente}</title>
+<style>
+@page{size:A4 portrait;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:11px;line-height:1.5}
+.pg{width:100%;min-height:100vh;position:relative;page-break-after:always;overflow:hidden}
+.pg:last-child{page-break-after:auto}
+.no-print{display:none!important}
+img{max-width:100%}
+/* PORTADA */
+.cover{display:flex}
+.cover-bar{width:30%;background:#E86B11;min-height:100vh}
+.cover-ct{width:70%;padding:60px 50px;display:flex;flex-direction:column;justify-content:space-between}
+.cover-logo{height:65px}
+.cover-h{font-size:36px;font-weight:800;line-height:1.15}
+.cover-h span{color:#E86B11}
+.cover-sub{font-size:13px;color:#666;border-top:2px solid #ccc;padding-top:12px;margin-top:15px;max-width:400px}
+.cover-ft{font-size:10px;color:#999;display:flex;justify-content:space-between;border-top:1px solid #e0e0e0;padding-top:10px}
+/* NOSOTROS */
+.sn{color:#E86B11;font-size:12px;font-weight:700;margin-bottom:4px}
+.st{font-size:28px;font-weight:800;margin-bottom:18px;line-height:1.2}
+.sst{font-size:14px;font-weight:700;margin-bottom:10px}
+.stxt{font-size:11px;color:#444;margin-bottom:12px}
+.slbl{color:#E86B11;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px}
+.si{font-size:11px;color:#444;padding:3px 0 3px 18px;position:relative}
+.si:before{content:'—';position:absolute;left:0;color:#E86B11}
+.pil{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.pn{font-size:22px;font-weight:800;color:#E86B11}
+.pt{font-size:11px;font-weight:700}
+.pd{font-size:10px;color:#888}
+.ab-stat{width:180px;background:#1a1a1a;color:white;padding:25px;display:flex;flex-direction:column;justify-content:center}
+.ab-stat .n{font-size:54px;font-weight:800;color:#E86B11;line-height:1}
+.ab-stat .l{font-size:11px;color:#ccc;margin-top:4px}
+.pf{position:absolute;bottom:18px;left:50px;right:50px;text-align:center;font-size:9px;color:#bbb;border-top:1px solid #eee;padding-top:6px}
+/* TRACK */
+.trk{background:#E86B11;color:white;padding:45px 50px}
+.trk .sn{color:rgba(255,255,255,.7)}
+.trk .st{color:white}
+.tt{width:100%;margin-top:10px;font-size:10px;border-collapse:collapse}
+.tt th{text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.3)}
+.tt td{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.15)}
+.tt .y{font-weight:700;width:45px}
+.tt .c{font-weight:700;width:130px}
+.ts{display:flex;gap:25px;margin-top:25px}
+.tsb{background:rgba(0,0,0,.15);padding:10px 18px}
+.tsb .n{font-size:26px;font-weight:800}
+.tsb .l{font-size:9px;opacity:.8}
+/* COT */
+.cot{padding:35px 50px}
+.cot table{width:100%;border-collapse:collapse;font-size:10px;margin-top:8px}
+.cot th{background:#E86B11;color:white;padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+.cot td{padding:5px 8px;border-bottom:1px solid #eee}
+.ct{background:#f8f8f8;padding:10px 14px;border-radius:6px;font-size:10px;color:#555;margin-top:12px}
+.ct strong{color:#333}
+.cf{margin-top:16px;display:flex;justify-content:space-between;align-items:flex-end}
+.cf img{height:55px}
+.fl{border-top:1.5px solid #333;padding-top:4px;text-align:center}
+.fn{font-size:11px;font-weight:700}
+.fr{font-size:9px;color:#888}
+/* CIERRE */
+.cls{padding:50px;display:flex;flex-direction:column;justify-content:space-between}
+.cls-t{font-size:42px;font-weight:800;margin-bottom:12px}
+.cls-tx{font-size:12px;color:#666;max-width:340px;margin-bottom:30px}
+.cls-c{font-size:11px}
+.cls-c .lb{color:#999;width:65px;display:inline-block}
+.cls-c .vl{font-weight:600}
+.cls-blk{position:absolute;bottom:0;right:0;width:45%;height:45%;background:#E86B11}
+.cls-dk{position:absolute;top:0;right:0;width:70px;height:70px;background:#1a1a1a}
+@media print{.no-print{display:none!important}}
+</style></head><body>
+<!-- PORTADA -->
+<div class="pg cover"><div class="cover-bar"></div><div class="cover-ct">
+<div>${logoB64?'<img src="'+logoB64+'" class="cover-logo"/><div style="font-size:10px;color:#E86B11;letter-spacing:2px;margin-top:2px">ARCHITECTURE FOR ENGINEERING</div>':''}</div>
+<div><div class="cover-h">PROPUESTA<br/>COMERCIAL,<br/><span>${(cotProyectoNombre||'PROYECTO').toUpperCase()}.</span></div>
+<div class="cover-sub">Presentación técnico-comercial para ${cotCliente||'Cliente'}.<br/>Fecha: ${fecha}</div></div>
+<div class="cover-ft"><span>www.a4e.cl</span><span>contact@a4e.cl — Santiago, Chile</span></div>
+</div></div>
+<!-- NOSOTROS -->
+<div class="pg" style="padding:45px 50px">
+<div style="display:flex;justify-content:space-between">
+<div style="flex:1;padding-right:30px">
+<div class="sn">01</div><div class="st">Nosotros</div>
+<div class="sst">Consultoría Técnica en Arquitectura para empresas de Ingeniería</div>
+<div class="stxt">Más de 10 años de experiencia profesional integrando la arquitectura como disciplina crítica en proyectos mineros e industriales.</div>
+<div class="stxt">Somos una oficina especializada en el desarrollo de infraestructura para la gran minería e industria. Entendemos el lenguaje de la ingeniería. Nuestro trabajo se integra con las especialidades estructurales, eléctricas, mecánicas y PMO, garantizando entregables libres de interferencias y compatibles con la codificación del mandante.</div>
+<div class="slbl">Servicios</div>
+<div class="si">Master Plan de Arquitectura para Faenas e Instalaciones</div>
+<div class="si">Edificación y remodelación de Oficinas y Casas de Cambio</div>
+<div class="si">Salas de Control, de Servidores, Eléctricas y Técnicas</div>
+<div class="si">Edificación técnica para RESPEL, Almacenamiento y Truck Shops</div>
+<div class="si">Revisión de contraparte de planos y documentos</div>
+<div class="si">Supervisión de Terreno de ejecución y avances</div>
+</div>
+<div class="ab-stat"><div class="n">10+</div><div class="l">años integrando arquitectura a la ingeniería</div></div>
+</div>
+<div class="slbl">Pilares</div>
+<div class="pil">
+<div><span class="pn">01</span> <span class="pt">Enfoque en Procesos</span><br/><span class="pd">Nos integramos a los procesos internos de su ingeniería.</span></div>
+<div><span class="pn">02</span> <span class="pt">Rigor Normativo</span><br/><span class="pd">Cumplimiento de OGUC, NCh y estándares mineros.</span></div>
+<div><span class="pn">03</span> <span class="pt">Coordinación Multidisciplinaria</span><br/><span class="pd">Compatibilidad con estructural, eléctrica, mecánica y PMO.</span></div>
+<div><span class="pn">04</span> <span class="pt">Modelo Flexible</span><br/><span class="pd">Equipo especializado disponible cuando su proyecto lo requiera.</span></div>
+</div>
+<div class="pf">A4E — Architecture for Engineering</div>
+</div>
+<!-- TRACK RECORD -->
+<div class="pg trk">
+<div class="sn">02</div><div class="st">Track record <span style="font-size:14px;font-weight:400;opacity:.7">2017 — 2026</span></div>
+<div style="font-size:11px;font-weight:600;margin-top:12px;opacity:.8">Desarrollo de Ingeniería Propio <span style="font-weight:400">(vía CHKING)</span></div>
+<table class="tt"><thead><tr><th>Año</th><th>Cliente</th><th>Proyecto</th></tr></thead><tbody>
+<tr><td class="y">2025</td><td class="c">CMM</td><td>Servicio Ingeniería IPS/SPS Proyecto Minero Las Yacas</td></tr>
+<tr><td class="y">2025</td><td class="c">BHP-COLOSO</td><td>Ingeniería Remediación Edificio CHO — Puerto Coloso</td></tr>
+<tr><td class="y">2024</td><td class="c">BHP-MEL</td><td>Ingeniería SPS/DPS Facilities E-AT Stripping</td></tr>
+<tr><td class="y">2024</td><td class="c">BHP-MEL</td><td>AS Built EN-AT — Facilities Autonomía MEL</td></tr>
+<tr><td class="y">2023</td><td class="c">MECASFY</td><td>Edificio Puerta Sur</td></tr>
+<tr><td class="y">2022</td><td class="c">GT CHILE</td><td>Oficinas Corporativas GT Chile</td></tr>
+<tr><td class="y">2022</td><td class="c">BHP-MEL</td><td>Ingeniería Interim Facilities Autonomía MEL</td></tr>
+<tr><td class="y">2022</td><td class="c">BHP-SPENCE</td><td>Ingeniería Sala de Control SMH</td></tr>
+</tbody></table>
+<div style="font-size:11px;font-weight:600;margin-top:12px;opacity:.8">Contraparte / Revisión <span style="font-weight:400">(vía CHKING)</span></div>
+<table class="tt"><thead><tr><th>Año</th><th>Empresa</th><th>Proyecto</th></tr></thead><tbody>
+<tr><td class="y">2023</td><td class="c">HATCH</td><td>ILNSC — Innovación Lixiviación Nuevas Columnas de Simulación</td></tr>
+<tr><td class="y">2019</td><td class="c">ARCADIS</td><td>Bodega y Muestrera — Spence Growth Options</td></tr>
+<tr><td class="y">2018</td><td class="c">ATCO</td><td>Sala de Control Lixiviación — Spence Growth Options</td></tr>
+</tbody></table>
+<div class="ts"><div class="tsb"><div class="n">19</div><div class="l">proyectos</div></div><div class="tsb"><div class="n">10+</div><div class="l">años</div></div><div class="tsb"><div class="n">5</div><div class="l">clientes</div></div></div>
+</div>
+<!-- COTIZACIÓN -->
+<div class="pg cot">
+<div class="sn">03</div><div class="st">Propuesta Comercial</div>
+<div style="font-size:12px;color:#666;margin-bottom:5px">${cotProyectoNombre||''} — ${cotCliente||''}</div>
+${cotHtml}
+</div>
+<!-- CIERRE -->
+<div class="pg cls">
+<div>${logoB64?'<img src="'+logoB64+'" style="height:55px"/><div style="font-size:9px;color:#E86B11;letter-spacing:1.5px">ARCHITECTURE FOR ENGINEERING</div>':''}</div>
+<div><div class="cls-t">Gracias.</div>
+<div class="cls-tx">Agradecemos la confianza de nuestros clientes y socios estratégicos. Cada proyecto ha sido una oportunidad para demostrar que la arquitectura, integrada a la ingeniería, genera valor real.</div>
+<div class="cls-c"><div><span class="lb">Web</span><span class="vl">www.a4e.cl</span></div><div><span class="lb">Email</span><span class="vl">contact@a4e.cl</span></div><div><span class="lb">Ubicación</span><span class="vl">Santiago, Chile</span></div></div></div>
+<div class="cls-blk"></div><div class="cls-dk"></div>
+</div>
+</body></html>`);
+                      pw.document.close();
+                      setTimeout(() => pw.print(), 600);
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm"
                   >

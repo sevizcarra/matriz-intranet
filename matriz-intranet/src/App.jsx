@@ -612,16 +612,9 @@ export default function MatrizIntranet() {
             saveProyecto(p);
           }
         });
-      } else if (!fromCache && proyectosInitialized) {
-        // Ya teníamos datos antes y ahora Firestore está vacío (el usuario borró todo)
+      } else if (!fromCache) {
+        // Firestore confirmó vacío — respetar el estado vacío (el usuario los eliminó)
         setProyectos([]);
-      } else if (!fromCache && !proyectosInitialized) {
-        // SOLO cargar datos iniciales si la respuesta viene del SERVIDOR (no caché)
-        // y nunca hemos recibido datos reales antes en esta sesión.
-        // Esto evita sobrescribir datos si Firestore temporalmente responde vacío.
-        console.log('Firestore vacío (confirmado por servidor) — cargando datos iniciales de proyectos');
-        setProyectos(PROYECTOS_INICIALES);
-        saveAllProyectos(PROYECTOS_INICIALES);
         proyectosInitialized = true;
       }
       // Si fromCache && data.length === 0: NO hacer nada, esperar respuesta del servidor
@@ -634,14 +627,9 @@ export default function MatrizIntranet() {
       if (data.length > 0) {
         setProfesionales(data);
         colaboradoresInitialized = true;
-      } else if (!fromCache && colaboradoresInitialized) {
-        // Ya teníamos datos antes y ahora Firestore está vacío (el usuario borró todo)
+      } else if (!fromCache) {
+        // Firestore confirmó vacío — respetar el estado vacío (el usuario los eliminó)
         setProfesionales([]);
-      } else if (!fromCache && !colaboradoresInitialized) {
-        // SOLO cargar datos iniciales si confirmado vacío por servidor
-        console.log('Firestore vacío (confirmado por servidor) — cargando colaboradores iniciales');
-        setProfesionales(COLABORADORES_INICIAL);
-        saveAllColaboradores(COLABORADORES_INICIAL);
         colaboradoresInitialized = true;
       }
     }, (error) => {

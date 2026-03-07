@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
   Building2, User, DollarSign, FileText, Check, X, Pencil, Trash2, Settings,
   BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2,
-  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi, Download, Upload, Database, Shield
+  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi, Download, Upload, Database, Shield, Edit3
 } from 'lucide-react';
 import {
   subscribeToProyectos,
@@ -871,6 +871,7 @@ export default function MatrizIntranet() {
   const [cotExcelFileName, setCotExcelFileName] = useState('');
   const [cotShowPreview, setCotShowPreview] = useState(false);
   const [cotGenerando, setCotGenerando] = useState(false);
+  const [cotFirma, setCotFirma] = useState(null);
   // Refs para campos de texto COT: persisten entre remounts sin causar re-render de App al escribir
   const cotClienteRef = React.useRef('');
   const cotProyectoNombreRef = React.useRef('');
@@ -3936,7 +3937,7 @@ export default function MatrizIntranet() {
         {/* ==================== MODAL PREVIEW COTIZACIÓN ==================== */}
         {cotShowPreview && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-auto">
-            <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-auto rounded-lg shadow-2xl">
+            <div className="bg-white w-full max-w-6xl max-h-[90vh] overflow-auto rounded-lg shadow-2xl">
               {/* Header del modal */}
               <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
                 <h3 className="text-lg font-semibold text-neutral-800">Preview de Cotización</h3>
@@ -3950,19 +3951,15 @@ export default function MatrizIntranet() {
                           <head>
                             <title>Cotización - ${cotCliente}</title>
                             <style>
-                              body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
-                              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                              th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                              @page { size: landscape; margin: 15mm; }
+                              body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+                              table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
                               th { background: #f5f5f5; font-weight: 600; }
-                              .header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px; }
-                              .logo { max-height: 60px; max-width: 200px; }
-                              .title { color: #ea580c; font-size: 24px; font-weight: bold; }
-                              .subtitle { color: #666; font-size: 14px; }
-                              .section { margin: 25px 0; }
-                              .section-title { font-size: 14px; font-weight: 600; color: #ea580c; margin-bottom: 10px; text-transform: uppercase; }
                               .total-row { background: #fef3e7 !important; font-weight: bold; }
-                              .terms { background: #f9f9f9; padding: 15px; border-radius: 8px; font-size: 12px; color: #666; }
-                              @media print { body { padding: 20px; } }
+                              .firma-img { max-height: 60px; }
+                              .no-print { display: none !important; }
+                              @media print { body { padding: 10px; } .no-print { display: none !important; } }
                             </style>
                           </head>
                           <body>
@@ -3988,22 +3985,24 @@ export default function MatrizIntranet() {
                 </div>
               </div>
 
-              {/* Contenido del Preview */}
-              <div id="cotizacion-preview" className="p-8">
-                {/* Header con logos */}
-                <div className="flex justify-between items-start mb-8">
+              {/* Contenido del Preview - formato apaisado A4E */}
+              <div id="cotizacion-preview" className="p-8" style={{ minWidth: '900px' }}>
+                {/* Header A4E */}
+                <div className="flex justify-between items-start mb-6">
                   <div>
-                    <div className="text-2xl font-bold text-orange-600">MATRIZ</div>
+                    <div className="text-2xl font-bold text-orange-600">A4E</div>
                     <div className="text-sm text-neutral-500">Architecture for Engineering</div>
+                  </div>
+                  <div className="text-right text-sm text-neutral-500">
+                    <p>Fecha: {new Date().toLocaleDateString('es-CL')}</p>
                   </div>
                 </div>
 
                 {/* Título */}
-                <div className="text-center mb-8">
+                <div className="text-center mb-6">
                   <h1 className="text-xl font-bold text-neutral-800 mb-2">PROPUESTA COMERCIAL</h1>
                   <p className="text-neutral-600">{cotProyectoNombre}</p>
                   <p className="text-sm text-neutral-500">Cliente: {cotCliente}</p>
-                  <p className="text-sm text-neutral-500">Fecha: {new Date().toLocaleDateString('es-CL')}</p>
                 </div>
 
                 {/* Tabla de items */}
@@ -4026,7 +4025,7 @@ export default function MatrizIntranet() {
                         // row[0]=N°, row[1]=CLASIFICACIÓN, row[2]=NOMBRE, row[3]=Descripción, row[4]=Cantidad
                         const tipo = (row[1] || 'PLA GEN').toUpperCase();
                         const cantidad = parseInt(row[4]) || 1;
-                        const precio = tipo.includes('DOC') ? 40 :
+                        const precio = tipo.includes('DOC') ? 30 :
                                       tipo.includes('PLA DET') ? 25 :
                                       tipo.includes('PLA GEN') ? 20 :
                                       tipo.includes('REU INT') ? 1 :
@@ -4051,7 +4050,7 @@ export default function MatrizIntranet() {
                           {cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
                             const tipo = (row[1] || 'PLA GEN').toUpperCase();
                             const cantidad = parseInt(row[4]) || 1;
-                            const precio = tipo.includes('DOC') ? 40 :
+                            const precio = tipo.includes('DOC') ? 30 :
                                           tipo.includes('PLA DET') ? 25 :
                                           tipo.includes('PLA GEN') ? 20 :
                                           tipo.includes('REU INT') ? 1 :
@@ -4077,9 +4076,78 @@ export default function MatrizIntranet() {
                 </div>
 
                 {/* Firma */}
-                <div className="mt-8 pt-8 border-t text-center text-sm text-neutral-500">
-                  <p>MATRIZ - Architecture for Engineering</p>
-                  <p>www.matriz.cl | contacto@matriz.cl</p>
+                <div className="mt-8 pt-6 border-t">
+                  <div className="flex justify-between items-end">
+                    <div className="text-sm text-neutral-500">
+                      <p className="font-semibold text-neutral-700">A4E - Architecture for Engineering</p>
+                      <p>www.a4e.cl | contacto@a4e.cl</p>
+                    </div>
+                    <div className="text-center">
+                      {cotFirma ? (
+                        <div>
+                          <img src={cotFirma} alt="Firma" className="h-16 mx-auto mb-1" />
+                          <div className="border-t border-neutral-400 pt-1 px-8">
+                            <p className="text-sm font-semibold text-neutral-700">Sebastián A. Vizcarra B.</p>
+                            <p className="text-xs text-neutral-500">Arquitecto Líder</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="h-16 flex items-end justify-center mb-1">
+                            <button
+                              onClick={() => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = 400;
+                                canvas.height = 120;
+                                const ctx = canvas.getContext('2d');
+                                ctx.clearRect(0, 0, 400, 120);
+                                // Firma estilizada
+                                ctx.strokeStyle = '#1a365d';
+                                ctx.lineWidth = 2.5;
+                                ctx.lineCap = 'round';
+                                ctx.lineJoin = 'round';
+                                ctx.beginPath();
+                                // S
+                                ctx.moveTo(30, 50);
+                                ctx.bezierCurveTo(25, 30, 60, 25, 55, 45);
+                                ctx.bezierCurveTo(50, 65, 20, 70, 30, 50);
+                                // e
+                                ctx.moveTo(65, 50);
+                                ctx.bezierCurveTo(65, 35, 90, 35, 90, 48);
+                                ctx.bezierCurveTo(90, 52, 65, 55, 65, 65);
+                                // b
+                                ctx.moveTo(100, 25);
+                                ctx.lineTo(100, 65);
+                                ctx.bezierCurveTo(100, 45, 125, 40, 125, 55);
+                                ctx.bezierCurveTo(125, 70, 100, 70, 100, 55);
+                                // rúbrica
+                                ctx.moveTo(130, 55);
+                                ctx.bezierCurveTo(150, 30, 180, 25, 220, 40);
+                                ctx.bezierCurveTo(260, 55, 300, 35, 340, 50);
+                                // V
+                                ctx.moveTo(155, 70);
+                                ctx.lineTo(175, 95);
+                                ctx.lineTo(195, 70);
+                                // rúbrica final
+                                ctx.moveTo(200, 80);
+                                ctx.bezierCurveTo(230, 65, 280, 60, 350, 75);
+                                ctx.stroke();
+                                setCotFirma(canvas.toDataURL('image/png'));
+                              }}
+                              className="no-print flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                              Firmar
+                            </button>
+                          </div>
+                          <div className="border-t border-neutral-400 pt-1 px-8">
+                            <p className="text-sm font-semibold text-neutral-700">Sebastián A. Vizcarra B.</p>
+                            <p className="text-xs text-neutral-500">Arquitecto Líder</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

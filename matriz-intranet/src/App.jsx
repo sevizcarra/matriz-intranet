@@ -4059,11 +4059,15 @@ export default function MatrizIntranet() {
                       return;
                     }
                     setCotGenerando(true);
+                    // Sanitizar excelData: Firestore no acepta undefined
+                    const cleanExcelData = cotExcelData.map(row =>
+                      row.map(cell => (cell === undefined || cell === null) ? '' : cell)
+                    );
                     const cotData = {
                       cliente: cotCliente,
                       proyectoNombre: cotProyectoNombre,
-                      excelData: cotExcelData,
-                      excelFileName: cotExcelFileName,
+                      excelData: cleanExcelData,
+                      excelFileName: cotExcelFileName || '',
                       firmada: !!cotFirma,
                       fechaCreacion: cotMode === 'editar' && cotViewingId ? (cotizaciones.find(c => c._docId === cotViewingId)?.fechaCreacion || new Date().toISOString()) : new Date().toISOString(),
                       fechaModificacion: new Date().toISOString(),

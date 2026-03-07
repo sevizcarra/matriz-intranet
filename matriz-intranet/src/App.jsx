@@ -3939,7 +3939,7 @@ export default function MatrizIntranet() {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-auto">
             <div className="bg-white w-full max-w-6xl max-h-[90vh] overflow-auto rounded-lg shadow-2xl">
               {/* Header del modal */}
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <div className="sticky top-0 bg-white border-b px-6 py-3 flex items-center justify-between z-10">
                 <h3 className="text-lg font-semibold text-neutral-800">Preview de Cotización</h3>
                 <div className="flex gap-2">
                   <button
@@ -3949,17 +3949,19 @@ export default function MatrizIntranet() {
                       printWindow.document.write(`
                         <html>
                           <head>
-                            <title>Cotización - ${cotCliente}</title>
+                            <title>COT - ${cotCliente} - ${cotProyectoNombre}</title>
                             <style>
-                              @page { size: landscape; margin: 15mm; }
-                              body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-                              table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-                              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
-                              th { background: #f5f5f5; font-weight: 600; }
-                              .total-row { background: #fef3e7 !important; font-weight: bold; }
-                              .firma-img { max-height: 60px; }
+                              @page { size: landscape; margin: 12mm; }
+                              * { box-sizing: border-box; }
+                              body { font-family: 'Segoe UI', Arial, sans-serif; padding: 0; margin: 0; color: #1a1a1a; font-size: 11px; }
+                              table { width: 100%; border-collapse: collapse; }
+                              th, td { padding: 6px 10px; text-align: left; font-size: 11px; }
+                              th { background: #ea580c; color: white; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+                              td { border-bottom: 1px solid #e5e5e5; }
+                              .total-row td { background: #fff7ed; font-weight: 700; border-top: 2px solid #ea580c; }
+                              .firma-img { max-height: 55px; }
                               .no-print { display: none !important; }
-                              @media print { body { padding: 10px; } .no-print { display: none !important; } }
+                              @media print { .no-print { display: none !important; } }
                             </style>
                           </head>
                           <body>
@@ -3970,14 +3972,14 @@ export default function MatrizIntranet() {
                       printWindow.document.close();
                       printWindow.print();
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm"
                   >
                     <Printer className="w-4 h-4" />
-                    Imprimir
+                    Imprimir / PDF
                   </button>
                   <button
                     onClick={() => setCotShowPreview(false)}
-                    className="flex items-center gap-2 px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300"
+                    className="flex items-center gap-2 px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 text-sm"
                   >
                     <X className="w-4 h-4" />
                     Cerrar
@@ -3986,43 +3988,60 @@ export default function MatrizIntranet() {
               </div>
 
               {/* Contenido del Preview - formato apaisado A4E */}
-              <div id="cotizacion-preview" className="p-8" style={{ minWidth: '900px' }}>
-                {/* Header A4E */}
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <div className="text-2xl font-bold text-orange-600">A4E</div>
-                    <div className="text-sm text-neutral-500">Architecture for Engineering</div>
+              <div id="cotizacion-preview" style={{ minWidth: '900px', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
+                {/* Barra superior naranja */}
+                <div style={{ background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px' }}>
+                      <rect width="100" height="100" rx="12" fill="#ffffff"/>
+                      <text x="50" y="72" fontFamily="Arial, sans-serif" fontSize="52" fontWeight="700" textAnchor="middle" fill="#ea580c">Ae</text>
+                    </svg>
+                    <div>
+                      <div style={{ color: 'white', fontSize: '22px', fontWeight: '700', letterSpacing: '2px' }}>A4E</div>
+                      <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', letterSpacing: '1px' }}>ARCHITECTURE FOR ENGINEERING</div>
+                    </div>
                   </div>
-                  <div className="text-right text-sm text-neutral-500">
-                    <p>Fecha: {new Date().toLocaleDateString('es-CL')}</p>
+                  <div style={{ textAlign: 'right', color: 'rgba(255,255,255,0.9)', fontSize: '12px' }}>
+                    <div style={{ fontSize: '11px', opacity: 0.8 }}>Fecha de emisión</div>
+                    <div style={{ fontWeight: '600', fontSize: '13px' }}>{new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
                   </div>
                 </div>
 
-                {/* Título */}
-                <div className="text-center mb-6">
-                  <h1 className="text-xl font-bold text-neutral-800 mb-2">PROPUESTA COMERCIAL</h1>
-                  <p className="text-neutral-600">{cotProyectoNombre}</p>
-                  <p className="text-sm text-neutral-500">Cliente: {cotCliente}</p>
+                {/* Info proyecto y cliente */}
+                <div style={{ padding: '20px 40px', background: '#fafafa', borderBottom: '1px solid #e5e5e5', display: 'flex', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Proyecto</div>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a' }}>{cotProyectoNombre || '—'}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Cliente</div>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a' }}>{cotCliente || '—'}</div>
+                  </div>
+                </div>
+
+                {/* Título sección */}
+                <div style={{ padding: '20px 40px 10px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#ea580c', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px', borderBottom: '2px solid #ea580c', paddingBottom: '6px', display: 'inline-block' }}>
+                    Alcance y Valorización
+                  </div>
                 </div>
 
                 {/* Tabla de items */}
-                <div className="mb-8">
-                  <h2 className="text-sm font-semibold text-orange-600 uppercase mb-3">Alcance y Valorización</h2>
-                  <table className="w-full border-collapse text-sm">
+                <div style={{ padding: '0 40px 16px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                     <thead>
-                      <tr className="bg-neutral-100">
-                        <th className="border border-neutral-300 px-3 py-2 text-left">Item</th>
-                        <th className="border border-neutral-300 px-3 py-2 text-left">Descripción</th>
-                        <th className="border border-neutral-300 px-3 py-2 text-center">Tipo</th>
-                        <th className="border border-neutral-300 px-3 py-2 text-right">REV_A (70%)</th>
-                        <th className="border border-neutral-300 px-3 py-2 text-right">REV_B (20%)</th>
-                        <th className="border border-neutral-300 px-3 py-2 text-right">REV_0 (10%)</th>
-                        <th className="border border-neutral-300 px-3 py-2 text-right">Total UF</th>
+                      <tr>
+                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '4px 0 0 0' }}>N°</th>
+                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Descripción</th>
+                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tipo</th>
+                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_A (70%)</th>
+                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_B (20%)</th>
+                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_0 (10%)</th>
+                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '0 4px 0 0' }}>Total UF</th>
                       </tr>
                     </thead>
                     <tbody>
                       {cotExcelData && cotExcelData.slice(1).filter(row => row[0] && row[3]).map((row, idx) => {
-                        // row[0]=N°, row[1]=CLASIFICACIÓN, row[2]=NOMBRE, row[3]=Descripción, row[4]=Cantidad
                         const tipo = (row[1] || 'PLA GEN').toUpperCase();
                         const cantidad = parseInt(row[4]) || 1;
                         const precio = tipo.includes('DOC') ? 30 :
@@ -4032,21 +4051,34 @@ export default function MatrizIntranet() {
                                       tipo.includes('REU CTTAL') ? 1 :
                                       tipo.includes('VIS') ? 25 : 20;
                         const precioTotal = precio * cantidad;
+                        const esCobroUnico = tipo.includes('VIS') || tipo.includes('REU INT') || tipo.includes('REU CTTAL');
+                        const bg = idx % 2 === 0 ? '#ffffff' : '#fafafa';
                         return (
-                          <tr key={idx} className="hover:bg-neutral-50">
-                            <td className="border border-neutral-300 px-3 py-2">{row[0]}</td>
-                            <td className="border border-neutral-300 px-3 py-2">{row[3]}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-center">{tipo}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precioTotal * 0.7).toFixed(1)}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precioTotal * 0.2).toFixed(1)}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-right">{(precioTotal * 0.1).toFixed(1)}</td>
-                            <td className="border border-neutral-300 px-3 py-2 text-right font-medium">{precioTotal}</td>
+                          <tr key={idx} style={{ background: bg }}>
+                            <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', color: '#666', fontSize: '11px' }}>{row[0]}</td>
+                            <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', fontWeight: '500' }}>{row[3]}</td>
+                            <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+                              <span style={{ background: esCobroUnico ? '#dbeafe' : '#fff7ed', color: esCobroUnico ? '#1e40af' : '#c2410c', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600' }}>{tipo}</span>
+                            </td>
+                            {esCobroUnico ? (
+                              <>
+                                <td colSpan="3" style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center', color: '#888', fontSize: '10px', fontStyle: 'italic' }}>Cobro único</td>
+                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{precioTotal}</td>
+                              </>
+                            ) : (
+                              <>
+                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * 0.7).toFixed(1)}</td>
+                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * 0.2).toFixed(1)}</td>
+                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * 0.1).toFixed(1)}</td>
+                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{precioTotal}</td>
+                              </>
+                            )}
                           </tr>
                         );
                       })}
-                      <tr className="bg-orange-50 font-bold">
-                        <td colSpan="6" className="border border-neutral-300 px-3 py-2 text-right">TOTAL</td>
-                        <td className="border border-neutral-300 px-3 py-2 text-right">
+                      <tr className="total-row">
+                        <td colSpan="6" style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #ea580c', background: '#fff7ed', fontSize: '12px' }}>TOTAL PROPUESTA</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #ea580c', background: '#fff7ed', fontSize: '14px', color: '#ea580c' }}>
                           {cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
                             const tipo = (row[1] || 'PLA GEN').toUpperCase();
                             const cantidad = parseInt(row[4]) || 1;
@@ -4064,91 +4096,57 @@ export default function MatrizIntranet() {
                   </table>
                 </div>
 
-                {/* Términos */}
-                <div className="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600">
-                  <h2 className="text-sm font-semibold text-orange-600 uppercase mb-2">Condiciones Comerciales</h2>
-                  <ul className="space-y-1">
-                    <li>• <strong>Forma de Pago:</strong> REV_A (70%) al envío, REV_B (20%) con comentarios, REV_0 (10%) aprobación final</li>
-                    <li>• <strong>Validez de la Oferta:</strong> 90 días corridos desde la fecha de emisión</li>
-                    <li>• <strong>Plazo de Entrega:</strong> A coordinar según alcance del proyecto</li>
-                    <li>• <strong>Revisiones Adicionales:</strong> Se valorarán al valor de REV_0</li>
-                  </ul>
-                </div>
-
-                {/* Firma */}
-                <div className="mt-8 pt-6 border-t">
-                  <div className="flex justify-between items-end">
-                    <div className="text-sm text-neutral-500">
-                      <p className="font-semibold text-neutral-700">A4E - Architecture for Engineering</p>
-                      <p>www.a4e.cl | contacto@a4e.cl</p>
-                    </div>
-                    <div className="text-center">
-                      {cotFirma ? (
-                        <div>
-                          <img src={cotFirma} alt="Firma" className="h-16 mx-auto mb-1" />
-                          <div className="border-t border-neutral-400 pt-1 px-8">
-                            <p className="text-sm font-semibold text-neutral-700">Sebastián A. Vizcarra B.</p>
-                            <p className="text-xs text-neutral-500">Arquitecto Líder</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="h-16 flex items-end justify-center mb-1">
-                            <button
-                              onClick={() => {
-                                const canvas = document.createElement('canvas');
-                                canvas.width = 400;
-                                canvas.height = 120;
-                                const ctx = canvas.getContext('2d');
-                                ctx.clearRect(0, 0, 400, 120);
-                                // Firma estilizada
-                                ctx.strokeStyle = '#1a365d';
-                                ctx.lineWidth = 2.5;
-                                ctx.lineCap = 'round';
-                                ctx.lineJoin = 'round';
-                                ctx.beginPath();
-                                // S
-                                ctx.moveTo(30, 50);
-                                ctx.bezierCurveTo(25, 30, 60, 25, 55, 45);
-                                ctx.bezierCurveTo(50, 65, 20, 70, 30, 50);
-                                // e
-                                ctx.moveTo(65, 50);
-                                ctx.bezierCurveTo(65, 35, 90, 35, 90, 48);
-                                ctx.bezierCurveTo(90, 52, 65, 55, 65, 65);
-                                // b
-                                ctx.moveTo(100, 25);
-                                ctx.lineTo(100, 65);
-                                ctx.bezierCurveTo(100, 45, 125, 40, 125, 55);
-                                ctx.bezierCurveTo(125, 70, 100, 70, 100, 55);
-                                // rúbrica
-                                ctx.moveTo(130, 55);
-                                ctx.bezierCurveTo(150, 30, 180, 25, 220, 40);
-                                ctx.bezierCurveTo(260, 55, 300, 35, 340, 50);
-                                // V
-                                ctx.moveTo(155, 70);
-                                ctx.lineTo(175, 95);
-                                ctx.lineTo(195, 70);
-                                // rúbrica final
-                                ctx.moveTo(200, 80);
-                                ctx.bezierCurveTo(230, 65, 280, 60, 350, 75);
-                                ctx.stroke();
-                                setCotFirma(canvas.toDataURL('image/png'));
-                              }}
-                              className="no-print flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                              Firmar
-                            </button>
-                          </div>
-                          <div className="border-t border-neutral-400 pt-1 px-8">
-                            <p className="text-sm font-semibold text-neutral-700">Sebastián A. Vizcarra B.</p>
-                            <p className="text-xs text-neutral-500">Arquitecto Líder</p>
-                          </div>
-                        </div>
-                      )}
+                {/* Condiciones Comerciales */}
+                <div style={{ padding: '0 40px 20px' }}>
+                  <div style={{ background: '#f8f8f8', borderRadius: '8px', padding: '16px 20px', border: '1px solid #e8e8e8' }}>
+                    <div style={{ fontSize: '10px', fontWeight: '700', color: '#ea580c', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '10px' }}>Condiciones Comerciales</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: '11px', color: '#555' }}>
+                      <div><strong style={{ color: '#333' }}>Forma de Pago:</strong> REV_A (70%) al envío, REV_B (20%) al envío, REV_0 (10%) al envío</div>
+                      <div><strong style={{ color: '#333' }}>Validez de la Oferta:</strong> 90 días corridos desde la fecha de emisión</div>
+                      <div><strong style={{ color: '#333' }}>Plazo de Entrega:</strong> A coordinar según alcance del proyecto</div>
+                      <div><strong style={{ color: '#333' }}>Revisiones Adicionales:</strong> Se valorarán al valor de REV_0</div>
                     </div>
                   </div>
                 </div>
+
+                {/* Firma y footer */}
+                <div style={{ padding: '16px 40px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div style={{ fontSize: '11px', color: '#999' }}>
+                    <div style={{ fontWeight: '600', color: '#666', marginBottom: '2px' }}>A4E - Architecture for Engineering</div>
+                    <div>www.a4e.cl | contacto@a4e.cl</div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    {cotFirma ? (
+                      <div>
+                        <img src={cotFirma} alt="Firma" style={{ height: '55px', marginBottom: '4px' }} className="firma-img" />
+                        <div style={{ borderTop: '1.5px solid #333', paddingTop: '4px', paddingLeft: '16px', paddingRight: '16px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#1a1a1a' }}>Sebastián A. Vizcarra B.</div>
+                          <div style={{ fontSize: '10px', color: '#888' }}>Arquitecto Líder</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ height: '55px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '4px' }}>
+                          <button
+                            onClick={() => setCotFirma('/firma-sav.png')}
+                            className="no-print"
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 20px', background: '#1e40af', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            Firmar
+                          </button>
+                        </div>
+                        <div style={{ borderTop: '1.5px solid #333', paddingTop: '4px', paddingLeft: '16px', paddingRight: '16px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#1a1a1a' }}>Sebastián A. Vizcarra B.</div>
+                          <div style={{ fontSize: '10px', color: '#888' }}>Arquitecto Líder</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Línea inferior naranja */}
+                <div style={{ height: '4px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}></div>
               </div>
             </div>
           </div>

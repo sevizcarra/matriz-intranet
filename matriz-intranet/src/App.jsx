@@ -3956,9 +3956,9 @@ export default function MatrizIntranet() {
                               body { font-family: 'Segoe UI', Arial, sans-serif; padding: 0; margin: 0; color: #1a1a1a; font-size: 11px; }
                               table { width: 100%; border-collapse: collapse; }
                               th, td { padding: 6px 10px; text-align: left; font-size: 11px; }
-                              th { background: #ea580c; color: white; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+                              th { background: #E86B11; color: white; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
                               td { border-bottom: 1px solid #e5e5e5; }
-                              .total-row td { background: #fff7ed; font-weight: 700; border-top: 2px solid #ea580c; }
+                              .total-row td { background: #fff7ed; font-weight: 700; border-top: 2px solid #E86B11; }
                               .firma-img { max-height: 55px; }
                               .no-print { display: none !important; }
                               @media print { .no-print { display: none !important; } }
@@ -3990,12 +3990,9 @@ export default function MatrizIntranet() {
               {/* Contenido del Preview - formato apaisado A4E */}
               <div id="cotizacion-preview" style={{ minWidth: '900px', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
                 {/* Barra superior naranja */}
-                <div style={{ background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ background: 'linear-gradient(135deg, #E86B11 0%, #D15E0E 100%)', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px' }}>
-                      <rect width="100" height="100" rx="12" fill="#ffffff"/>
-                      <text x="50" y="72" fontFamily="Arial, sans-serif" fontSize="52" fontWeight="700" textAnchor="middle" fill="#ea580c">Ae</text>
-                    </svg>
+                    <img src="/logo-a4e.png" alt="A4E" style={{ width: '52px', height: '52px', borderRadius: '8px' }} />
                     <div>
                       <div style={{ color: 'white', fontSize: '22px', fontWeight: '700', letterSpacing: '2px' }}>A4E</div>
                       <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', letterSpacing: '1px' }}>ARCHITECTURE FOR ENGINEERING</div>
@@ -4021,7 +4018,7 @@ export default function MatrizIntranet() {
 
                 {/* Título sección */}
                 <div style={{ padding: '20px 40px 10px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#ea580c', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px', borderBottom: '2px solid #ea580c', paddingBottom: '6px', display: 'inline-block' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#E86B11', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px', borderBottom: '2px solid #E86B11', paddingBottom: '6px', display: 'inline-block' }}>
                     Alcance y Valorización
                   </div>
                 </div>
@@ -4031,13 +4028,13 @@ export default function MatrizIntranet() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                     <thead>
                       <tr>
-                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '4px 0 0 0' }}>N°</th>
-                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Descripción</th>
-                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tipo</th>
-                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_A (70%)</th>
-                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_B (20%)</th>
-                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_0 (10%)</th>
-                        <th style={{ background: '#ea580c', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '0 4px 0 0' }}>Total UF</th>
+                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '4px 0 0 0' }}>N°</th>
+                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Descripción</th>
+                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tipo</th>
+                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_A (70%)</th>
+                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_B (20%)</th>
+                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_0 (10%)</th>
+                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '0 4px 0 0' }}>Total UF</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4058,7 +4055,7 @@ export default function MatrizIntranet() {
                             <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', color: '#666', fontSize: '11px' }}>{row[0]}</td>
                             <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', fontWeight: '500' }}>{row[3]}</td>
                             <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-                              <span style={{ background: esCobroUnico ? '#dbeafe' : '#fff7ed', color: esCobroUnico ? '#1e40af' : '#c2410c', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600' }}>{tipo}</span>
+                              <span style={{ background: esCobroUnico ? '#dbeafe' : '#fff7ed', color: esCobroUnico ? '#1e40af' : '#D15E0E', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600' }}>{tipo}</span>
                             </td>
                             {esCobroUnico ? (
                               <>
@@ -4077,8 +4074,8 @@ export default function MatrizIntranet() {
                         );
                       })}
                       <tr className="total-row">
-                        <td colSpan="6" style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #ea580c', background: '#fff7ed', fontSize: '12px' }}>TOTAL PROPUESTA</td>
-                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #ea580c', background: '#fff7ed', fontSize: '14px', color: '#ea580c' }}>
+                        <td colSpan="6" style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>TOTAL PROPUESTA</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '14px', color: '#E86B11' }}>
                           {cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
                             const tipo = (row[1] || 'PLA GEN').toUpperCase();
                             const cantidad = parseInt(row[4]) || 1;
@@ -4099,7 +4096,7 @@ export default function MatrizIntranet() {
                 {/* Condiciones Comerciales */}
                 <div style={{ padding: '0 40px 20px' }}>
                   <div style={{ background: '#f8f8f8', borderRadius: '8px', padding: '16px 20px', border: '1px solid #e8e8e8' }}>
-                    <div style={{ fontSize: '10px', fontWeight: '700', color: '#ea580c', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '10px' }}>Condiciones Comerciales</div>
+                    <div style={{ fontSize: '10px', fontWeight: '700', color: '#E86B11', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '10px' }}>Condiciones Comerciales</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: '11px', color: '#555' }}>
                       <div><strong style={{ color: '#333' }}>Forma de Pago:</strong> REV_A (70%) al envío, REV_B (20%) al envío, REV_0 (10%) al envío</div>
                       <div><strong style={{ color: '#333' }}>Validez de la Oferta:</strong> 90 días corridos desde la fecha de emisión</div>
@@ -4146,7 +4143,7 @@ export default function MatrizIntranet() {
                 </div>
 
                 {/* Línea inferior naranja */}
-                <div style={{ height: '4px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}></div>
+                <div style={{ height: '4px', background: 'linear-gradient(135deg, #E86B11 0%, #D15E0E 100%)' }}></div>
               </div>
             </div>
           </div>

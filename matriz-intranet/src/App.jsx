@@ -2540,7 +2540,7 @@ export default function MatrizIntranet() {
   // PÁGINA: FACTURACIÓN (PROTEGIDA) - Gestión de Entregables + EDP
   // ============================================
   // NUEVO MODELO: Entregables × Tipo × Revisión
-  // Precios base: CRD/EETT/MTO = 40 UF, Detalle = 25 UF, Plano General = 20 UF
+  // Precios base: DOC = 40 UF, PLA DET = 25 UF, PLA GEN = 20 UF, REU INT/CTTAL = 1 UF, VIS = 25 UF
   // Revisiones: REV_A = 70%, REV_B = 20%, REV_0 = 10%
   // ============================================
   // Estados COT archivos y preview están a nivel de App, solo texto aquí para evitar re-renders globales
@@ -4019,11 +4019,15 @@ export default function MatrizIntranet() {
                     </thead>
                     <tbody>
                       {cotExcelData && cotExcelData.slice(1).filter(row => row[0] && row[3]).map((row, idx) => {
-                        // row[0]=N°, row[1]=CLASIFICACIÓN (GRL/DET/etc), row[2]=NOMBRE, row[3]=Descripción, row[4]=Cantidad
-                        const tipo = (row[1] || 'GRL').toUpperCase();
+                        // row[0]=N°, row[1]=CLASIFICACIÓN, row[2]=NOMBRE, row[3]=Descripción, row[4]=Cantidad
+                        const tipo = (row[1] || 'PLA GEN').toUpperCase();
                         const cantidad = parseInt(row[4]) || 1;
-                        const precio = tipo.includes('CRD') || tipo.includes('EETT') || tipo.includes('MTO') ? 40 :
-                                      tipo.includes('DET') ? 25 : 20;
+                        const precio = tipo.includes('DOC') ? 40 :
+                                      tipo.includes('PLA DET') ? 25 :
+                                      tipo.includes('PLA GEN') ? 20 :
+                                      tipo.includes('REU INT') ? 1 :
+                                      tipo.includes('REU CTTAL') ? 1 :
+                                      tipo.includes('VIS') ? 25 : 20;
                         const precioTotal = precio * cantidad;
                         return (
                           <tr key={idx} className="hover:bg-neutral-50">
@@ -4041,10 +4045,14 @@ export default function MatrizIntranet() {
                         <td colSpan="6" className="border border-neutral-300 px-3 py-2 text-right">TOTAL</td>
                         <td className="border border-neutral-300 px-3 py-2 text-right">
                           {cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
-                            const tipo = (row[1] || 'GRL').toUpperCase();
+                            const tipo = (row[1] || 'PLA GEN').toUpperCase();
                             const cantidad = parseInt(row[4]) || 1;
-                            const precio = tipo.includes('CRD') || tipo.includes('EETT') || tipo.includes('MTO') ? 40 :
-                                          tipo.includes('DET') ? 25 : 20;
+                            const precio = tipo.includes('DOC') ? 40 :
+                                          tipo.includes('PLA DET') ? 25 :
+                                          tipo.includes('PLA GEN') ? 20 :
+                                          tipo.includes('REU INT') ? 1 :
+                                          tipo.includes('REU CTTAL') ? 1 :
+                                          tipo.includes('VIS') ? 25 : 20;
                             return sum + (precio * cantidad);
                           }, 0) : 0} UF
                         </td>

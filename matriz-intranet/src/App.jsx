@@ -28,7 +28,10 @@ import {
   saveAllColaboradores,
   exportFullBackup,
   restoreFromBackup,
-  saveAutoBackup
+  saveAutoBackup,
+  saveCotizacion,
+  deleteCotizacion as deleteCotizacionFS,
+  subscribeToCotizaciones
 } from './firestoreService';
 
 // ============================================
@@ -658,6 +661,10 @@ export default function MatrizIntranet() {
       setPresenciaUsuarios(data);
     });
 
+    const unsubCotizaciones = subscribeToCotizaciones((data) => {
+      setCotizaciones(data);
+    });
+
     // Marcar como listo después de un momento
     setTimeout(() => {
       setIsLoading(false);
@@ -671,6 +678,7 @@ export default function MatrizIntranet() {
       unsubHoras();
       unsubTareas();
       unsubPresencia();
+      unsubCotizaciones();
     };
   }, []);
 
@@ -875,6 +883,12 @@ export default function MatrizIntranet() {
   // Refs para campos de texto COT: persisten entre remounts sin causar re-render de App al escribir
   const cotClienteRef = React.useRef('');
   const cotProyectoNombreRef = React.useRef('');
+  // Lista de cotizaciones guardadas en Firestore
+  const [cotizaciones, setCotizaciones] = useState([]);
+  // COT seleccionada para ver preview (desde listado guardado)
+  const [cotViewingId, setCotViewingId] = useState(null);
+  // Modo: 'crear' = formulario nueva COT, 'lista' = listado guardadas, 'editar' = editando COT existente
+  const [cotMode, setCotMode] = useState('lista');
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
@@ -3759,11 +3773,136 @@ export default function MatrizIntranet() {
         {/* ==================== PESTAÑA COT (COTIZACIÓN) ==================== */}
         {facturacionTab === 'cot' && (
           <Card className="p-4 sm:p-6">
-            <div className="mb-6">
-              <h3 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium mb-1">Generar Cotización</h3>
-              <p className="text-neutral-500 dark:text-neutral-400 text-sm">Crea una propuesta comercial en PDF a partir de un listado de documentos</p>
+            {/* Header con botones de modo */}
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-neutral-800 dark:text-neutral-100 text-lg font-medium mb-1">
+                  {cotMode === 'lista' ? 'Cotizaciones' : cotMode === 'editar' ? 'Editar Cotización' : 'Nueva Cotización'}
+                </h3>
+                <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+                  {cotMode === 'lista' ? `${cotizaciones.length} cotización${cotizaciones.length !== 1 ? 'es' : ''} guardada${cotizaciones.length !== 1 ? 's' : ''}` : 'Crea una propuesta comercial a partir de un listado de documentos'}
+                </p>
+              </div>
+              {cotMode === 'lista' ? (
+                <button
+                  onClick={() => {
+                    setCotCliente('');
+                    setCotProyectoNombre('');
+                    setCotExcelData(null);
+                    setCotExcelFileName('');
+                    setCotFirma(null);
+                    setCotMode('crear');
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nueva COT
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setCotMode('lista'); setCotShowPreview(false); }}
+                  className="flex items-center gap-2 px-3 py-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-lg text-sm hover:bg-neutral-300"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Volver al listado
+                </button>
+              )}
             </div>
 
+            {/* ===== MODO LISTA: Cotizaciones guardadas ===== */}
+            {cotMode === 'lista' && (
+              <div>
+                {cotizaciones.length === 0 ? (
+                  <div className="text-center py-12 text-neutral-400 dark:text-neutral-500">
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">No hay cotizaciones guardadas</p>
+                    <p className="text-sm mt-1">Crea una nueva cotización para comenzar</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {cotizaciones.sort((a, b) => (b.fechaCreacion || '').localeCompare(a.fechaCreacion || '')).map(cot => {
+                      const subtotal = cot.excelData ? cot.excelData.slice(1).filter(r => r[0] && r[3]).reduce((sum, r) => {
+                        const t = (r[1] || 'PLA GEN').toUpperCase();
+                        const cant = parseInt(r[4]) || 1;
+                        const p = t.includes('DOC') ? 30 : t.includes('PLA DET') ? 25 : t.includes('PLA GEN') ? 20 : t.includes('REU INT') ? 1 : t.includes('REU CTTAL') ? 1 : t.includes('VIS') ? 25 : 20;
+                        return sum + (p * cant);
+                      }, 0) : 0;
+                      const total = (subtotal * 1.5 * 1.19);
+                      const items = cot.excelData ? cot.excelData.slice(1).filter(r => r[0] && r[3]).length : 0;
+                      return (
+                        <div key={cot._docId} className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-4 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-neutral-800 dark:text-neutral-100 font-semibold truncate">{cot.proyectoNombre || 'Sin nombre'}</h4>
+                                {cot.firmada && <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full font-medium">Firmada</span>}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400">
+                                <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> {cot.cliente || '—'}</span>
+                                <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {items} ítem{items !== 1 ? 's' : ''}</span>
+                                <span className="font-semibold text-orange-600">{total.toFixed(1)} UF</span>
+                              </div>
+                              <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                                {cot.fechaCreacion ? new Date(cot.fechaCreacion).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                {cot.excelFileName && <span className="ml-2 opacity-70">({cot.excelFileName})</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 ml-3">
+                              <button
+                                onClick={() => {
+                                  setCotCliente(cot.cliente || '');
+                                  setCotProyectoNombre(cot.proyectoNombre || '');
+                                  setCotExcelData(cot.excelData || null);
+                                  setCotExcelFileName(cot.excelFileName || '');
+                                  setCotFirma(cot.firmada || false);
+                                  setCotShowPreview(true);
+                                  setCotViewingId(cot._docId);
+                                }}
+                                className="p-2 text-neutral-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                                title="Ver preview"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setCotCliente(cot.cliente || '');
+                                  setCotProyectoNombre(cot.proyectoNombre || '');
+                                  setCotExcelData(cot.excelData || null);
+                                  setCotExcelFileName(cot.excelFileName || '');
+                                  setCotFirma(cot.firmada || false);
+                                  setCotViewingId(cot._docId);
+                                  setCotMode('editar');
+                                }}
+                                className="p-2 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                title="Editar"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm('¿Eliminar esta cotización?')) {
+                                    const ok = await deleteCotizacionFS(cot._docId);
+                                    if (ok) showNotification('success', 'Cotización eliminada');
+                                    else showNotification('error', 'Error al eliminar');
+                                  }
+                                }}
+                                className="p-2 text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ===== MODO CREAR / EDITAR: Formulario COT ===== */}
+            {(cotMode === 'crear' || cotMode === 'editar') && (
             <div className="space-y-4">
               {/* Datos del Cliente */}
               <div className="grid sm:grid-cols-2 gap-4">
@@ -3911,26 +4050,73 @@ export default function MatrizIntranet() {
                 </p>
               </div>
 
-              {/* Botón Generar Preview */}
-              <button
-                onClick={() => {
-                  if (!cotCliente || !cotProyectoNombre || !cotExcelData) {
-                    showNotification('error', 'Completa todos los campos requeridos');
-                    return;
-                  }
-                  setCotShowPreview(true);
-                }}
-                disabled={!cotCliente || !cotProyectoNombre || !cotExcelData}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
-                  !cotCliente || !cotProyectoNombre || !cotExcelData
-                    ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 cursor-not-allowed'
-                    : 'bg-orange-600 hover:bg-orange-700 text-white'
-                }`}
-              >
-                <Eye className="w-5 h-5" />
-                Ver Preview de Cotización
-              </button>
+              {/* Botones Crear COT / Guardar + Ver Preview */}
+              <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    if (!cotCliente || !cotProyectoNombre || !cotExcelData) {
+                      showNotification('error', 'Completa todos los campos requeridos');
+                      return;
+                    }
+                    setCotGenerando(true);
+                    const cotData = {
+                      cliente: cotCliente,
+                      proyectoNombre: cotProyectoNombre,
+                      excelData: cotExcelData,
+                      excelFileName: cotExcelFileName,
+                      firmada: !!cotFirma,
+                      fechaCreacion: cotMode === 'editar' && cotViewingId ? (cotizaciones.find(c => c._docId === cotViewingId)?.fechaCreacion || new Date().toISOString()) : new Date().toISOString(),
+                      fechaModificacion: new Date().toISOString(),
+                    };
+                    if (cotMode === 'editar' && cotViewingId) {
+                      cotData._docId = cotViewingId;
+                    }
+                    const result = await saveCotizacion(cotData);
+                    setCotGenerando(false);
+                    if (result) {
+                      showNotification('success', cotMode === 'editar' ? 'Cotización actualizada' : 'Cotización creada');
+                      setCotMode('lista');
+                      setCotCliente('');
+                      setCotProyectoNombre('');
+                      setCotExcelData(null);
+                      setCotExcelFileName('');
+                      setCotFirma(null);
+                      setCotViewingId(null);
+                    } else {
+                      showNotification('error', 'Error al guardar la cotización');
+                    }
+                  }}
+                  disabled={!cotCliente || !cotProyectoNombre || !cotExcelData || cotGenerando}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+                    !cotCliente || !cotProyectoNombre || !cotExcelData || cotGenerando
+                      ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                      : 'bg-orange-600 hover:bg-orange-700 text-white'
+                  }`}
+                >
+                  {cotGenerando ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                  {cotMode === 'editar' ? 'Guardar Cambios' : 'Crear COT'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (!cotCliente || !cotProyectoNombre || !cotExcelData) {
+                      showNotification('error', 'Completa todos los campos requeridos');
+                      return;
+                    }
+                    setCotShowPreview(true);
+                  }}
+                  disabled={!cotCliente || !cotProyectoNombre || !cotExcelData}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+                    !cotCliente || !cotProyectoNombre || !cotExcelData
+                      ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed'
+                      : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-600'
+                  }`}
+                >
+                  <Eye className="w-5 h-5" />
+                  Preview
+                </button>
+              </div>
             </div>
+            )}
           </Card>
         )}
 

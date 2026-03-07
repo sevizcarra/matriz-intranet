@@ -24,7 +24,8 @@ const COLLECTIONS = {
   STATUS_DATA: 'statusData',
   CONFIG: 'config',
   TAREAS: 'tareas',
-  PRESENCIA: 'presencia'
+  PRESENCIA: 'presencia',
+  COTIZACIONES: 'cotizaciones'
 };
 
 // ============================================
@@ -241,6 +242,41 @@ export const subscribeToTareas = (callback) => {
   return onSnapshot(collection(db, COLLECTIONS.TAREAS), (snapshot) => {
     const tareas = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
     callback(tareas);
+  });
+};
+
+// ============================================
+// COTIZACIONES (COT)
+// ============================================
+export const saveCotizacion = async (cotizacion) => {
+  try {
+    if (cotizacion._docId) {
+      await setDoc(doc(db, COLLECTIONS.COTIZACIONES, cotizacion._docId), cotizacion);
+    } else {
+      const docRef = await addDoc(collection(db, COLLECTIONS.COTIZACIONES), cotizacion);
+      return docRef.id;
+    }
+    return cotizacion._docId;
+  } catch (error) {
+    console.error('Error saving cotizacion:', error);
+    return null;
+  }
+};
+
+export const deleteCotizacion = async (cotDocId) => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.COTIZACIONES, cotDocId));
+    return true;
+  } catch (error) {
+    console.error('Error deleting cotizacion:', error);
+    return false;
+  }
+};
+
+export const subscribeToCotizaciones = (callback) => {
+  return onSnapshot(collection(db, COLLECTIONS.COTIZACIONES), (snapshot) => {
+    const cotizaciones = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
+    callback(cotizaciones);
   });
 };
 

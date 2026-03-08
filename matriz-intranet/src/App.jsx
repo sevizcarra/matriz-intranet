@@ -6378,260 +6378,321 @@ ${cotHtml}
           <div className="fixed inset-0 bg-black/80 z-50 overflow-auto p-4">
             <div className="min-h-full flex flex-col items-center py-4">
               {/* Header del modal - sticky - NO IMPRIMIR */}
-              <div className="no-print bg-white dark:bg-neutral-800 w-full max-w-2xl rounded-t-lg border-b border-neutral-200 dark:border-neutral-700 p-2 flex items-center justify-between sticky top-0 z-10">
-                <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Vista Previa PDF (2 páginas)</h2>
+              <div className="no-print bg-white dark:bg-neutral-800 w-full max-w-5xl rounded-t-lg border-b border-neutral-200 dark:border-neutral-700 p-2 flex items-center justify-between sticky top-0 z-10">
+                <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Vista Previa LOG (Horizontal)</h2>
                 <div className="flex gap-2">
                   <Button onClick={() => window.print()}>
                     <FileDown className="w-4 h-4 mr-1" />
                     Imprimir
                   </Button>
-                  <button 
+                  <button
                     type="button"
-                    onClick={() => setPdfPreviewOpen(false)} 
+                    onClick={() => setPdfPreviewOpen(false)}
                     className="p-1.5 hover:bg-neutral-200 rounded-full"
                   >
                     <X className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                   </button>
                 </div>
               </div>
-              
+
               {/* Contenedor de páginas para imprimir */}
               <div className="print-content">
-                {/* PÁGINA 1 */}
-                <div className="print-page-1 bg-white shadow-xl w-full max-w-2xl" style={{ padding: '24px' }}>
-                  {/* Header Página 1 */}
-                  <div className="flex justify-between items-start border-b-2 border-orange-500 pb-3 mb-4">
+                {/* CÁLCULOS COMPARTIDOS PARA TODAS LAS PÁGINAS */}
+                {(() => {
+                  const proyectoImpr = proyectos.find(p => p.id === selectedProject);
+                  const entregablesImpr = proyectoImpr?.entregables || ENTREGABLES_PROYECTO;
+                  const usaPersonalizados = proyectoImpr?.entregables?.length > 0;
+                  const getStatusKey = (d) => usaPersonalizados ? `${selectedProject}_${d.id}` : d.id;
+
+                  // Calcular datos para Curva S
+                  const totalEntregables = entregablesImpr.filter(d => !d.frozen).length;
+                  const startDate = new Date(dashboardStartDate);
+                  const weeksToShow = 24;
+
+                  // Curva programada: acumulado de entregables que deberían estar listos por semana
+                  const programada = [];
+                  // Curva real: acumulado de entregables efectivamente terminados por semana
+                  const real = [];
+
+                  for (let w = 0; w <= weeksToShow; w++) {
+                    const weekDate = addWeeks(startDate, w);
+                    // Programada: entregables cuyo deadline REV_0 es <= esta semana
+                    let acumProg = 0;
+                    entregablesImpr.forEach(d => {
+                      if (d.frozen) return;
+                      const dur = obtenerDuracionRevA(d, duracionesPorTipo);
+                      const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, dur, duracionRevision, duracionRevision);
+                      if (deadlines.deadlineRev0 <= weekDate) acumProg++;
+                    });
+                    programada.push(acumProg);
+
+                    // Real: entregables que ya tienen sentRev0Date <= esta semana
+                    let acumReal = 0;
+                    entregablesImpr.forEach(d => {
+                      if (d.frozen) return;
+                      const status = statusData[getStatusKey(d)];
+                      if (status?.sentRev0Date) {
+                        const fecha = new Date(status.sentRev0Date);
+                        if (fecha <= weekDate) acumReal++;
+                      }
+                    });
+                    real.push(acumReal);
+                  }
+
+                  // Convertir a porcentaje
+                  const progPct = programada.map(v => totalEntregables > 0 ? (v / totalEntregables * 100) : 0);
+                  const realPct = real.map(v => totalEntregables > 0 ? (v / totalEntregables * 100) : 0);
+
+                  // SVG dimensions
+                  const svgW = 680;
+                  const svgH = 200;
+                  const padL = 35;
+                  const padR = 10;
+                  const padT = 15;
+                  const padB = 25;
+                  const chartW = svgW - padL - padR;
+                  const chartH = svgH - padT - padB;
+
+                  const xScale = (i) => padL + (i / weeksToShow) * chartW;
+                  const yScale = (v) => padT + chartH - (v / 100) * chartH;
+
+                  const progPath = progPct.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`).join(' ');
+                  const realPath = realPct.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`).join(' ');
+
+                  // Semana actual relativa al inicio
+                  const today = new Date();
+                  const diffWeeks = Math.round((today - startDate) / (7 * 24 * 60 * 60 * 1000));
+                  const currentWeekIdx = Math.min(Math.max(diffWeeks, 0), weeksToShow);
+
+                  // Stats
+                  const statsCompleted = entregablesImpr.filter(d => !d.frozen && statusData[getStatusKey(d)]?.sentRev0).length;
+                  const statsInProgress = entregablesImpr.filter(d => !d.frozen && statusData[getStatusKey(d)]?.sentIniciado && !statusData[getStatusKey(d)]?.sentRev0).length;
+                  const statsDelayed = entregablesImpr.filter(d => {
+                    if (d.frozen) return false;
+                    const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
+                    return !statusData[getStatusKey(d)]?.sentRev0 && new Date() > deadlines.deadlineRevA;
+                  }).length;
+                  const avancePct = totalEntregables > 0 ? ((statsCompleted / totalEntregables) * 100).toFixed(0) : 0;
+
+                  return (
+                    <>
+                {/* PÁGINA 1: Curva S + Resumen */}
+                <div className="print-page-1 bg-white shadow-xl w-full max-w-5xl" style={{ padding: '20px 28px', aspectRatio: '11/8.5' }}>
+                  {/* Header */}
+                  <div className="flex justify-between items-start border-b-2 border-orange-500 pb-2 mb-3">
                     <div>
-                      <img src="/logo-a4e.png" alt="A4E" style={{ height: '40px' }} />
-                      <span className="text-[8px] text-neutral-400 dark:text-neutral-500 tracking-wider">ARCHITECTURE FOR ENGINEERING</span>
+                      <img src="/logo-a4e.png" alt="A4E" style={{ height: '36px' }} />
+                      <span className="text-[7px] text-neutral-400 tracking-wider block">ARCHITECTURE FOR ENGINEERING</span>
                     </div>
                     <div className="text-right">
-                      <h1 className="text-sm font-bold text-neutral-800 dark:text-neutral-100 uppercase">Log de Avance</h1>
-                      <p className="text-[9px] text-neutral-500 dark:text-neutral-400">Informe de Estado</p>
+                      <h1 className="text-sm font-bold text-neutral-800 uppercase">Log de Avance</h1>
+                      <p className="text-[8px] text-neutral-500">{selectedProject} • {new Date().toLocaleDateString('es-CL')}</p>
                     </div>
                   </div>
-                  
+
                   {/* Info del proyecto */}
-                  <div className="grid grid-cols-2 gap-3 mb-3 p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded text-[9px]">
-                    <div>
-                      <p><span className="text-neutral-500 dark:text-neutral-400">Código:</span> <span className="font-bold text-orange-600">{selectedProject}</span></p>
-                      <p><span className="text-neutral-500 dark:text-neutral-400">Nombre:</span> {proyectos.find(p => p.id === selectedProject)?.nombre}</p>
-                      <p><span className="text-neutral-500 dark:text-neutral-400">Cliente:</span> {proyectos.find(p => p.id === selectedProject)?.cliente}</p>
+                  <div className="flex gap-4 mb-3 p-2 bg-neutral-50 rounded text-[9px]">
+                    <div className="flex-1">
+                      <p><span className="text-neutral-500">Código:</span> <span className="font-bold text-orange-600">{selectedProject}</span></p>
+                      <p><span className="text-neutral-500">Nombre:</span> {proyectoImpr?.nombre}</p>
                     </div>
-                    <div>
-                      <p><span className="text-neutral-500 dark:text-neutral-400">Fecha:</span> {new Date().toLocaleDateString('es-CL')}</p>
-                      <p><span className="text-neutral-500 dark:text-neutral-400">Inicio:</span> {dashboardStartDate.split('-').reverse().join('/')}</p>
+                    <div className="flex-1">
+                      <p><span className="text-neutral-500">Cliente:</span> {proyectoImpr?.cliente}</p>
+                      <p><span className="text-neutral-500">Inicio:</span> {dashboardStartDate.split('-').reverse().join('/')}</p>
+                    </div>
+                    <div className="flex-1">
+                      <p><span className="text-neutral-500">Fecha Informe:</span> {new Date().toLocaleDateString('es-CL')}</p>
+                      <p><span className="text-neutral-500">Entregables:</span> {totalEntregables} documentos</p>
                     </div>
                   </div>
-                  
-                  {/* Resumen */}
-                  {(() => {
-                    // Obtener entregables del proyecto específico para impresión
-                    const proyectoImpr = proyectos.find(p => p.id === selectedProject);
-                    const entregablesImpr = proyectoImpr?.entregables || ENTREGABLES_PROYECTO;
-                    const usaPersonalizados = proyectoImpr?.entregables?.length > 0;
-                    const getStatusKey = (d) => usaPersonalizados ? `${selectedProject}_${d.id}` : d.id;
 
-                    return (
-                      <>
-                        <div className="grid grid-cols-5 gap-1 mb-3">
-                          <div className="text-center p-1.5 bg-neutral-100 rounded">
-                            <p className="text-base font-bold text-neutral-800 dark:text-neutral-100">{entregablesImpr.length}</p>
-                            <p className="text-[7px] text-neutral-500 dark:text-neutral-400">TOTAL</p>
-                          </div>
-                          <div className="text-center p-1.5 bg-green-50 rounded border border-green-200">
-                            <p className="text-base font-bold text-green-600">{entregablesImpr.filter(d => statusData[getStatusKey(d)]?.sentRev0).length}</p>
-                            <p className="text-[7px] text-green-600">LISTOS</p>
-                          </div>
-                          <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
-                            <p className="text-base font-bold text-orange-500">{entregablesImpr.filter(d => statusData[getStatusKey(d)]?.sentIniciado && !statusData[getStatusKey(d)]?.sentRev0).length}</p>
-                            <p className="text-[7px] text-orange-500">PROCESO</p>
-                          </div>
-                          <div className="text-center p-1.5 bg-red-50 rounded border border-red-200">
-                            <p className="text-base font-bold text-red-500">{entregablesImpr.filter(d => {
-                              const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
-                              return !statusData[getStatusKey(d)]?.sentRev0 && new Date() > deadlines.deadlineRevA;
-                            }).length}</p>
-                            <p className="text-[7px] text-red-500">ATRASO</p>
-                          </div>
-                          <div className="text-center p-1.5 bg-blue-50 rounded border border-blue-200">
-                            <p className="text-base font-bold text-blue-600">{((entregablesImpr.filter(d => statusData[getStatusKey(d)]?.sentRev0).length / entregablesImpr.length) * 100).toFixed(0)}%</p>
-                            <p className="text-[7px] text-blue-600">AVANCE</p>
-                          </div>
-                        </div>
-              
-              {/* Tabla Página 1 - Primera mitad */}
-                        <p className="text-[8px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Entregables 1-{Math.ceil(entregablesImpr.length / 2)}</p>
-                        <table className="w-full text-[8px] border-collapse mb-3">
-                          <thead>
-                            <tr className="bg-neutral-800 text-white">
-                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-5">#</th>
-                              <th className="border border-neutral-600 px-1 py-0.5 text-left">Código</th>
-                              <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
-                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_A</th>
-                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_B</th>
-                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_0</th>
-                              <th className="border border-neutral-600 px-1 py-0.5 text-center w-14">Estado</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {entregablesImpr.slice(0, Math.ceil(entregablesImpr.length / 2)).map((d, i) => {
-                              const status = statusData[getStatusKey(d)];
-                              const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
-                              const info = calculateStatus(status, deadlines);
-                              return (
-                                <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50 dark:bg-neutral-800/50'}>
-                                  <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
-                                  <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
-                                  <td className="border border-neutral-300 px-1 py-0.5">{d.nombre || d.name}</td>
-                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {status?.sentRevADate || '-'}
-                                  </td>
-                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {status?.sentRevBDate || '-'}
-                                  </td>
-                                  <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                    {status?.sentRev0Date || '-'}
-                                  </td>
-                                  <td className="border border-neutral-300 px-1 py-0.5 text-center">
-                                    <span className={`px-1 rounded text-[6px] ${
-                                      info.status === 'TERMINADO' ? 'bg-green-100 text-green-700' :
-                                      info.status === 'ATRASADO' ? 'bg-red-100 text-red-700' :
-                                      info.status === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
-                                      'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
-                                    }`}>{info.status === 'En Proceso' ? 'Proceso' : info.status}</span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                  {/* Resumen cards */}
+                  <div className="grid grid-cols-5 gap-1.5 mb-3">
+                    <div className="text-center p-1.5 bg-neutral-100 rounded">
+                      <p className="text-lg font-bold text-neutral-800">{totalEntregables}</p>
+                      <p className="text-[7px] text-neutral-500">TOTAL</p>
+                    </div>
+                    <div className="text-center p-1.5 bg-green-50 rounded border border-green-200">
+                      <p className="text-lg font-bold text-green-600">{statsCompleted}</p>
+                      <p className="text-[7px] text-green-600">LISTOS</p>
+                    </div>
+                    <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
+                      <p className="text-lg font-bold text-orange-500">{statsInProgress}</p>
+                      <p className="text-[7px] text-orange-500">PROCESO</p>
+                    </div>
+                    <div className="text-center p-1.5 bg-red-50 rounded border border-red-200">
+                      <p className="text-lg font-bold text-red-500">{statsDelayed}</p>
+                      <p className="text-[7px] text-red-500">ATRASO</p>
+                    </div>
+                    <div className="text-center p-1.5 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-lg font-bold text-blue-600">{avancePct}%</p>
+                      <p className="text-[7px] text-blue-600">AVANCE</p>
+                    </div>
+                  </div>
 
-                        <div className="flex justify-between text-[7px] text-neutral-400 dark:text-neutral-500 pt-2 border-t border-neutral-200 dark:border-neutral-700">
-                          <span>A4E © 2026</span>
-                          <span>Página 1 de 2</span>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  {/* CURVA S */}
+                  <div className="border border-neutral-200 rounded p-2 mb-3">
+                    <p className="text-[9px] font-semibold text-neutral-700 mb-1">Curva S — Avance Programado vs Real</p>
+                    <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: '100%', height: 'auto' }}>
+                      {/* Grid horizontal */}
+                      {[0, 25, 50, 75, 100].map(v => (
+                        <g key={v}>
+                          <line x1={padL} y1={yScale(v)} x2={svgW - padR} y2={yScale(v)} stroke="#e5e5e5" strokeWidth="0.5" />
+                          <text x={padL - 3} y={yScale(v) + 3} textAnchor="end" fill="#999" fontSize="7">{v}%</text>
+                        </g>
+                      ))}
+                      {/* Grid vertical (cada 4 semanas) */}
+                      {Array.from({ length: Math.floor(weeksToShow / 4) + 1 }, (_, i) => i * 4).map(w => (
+                        <g key={w}>
+                          <line x1={xScale(w)} y1={padT} x2={xScale(w)} y2={padT + chartH} stroke="#e5e5e5" strokeWidth="0.5" />
+                          <text x={xScale(w)} y={svgH - 5} textAnchor="middle" fill="#999" fontSize="7">S{w}</text>
+                        </g>
+                      ))}
+                      {/* Línea hoy */}
+                      {currentWeekIdx <= weeksToShow && (
+                        <>
+                          <line x1={xScale(currentWeekIdx)} y1={padT} x2={xScale(currentWeekIdx)} y2={padT + chartH} stroke="#f97316" strokeWidth="1" strokeDasharray="3,2" />
+                          <text x={xScale(currentWeekIdx)} y={padT - 3} textAnchor="middle" fill="#f97316" fontSize="6" fontWeight="bold">HOY</text>
+                        </>
+                      )}
+                      {/* Curva programada */}
+                      <path d={progPath} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,3" />
+                      {/* Curva real */}
+                      <path d={realPath} fill="none" stroke="#22c55e" strokeWidth="2.5" />
+                      {/* Punto actual real */}
+                      {currentWeekIdx <= weeksToShow && (
+                        <circle cx={xScale(currentWeekIdx)} cy={yScale(realPct[currentWeekIdx] || 0)} r="3.5" fill="#22c55e" stroke="white" strokeWidth="1.5" />
+                      )}
+                      {/* Leyenda */}
+                      <line x1={svgW - 180} y1={padT + 5} x2={svgW - 160} y2={padT + 5} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,3" />
+                      <text x={svgW - 155} y={padT + 8} fill="#3b82f6" fontSize="7">Programada</text>
+                      <line x1={svgW - 100} y1={padT + 5} x2={svgW - 80} y2={padT + 5} stroke="#22c55e" strokeWidth="2.5" />
+                      <text x={svgW - 75} y={padT + 8} fill="#22c55e" fontSize="7">Real</text>
+                    </svg>
+                  </div>
+
+                  {/* Pie Página 1 */}
+                  <div className="flex justify-between text-[7px] text-neutral-400 pt-1 border-t border-neutral-200">
+                    <span>A4E © 2026</span>
+                    <span>Página 1 de 2</span>
+                  </div>
                 </div>
-            
-            {/* Separador entre páginas - NO IMPRIMIR */}
-            <div className="no-print h-4 w-full max-w-2xl bg-neutral-50 dark:bg-neutral-800/500 flex items-center justify-center">
-              <span className="text-[8px] text-white">--- Corte de página ---</span>
-            </div>
-            
-            {/* PÁGINA 2 */}
-            <div className="print-page-2 bg-white shadow-xl w-full max-w-2xl" style={{ padding: '24px' }}>
-              {/* Header Página 2 */}
-              <div className="flex justify-between items-center border-b border-neutral-200 dark:border-neutral-700 pb-2 mb-3">
-                <img src="/logo-a4e.png" alt="A4E" style={{ height: '30px' }} />
-                <div className="text-[8px] text-neutral-500 dark:text-neutral-400">
-                  {selectedProject} • Log de Avance • {new Date().toLocaleDateString('es-CL')}
-                </div>
-              </div>
-              
-              {/* Tabla Página 2 - Segunda mitad */}
-              {(() => {
-                const proyectoImpr2 = proyectos.find(p => p.id === selectedProject);
-                const entregablesImpr2 = proyectoImpr2?.entregables || ENTREGABLES_PROYECTO;
-                const usaPersonalizados2 = proyectoImpr2?.entregables?.length > 0;
-                const getStatusKey2 = (d) => usaPersonalizados2 ? `${selectedProject}_${d.id}` : d.id;
-                const mitad = Math.ceil(entregablesImpr2.length / 2);
 
-                return (
-                  <>
-                    <p className="text-[8px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Entregables {mitad + 1}-{entregablesImpr2.length}</p>
-                    <table className="w-full text-[8px] border-collapse mb-4">
-                      <thead>
-                        <tr className="bg-neutral-800 text-white">
-                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-5">#</th>
-                          <th className="border border-neutral-600 px-1 py-0.5 text-left">Código</th>
-                          <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
-                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_A</th>
-                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_B</th>
-                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-16">REV_0</th>
-                          <th className="border border-neutral-600 px-1 py-0.5 text-center w-14">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {entregablesImpr2.slice(mitad).map((d, i) => {
-                          const status = statusData[getStatusKey2(d)];
-                          const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
-                          const info = calculateStatus(status, deadlines);
-                          return (
-                            <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50 dark:bg-neutral-800/50'}>
-                              <td className="border border-neutral-300 px-1 py-0.5 text-center">{d.id}</td>
-                              <td className="border border-neutral-300 px-1 py-0.5 font-mono">{d.codigo || '-'}</td>
-                              <td className="border border-neutral-300 px-1 py-0.5">{d.nombre || d.name}</td>
-                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                {status?.sentRevADate || '-'}
-                              </td>
-                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                {status?.sentRevBDate || '-'}
-                              </td>
-                              <td className={`border border-neutral-300 px-1 py-0.5 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}>
-                                {status?.sentRev0Date || '-'}
-                              </td>
-                              <td className="border border-neutral-300 px-1 py-0.5 text-center">
+                {/* Separador entre páginas - NO IMPRIMIR */}
+                <div className="no-print h-4 w-full max-w-5xl bg-neutral-50 flex items-center justify-center">
+                  <span className="text-[8px] text-white">--- Corte de página ---</span>
+                </div>
+
+                {/* PÁGINA 2: Tabla completa de entregables */}
+                <div className="print-page-2 bg-white shadow-xl w-full max-w-5xl" style={{ padding: '20px 28px', aspectRatio: '11/8.5' }}>
+                  {/* Header Página 2 */}
+                  <div className="flex justify-between items-center border-b border-neutral-200 pb-2 mb-2">
+                    <img src="/logo-a4e.png" alt="A4E" style={{ height: '28px' }} />
+                    <div className="text-[8px] text-neutral-500">
+                      {selectedProject} • Log de Avance • {new Date().toLocaleDateString('es-CL')}
+                    </div>
+                  </div>
+
+                  {/* Tabla completa - aprovechando formato horizontal */}
+                  <p className="text-[8px] font-semibold text-neutral-400 uppercase mb-1">Detalle de Entregables ({entregablesImpr.length})</p>
+                  <table className="w-full text-[7px] border-collapse mb-3">
+                    <thead>
+                      <tr className="bg-neutral-800 text-white">
+                        <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '20px'}}>#</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-left" style={{width: '110px'}}>Código</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '30px'}}>Dur</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '25px'}}>Sec</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '62px'}}>REV_A</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '62px'}}>REV_B</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '62px'}}>REV_0</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '50px'}}>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entregablesImpr.map((d, i) => {
+                        const status = statusData[getStatusKey(d)];
+                        const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
+                        const info = calculateStatus(status, deadlines);
+                        return (
+                          <tr key={d.id} className={d.frozen ? 'bg-blue-50 opacity-60' : i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
+                            <td className="border border-neutral-300 px-0.5 py-0 text-center">{d.id}</td>
+                            <td className={`border border-neutral-300 px-1 py-0 font-mono ${d.frozen ? 'line-through' : ''}`}>{d.codigo || '-'}</td>
+                            <td className={`border border-neutral-300 px-1 py-0 ${d.frozen ? 'line-through' : ''}`}>{d.nombre || d.name}{d.frozen ? ' ❄' : ''}</td>
+                            <td className="border border-neutral-300 px-0.5 py-0 text-center">{d.frozen ? '-' : `${obtenerDuracionRevA(d, duracionesPorTipo)}d`}</td>
+                            <td className="border border-neutral-300 px-0.5 py-0 text-center">{d.weekStart || d.secuencia}</td>
+                            <td className={`border border-neutral-300 px-0.5 py-0 text-center ${status?.sentRevADate ? 'text-green-600' : 'text-neutral-400'}`}>
+                              {d.frozen ? '-' : (status?.sentRevADate || '-')}
+                            </td>
+                            <td className={`border border-neutral-300 px-0.5 py-0 text-center ${status?.sentRevBDate ? 'text-green-600' : 'text-neutral-400'}`}>
+                              {d.frozen ? '-' : (status?.sentRevBDate || '-')}
+                            </td>
+                            <td className={`border border-neutral-300 px-0.5 py-0 text-center ${status?.sentRev0Date ? 'text-green-600' : 'text-neutral-400'}`}>
+                              {d.frozen ? '-' : (status?.sentRev0Date || '-')}
+                            </td>
+                            <td className="border border-neutral-300 px-0.5 py-0 text-center">
+                              {d.frozen ? (
+                                <span className="px-1 rounded text-[6px] bg-blue-100 text-blue-700">FROZEN</span>
+                              ) : (
                                 <span className={`px-1 rounded text-[6px] ${
                                   info.status === 'TERMINADO' ? 'bg-green-100 text-green-700' :
                                   info.status === 'ATRASADO' ? 'bg-red-100 text-red-700' :
                                   info.status === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
-                                  'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
+                                  'bg-neutral-100 text-neutral-600'
                                 }`}>{info.status === 'En Proceso' ? 'Proceso' : info.status}</span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </>
-                );
-              })()}
-              
-              {/* Leyenda */}
-              <div className="mb-4 p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded">
-                <p className="text-[8px] font-semibold text-neutral-600 dark:text-neutral-300 mb-1">Leyenda</p>
-                <div className="flex flex-wrap gap-3 text-[8px]">
-                  <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700">TERMINADO</span>
-                  <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">Proceso</span>
-                  <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700">ATRASADO</span>
-                  <span className="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300">Pendiente</span>
-                </div>
-              </div>
-              
-              {/* Firmas */}
-              <div className="grid grid-cols-2 gap-8 mb-4">
-                <div className="border-t border-neutral-300 pt-2 mt-6">
-                  <p className="text-[8px] text-neutral-500 dark:text-neutral-400 text-center">Preparado por</p>
-                </div>
-                <div className="border-t border-neutral-300 pt-2 mt-6">
-                  <p className="text-[8px] text-neutral-500 dark:text-neutral-400 text-center">Revisado por</p>
-                </div>
-              </div>
-              
-              {/* Pie Página 2 */}
-              <div className="border-t-2 border-orange-500 pt-2">
-                <div className="flex justify-between text-[7px] text-neutral-400 dark:text-neutral-500">
-                  <div>
-                    <p className="font-medium text-neutral-600 dark:text-neutral-300">A4E - Architecture for Engineering</p>
-                    <p>www.a4e.cl</p>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {/* Leyenda + Firmas en layout horizontal */}
+                  <div className="flex justify-between items-end mb-3">
+                    <div className="p-1.5 bg-neutral-50 rounded">
+                      <div className="flex flex-wrap gap-3 text-[7px]">
+                        <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700">TERMINADO</span>
+                        <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">Proceso</span>
+                        <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700">ATRASADO</span>
+                        <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">Pendiente</span>
+                        <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">FROZEN</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-8">
+                      <div className="border-t border-neutral-300 pt-1" style={{width: '140px'}}>
+                        <p className="text-[7px] text-neutral-500 text-center">Preparado por</p>
+                      </div>
+                      <div className="border-t border-neutral-300 pt-1" style={{width: '140px'}}>
+                        <p className="text-[7px] text-neutral-500 text-center">Revisado por</p>
+                      </div>
+                    </div>
                   </div>
-                  <p>Página 2 de 2</p>
+
+                  {/* Pie Página 2 */}
+                  <div className="border-t-2 border-orange-500 pt-1">
+                    <div className="flex justify-between text-[7px] text-neutral-400">
+                      <div>
+                        <p className="font-medium text-neutral-600">A4E - Architecture for Engineering</p>
+                        <p>www.a4e.cl</p>
+                      </div>
+                      <p>Página 2 de 2</p>
+                    </div>
+                  </div>
                 </div>
+                    </>
+                  );
+                })()}
+              </div>{/* Fin print-content */}
+
+              {/* Botón cerrar al final - NO IMPRIMIR */}
+              <div className="no-print bg-white dark:bg-neutral-800 w-full max-w-5xl rounded-b-lg p-2 flex justify-center">
+                <Button variant="secondary" onClick={() => setPdfPreviewOpen(false)}>
+                  Cerrar Vista Previa
+                </Button>
               </div>
-            </div>
-            </div>{/* Fin print-content */}
-            
-            {/* Botón cerrar al final - NO IMPRIMIR */}
-            <div className="no-print bg-white dark:bg-neutral-800 w-full max-w-2xl rounded-b-lg p-2 flex justify-center">
-              <Button variant="secondary" onClick={() => setPdfPreviewOpen(false)}>
-                Cerrar Vista Previa
-              </Button>
             </div>
           </div>
-        </div>
         </>
       )}
 

@@ -167,6 +167,64 @@ const ENTREGABLES_PROYECTO = [
   { id: 35, codigo: "", name: "IMÁGENES OBJETIVO", weekStart: 17 },
 ];
 
+// ============================================
+// DURACIONES POR TIPO DE DOCUMENTO (en días hábiles)
+// REV_A usa la duración del tipo; REV_B y REV_0 siempre son 3 días
+// Entregables con misma secuencia se trabajan en PARALELO
+// ============================================
+const DURACION_POR_TIPO_DEFAULT = {
+  DOC: 10,      // Documentos (criterios, EETT, MTO, informes)
+  PLA: 7,       // Planos generales
+  'PLA DET': 10, // Planos de detalle
+  INF: 10,      // Informes
+  'REU INT': 1,  // Reunión interna
+  'REU CTTAL': 1, // Reunión contractual
+  REU: 1,       // Reunión (genérico)
+  VIS: 1,       // Visita
+};
+
+// Duración fija para REV_B y REV_0 (en días hábiles)
+const DURACION_REVISION_DEFAULT = 3;
+
+// Helper: obtener duración REV_A en días para un entregable según su tipo
+const obtenerDuracionRevA = (entregable, duraciones = DURACION_POR_TIPO_DEFAULT) => {
+  const cod = (entregable.codigo || '').toUpperCase();
+  const nom = (entregable.nombre || entregable.name || '').toUpperCase();
+  const tipoManual = entregable.tipo;
+
+  // Si tiene tipo manual, usarlo
+  if (tipoManual) {
+    if (duraciones[tipoManual] !== undefined) return duraciones[tipoManual];
+  }
+
+  // Auto-detectar tipo desde código/nombre
+  // DOC: CRD, SPE, MTO, ERD
+  if (cod.includes('CRD') || cod.includes('SPE') || cod.includes('MTO') || cod.includes('ERD') ||
+      nom.includes('CRITERIO') || nom.includes('EETT') || nom.includes('MTO')) {
+    return duraciones['DOC'] || 10;
+  }
+
+  // PLA DET: Detalles
+  if (cod.includes('DET') || nom.includes('DETALLE') || nom.includes('DETALLES')) {
+    return duraciones['PLA DET'] || 10;
+  }
+
+  // REU
+  if (cod.includes('REU') || nom.includes('REUNIÓN') || nom.includes('REUNION')) {
+    if (nom.includes('CTTAL') || nom.includes('CONTRACTUAL')) return duraciones['REU CTTAL'] || 1;
+    if (nom.includes('INT')) return duraciones['REU INT'] || 1;
+    return duraciones['REU'] || 1;
+  }
+
+  // VIS
+  if (cod.includes('VIS') || nom.includes('VISITA')) {
+    return duraciones['VIS'] || 1;
+  }
+
+  // PLA (planos generales) - default
+  return duraciones['PLA'] || 7;
+};
+
 const PROYECTOS_INICIALES = [
   {
     id: 'P2600',
@@ -418,12 +476,21 @@ const formatDateFull = (date) => {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };
 
-const calculateDeadlines = (projectStart, weekStart) => {
+// calculateDeadlines: calcula plazos con duraciones por tipo
+// duracionRevADias: duración de REV_A en días hábiles (default 10 = 2 semanas)
+// duracionRevBDias: duración de REV_B en días hábiles (default 3)
+// duracionRev0Dias: duración de REV_0 en días hábiles (default 3)
+const calculateDeadlines = (projectStart, weekStart, duracionRevADias = 10, duracionRevBDias = 3, duracionRev0Dias = 3) => {
   const start = new Date(projectStart);
-  const deadlineRevA = addWeeks(start, weekStart);
-  const deadlineRevB = addWeeks(deadlineRevA, 2);
-  const deadlineRev0 = addWeeks(deadlineRevB, 3);
-  return { deadlineRevA, deadlineRevB, deadlineRev0 };
+  // El entregable comienza en la semana weekStart (relativa al inicio del proyecto)
+  const entregableStart = addWeeks(start, weekStart);
+  // REV_A termina después de duracionRevADias días hábiles
+  const deadlineRevA = addDays(entregableStart, duracionRevADias);
+  // REV_B termina después de duracionRevBDias días desde fin REV_A
+  const deadlineRevB = addDays(deadlineRevA, duracionRevBDias);
+  // REV_0 termina después de duracionRev0Dias días desde fin REV_B
+  const deadlineRev0 = addDays(deadlineRevB, duracionRev0Dias);
+  return { deadlineRevA, deadlineRevB, deadlineRev0, entregableStart, duracionRevADias, duracionRevBDias, duracionRev0Dias };
 };
 
 const calculateStatus = (status, deadlines) => {
@@ -882,6 +949,12 @@ export default function MatrizIntranet() {
   const [cotViewingId, setCotViewingId] = useState(null);
   // Modo: 'crear' = formulario nueva COT, 'lista' = listado guardadas, 'editar' = editando COT existente
   const [cotMode, setCotMode] = useState('lista');
+
+  // Duraciones editables por tipo de documento (días hábiles para REV_A)
+  const [duracionesPorTipo, setDuracionesPorTipo] = useState({ ...DURACION_POR_TIPO_DEFAULT });
+  // Duración fija para REV_B y REV_0
+  const [duracionRevision, setDuracionRevision] = useState(DURACION_REVISION_DEFAULT);
+
   const [statusData, setStatusData] = useState(() => {
     // Datos iniciales de ejemplo
     const status = {};
@@ -1322,7 +1395,7 @@ export default function MatrizIntranet() {
           const entregables = proyecto.entregables || [];
           entregables.forEach(ent => {
             if (ent.frozen) return;
-            const deadlines = calculateDeadlines(proyecto.inicio || dashboardStartDate, ent.weekStart || ent.secuencia);
+            const deadlines = calculateDeadlines(proyecto.inicio || dashboardStartDate, ent.weekStart || ent.secuencia, obtenerDuracionRevA(ent, duracionesPorTipo), duracionRevision, duracionRevision);
             const statusKey = `${proyecto.id}_${ent.id}`;
             const status = statusData[statusKey] || {};
 
@@ -4756,6 +4829,7 @@ ${cotHtml}
             <div className="flex gap-2 mb-6 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto">
               {[
                 { id: 'profesionales', label: 'Profesionales', icon: Users },
+                { id: 'plazos', label: 'Plazos', icon: Calendar },
                 { id: 'seguridad', label: 'Seguridad', icon: Lock },
                 { id: 'backup', label: 'Backup', icon: Database },
                 { id: 'sistema', label: 'Sistema', icon: Settings },
@@ -4973,6 +5047,108 @@ ${cotHtml}
                   );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Tab: Plazos (Duraciones por tipo de documento) */}
+            {configTab === 'plazos' && (
+              <div className="space-y-4">
+                <Card className="p-4">
+                  <h3 className="font-medium text-neutral-800 dark:text-neutral-100 mb-1">Duración REV_A por Tipo de Documento</h3>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+                    Días hábiles para completar la primera revisión (REV_A). Entregables con la misma secuencia se trabajan en paralelo.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.entries(duracionesPorTipo).map(([tipo, dias]) => (
+                      <div key={tipo} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700/50 rounded-lg">
+                        <div className={`px-2 py-1 rounded text-xs font-mono font-medium ${
+                          tipo === 'DOC' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' :
+                          tipo.includes('PLA') ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
+                          tipo.includes('REU') ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
+                          tipo === 'VIS' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' :
+                          tipo === 'INF' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' :
+                          'bg-neutral-200 text-neutral-700'
+                        }`}>
+                          {tipo}
+                        </div>
+                        <div className="flex-1 text-sm text-neutral-600 dark:text-neutral-300">
+                          {tipo === 'DOC' ? 'Documentos (Criterios, EETT, MTO)' :
+                           tipo === 'PLA' ? 'Planos Generales' :
+                           tipo === 'PLA DET' ? 'Planos de Detalle' :
+                           tipo === 'INF' ? 'Informes' :
+                           tipo === 'REU INT' ? 'Reunión Interna' :
+                           tipo === 'REU CTTAL' ? 'Reunión Contractual' :
+                           tipo === 'REU' ? 'Reunión (genérico)' :
+                           tipo === 'VIS' ? 'Visita' : tipo}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="1"
+                            max="60"
+                            value={dias}
+                            onChange={e => {
+                              const val = parseInt(e.target.value) || 1;
+                              setDuracionesPorTipo(prev => ({ ...prev, [tipo]: val }));
+                            }}
+                            className="w-16 text-center px-2 py-1 border border-neutral-300 dark:border-neutral-600 rounded text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+                          />
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400">días</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <h3 className="font-medium text-neutral-800 dark:text-neutral-100 mb-1">Duración REV_B y REV_0</h3>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+                    Días hábiles para completar la revisión después de recibir comentarios. Se aplica igual a REV_B y REV_0.
+                  </p>
+                  <div className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-700/50 rounded-lg">
+                    <div className="px-2 py-1 rounded text-xs font-mono font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                      REV_B / REV_0
+                    </div>
+                    <div className="flex-1 text-sm text-neutral-600 dark:text-neutral-300">
+                      Correcciones post-comentarios
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={duracionRevision}
+                        onChange={e => setDuracionRevision(parseInt(e.target.value) || 3)}
+                        className="w-16 text-center px-2 py-1 border border-neutral-300 dark:border-neutral-600 rounded text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+                      />
+                      <span className="text-xs text-neutral-500 dark:text-neutral-400">días</span>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-4 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-medium text-amber-800 dark:text-amber-200 text-sm">Entregables Simultáneos</h4>
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                        Los entregables que comparten la misma secuencia de entrega se trabajan en paralelo.
+                        Por ejemplo: 3 PLA DET con secuencia 5 = {duracionesPorTipo['PLA DET']} días (no {duracionesPorTipo['PLA DET'] * 3} días).
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Button
+                  onClick={() => {
+                    setDuracionesPorTipo({ ...DURACION_POR_TIPO_DEFAULT });
+                    setDuracionRevision(DURACION_REVISION_DEFAULT);
+                    showNotification('success', 'Duraciones restauradas a valores por defecto');
+                  }}
+                  className="bg-neutral-500 hover:bg-neutral-600"
+                >
+                  Restaurar Valores por Defecto
+                </Button>
               </div>
             )}
 
@@ -5404,7 +5580,7 @@ ${cotHtml}
 
                 // Calcular deliverables y stats
                 const deliverables = entregablesProyecto.map(d => {
-                  const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
+                  const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
                   // Usar clave compuesta para proyectos con entregables personalizados
                   const statusKey = usaEntregablesPersonalizados ? `${selectedProject}_${d.id}` : d.id;
                   const status = statusData[statusKey];
@@ -5667,6 +5843,7 @@ ${cotHtml}
                                 <th className="p-2 text-left font-medium">Código</th>
                                 <th className="p-2 text-left font-medium min-w-[120px]">Descripción</th>
                                 <th className="p-2 text-center font-medium">Sem</th>
+                                <th className="p-2 text-center font-medium">Dur</th>
                                 <th className="p-2 text-center font-medium">Ini</th>
                                 <th className="p-2 text-center font-medium">A</th>
                                 <th className="p-2 text-center font-medium">Deadline</th>
@@ -5689,6 +5866,7 @@ ${cotHtml}
                                     {d.frozen && <Snowflake className="w-3 h-3 inline ml-1 text-blue-400" />}
                                   </td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{getWeekOfYear(new Date(dashboardStartDate)) + (d.weekStart || d.secuencia) - 1}</td>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400 font-mono text-[10px]">{d.frozen ? '-' : `${obtenerDuracionRevA(d, duracionesPorTipo)}d`}</td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">{formatDateShort(d.deadlineRevA)}</td>
@@ -5806,51 +5984,56 @@ ${cotHtml}
                               // Función para determinar el estado visual de cada entregable
                               const getGanttBars = (d) => {
                                 const bars = [];
-                                const revAWeek = d.weekStart;
-                                const revBWeek = revAWeek + 2;
-                                const rev0Week = revBWeek + 3;
-                                
+                                const revAWeek = d.weekStart || d.secuencia || 1;
+                                // Duraciones en semanas (días hábiles / 5)
+                                const durRevA = obtenerDuracionRevA(d, duracionesPorTipo) / 5;
+                                const durRevB = duracionRevision / 5;
+                                const durRev0 = duracionRevision / 5;
+                                const revBWeek = revAWeek + durRevA;
+                                const rev0Week = revBWeek + durRevB;
+                                const totalWidth = durRevA + durRevB + durRev0;
+
                                 // Si está TERMINADO (sentRev0 = true), mostrar barra verde completa
                                 if (d.status?.sentRev0) {
                                   bars.push({
                                     start: revAWeek,
-                                    width: rev0Week - revAWeek + 1,
+                                    width: totalWidth,
                                     color: 'bg-green-500',
                                     label: 'TERMINADO'
                                   });
                                   return bars;
                                 }
-                                
-                                // REV_A: desde weekStart hasta deadline REV_A (2 semanas)
+
+                                // REV_A: duración según tipo de documento
                                 if (d.status?.sentIniciado || d.status?.sentRevA) {
                                   bars.push({
                                     start: revAWeek,
-                                    width: 2,
+                                    width: Math.max(durRevA, 0.4),
                                     color: d.status?.sentRevA ? 'bg-green-500' : 'bg-orange-400',
                                     label: d.status?.sentRevA ? 'REV_A ✓' : 'REV_A en proceso'
                                   });
                                 }
 
-                                // REV_B: solo si ya se envió REV_A Y se recibieron comentarios A
+                                // REV_B: 3 días (después de recibir comentarios A)
                                 if (d.status?.comentariosARecibidos) {
                                   bars.push({
                                     start: revBWeek,
-                                    width: 3,
+                                    width: Math.max(durRevB, 0.4),
                                     color: d.status?.sentRevB ? 'bg-green-500' : 'bg-blue-400',
                                     label: d.status?.sentRevB ? 'REV_B ✓' : 'REV_B en proceso'
                                   });
                                 }
 
-                                // REV_0: solo si ya se envió REV_B Y se recibieron comentarios B
+                                // REV_0: 3 días (después de recibir comentarios B)
                                 if (d.status?.comentariosBRecibidos) {
                                   bars.push({
                                     start: rev0Week,
-                                    width: 2,
+                                    width: Math.max(durRev0, 0.4),
                                     color: 'bg-purple-400',
                                     label: 'REV_0 en proceso'
                                   });
                                 }
-                                
+
                                 return bars;
                               };
                               
@@ -5910,18 +6093,18 @@ ${cotHtml}
                                             )
                                           ))}
                                           
-                                          {/* Si no tiene ninguna barra, mostrar indicador de pendiente */}
-                                          {bars.length === 0 && (
-                                            <div 
+                                          {/* Si no tiene ninguna barra, mostrar indicador de pendiente con duración real */}
+                                          {bars.length === 0 && !d.frozen && (
+                                            <div
                                               className="absolute h-4 rounded-sm bg-neutral-200 flex items-center"
-                                              style={{ 
-                                                left: (d.weekStart - 1) * weekWidth, 
-                                                width: weekWidth * 2 - 4,
+                                              style={{
+                                                left: ((d.weekStart || d.secuencia || 1) - 1) * weekWidth,
+                                                width: Math.max(obtenerDuracionRevA(d, duracionesPorTipo) / 5, 0.4) * weekWidth - 4,
                                                 top: (rowHeight - 16) / 2
                                               }}
-                                              title="Pendiente"
+                                              title={`Pendiente (${obtenerDuracionRevA(d, duracionesPorTipo)} días)`}
                                             >
-                                              <span className="text-[8px] text-neutral-500 dark:text-neutral-400 px-1">Pendiente</span>
+                                              <span className="text-[8px] text-neutral-500 dark:text-neutral-400 px-1">{obtenerDuracionRevA(d, duracionesPorTipo)}d</span>
                                             </div>
                                           )}
                                         </div>
@@ -6241,7 +6424,7 @@ ${cotHtml}
                           </div>
                           <div className="text-center p-1.5 bg-red-50 rounded border border-red-200">
                             <p className="text-base font-bold text-red-500">{entregablesImpr.filter(d => {
-                              const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
+                              const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
                               return !statusData[getStatusKey(d)]?.sentRev0 && new Date() > deadlines.deadlineRevA;
                             }).length}</p>
                             <p className="text-[7px] text-red-500">ATRASO</p>
@@ -6269,7 +6452,7 @@ ${cotHtml}
                           <tbody>
                             {entregablesImpr.slice(0, Math.ceil(entregablesImpr.length / 2)).map((d, i) => {
                               const status = statusData[getStatusKey(d)];
-                              const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
+                              const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
                               const info = calculateStatus(status, deadlines);
                               return (
                                 <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50 dark:bg-neutral-800/50'}>
@@ -6349,7 +6532,7 @@ ${cotHtml}
                       <tbody>
                         {entregablesImpr2.slice(mitad).map((d, i) => {
                           const status = statusData[getStatusKey2(d)];
-                          const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia);
+                          const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
                           const info = calculateStatus(status, deadlines);
                           return (
                             <tr key={d.id} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50 dark:bg-neutral-800/50'}>

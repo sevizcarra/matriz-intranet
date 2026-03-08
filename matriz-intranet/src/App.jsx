@@ -5987,183 +5987,173 @@ ${cotHtml}
                       <Card className="overflow-hidden">
                         <div className="p-3 border-b border-neutral-200 dark:border-neutral-700">
                           <h3 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Carta Gantt</h3>
-                          <p className="text-neutral-500 dark:text-neutral-400 text-xs">Visualización temporal del proyecto</p>
-                          <p className="text-orange-500 text-xs mt-1 sm:hidden">← Desliza para ver más →</p>
+                          <p className="text-neutral-500 dark:text-neutral-400 text-xs">Visualización temporal del proyecto — desliza horizontalmente para ver más semanas</p>
                         </div>
-                        <div className="overflow-x-auto p-3">
-                          <div style={{ minWidth: '800px' }}>
-                            {(() => {
-                              const startDate = new Date(dashboardStartDate);
-                              const weeksToShow = 24;
-                              const weekWidth = 30;
-                              const rowHeight = 28;
-                              const labelWidth = 150;
-                              
-                              // Usar semanas del año (continuidad anual)
-                              const startWeekOfYear = getWeekOfYear(startDate);
-                              const weeks = Array.from({ length: weeksToShow }, (_, i) => {
-                                const weekDate = addWeeks(startDate, i);
-                                return { num: startWeekOfYear + i, date: weekDate };
-                              });
-                              
-                              // Función para determinar el estado visual de cada entregable
-                              const getGanttBars = (d) => {
-                                const bars = [];
-                                const revAWeek = d.weekStart || d.secuencia || 1;
-                                // Duraciones en semanas (días hábiles / 5)
-                                const durRevA = obtenerDuracionRevA(d, duracionesPorTipo) / 5;
-                                const durRevB = duracionRevision / 5;
-                                const durRev0 = duracionRevision / 5;
-                                const revBWeek = revAWeek + durRevA;
-                                const rev0Week = revBWeek + durRevB;
-                                const totalWidth = durRevA + durRevB + durRev0;
+                        <div className="p-3">
+                          {(() => {
+                            const startDate = new Date(dashboardStartDate);
+                            const weeksToShow = 28;
+                            const weekWidth = 34;
+                            const rowHeight = 26;
+                            const codeWidth = 120;
+                            const nameWidth = 200;
+                            const labelWidth = codeWidth + nameWidth;
 
-                                // Si está TERMINADO (sentRev0 = true), mostrar barra verde completa
-                                if (d.status?.sentRev0) {
-                                  bars.push({
-                                    start: revAWeek,
-                                    width: totalWidth,
-                                    color: 'bg-green-500',
-                                    label: 'TERMINADO'
-                                  });
-                                  return bars;
-                                }
+                            // Usar semanas del año (continuidad anual)
+                            const startWeekOfYear = getWeekOfYear(startDate);
+                            const weeks = Array.from({ length: weeksToShow }, (_, i) => {
+                              const weekDate = addWeeks(startDate, i);
+                              return { num: startWeekOfYear + i, date: weekDate };
+                            });
 
-                                // REV_A: duración según tipo de documento
-                                if (d.status?.sentIniciado || d.status?.sentRevA) {
-                                  bars.push({
-                                    start: revAWeek,
-                                    width: Math.max(durRevA, 0.4),
-                                    color: d.status?.sentRevA ? 'bg-green-500' : 'bg-orange-400',
-                                    label: d.status?.sentRevA ? 'REV_A ✓' : 'REV_A en proceso'
-                                  });
-                                }
+                            // Semana actual
+                            const today = new Date();
+                            const diffWeeks = Math.round((today - startDate) / (7 * 24 * 60 * 60 * 1000));
+                            const currentWeekIdx = Math.min(Math.max(diffWeeks, 0), weeksToShow);
 
-                                // REV_B: 3 días (después de recibir comentarios A)
-                                if (d.status?.comentariosARecibidos) {
-                                  bars.push({
-                                    start: revBWeek,
-                                    width: Math.max(durRevB, 0.4),
-                                    color: d.status?.sentRevB ? 'bg-green-500' : 'bg-blue-400',
-                                    label: d.status?.sentRevB ? 'REV_B ✓' : 'REV_B en proceso'
-                                  });
-                                }
+                            // Función para determinar el estado visual de cada entregable
+                            const getGanttBars = (d) => {
+                              const bars = [];
+                              const revAWeek = d.weekStart || d.secuencia || 1;
+                              const durRevA = obtenerDuracionRevA(d, duracionesPorTipo) / 5;
+                              const durRevB = duracionRevision / 5;
+                              const durRev0 = duracionRevision / 5;
+                              const revBWeek = revAWeek + durRevA;
+                              const rev0Week = revBWeek + durRevB;
+                              const totalWidth = durRevA + durRevB + durRev0;
 
-                                // REV_0: 3 días (después de recibir comentarios B)
-                                if (d.status?.comentariosBRecibidos) {
-                                  bars.push({
-                                    start: rev0Week,
-                                    width: Math.max(durRev0, 0.4),
-                                    color: 'bg-purple-400',
-                                    label: 'REV_0 en proceso'
-                                  });
-                                }
-
+                              if (d.status?.sentRev0) {
+                                bars.push({ start: revAWeek, width: totalWidth, color: 'bg-green-500', label: 'TERMINADO' });
                                 return bars;
-                              };
-                              
-                              return (
-                                <div>
-                                  {/* Header de semanas */}
-                                  <div className="flex border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
-                                    <div style={{ width: labelWidth, minWidth: labelWidth }} className="p-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">Entregable</div>
-                                    <div className="flex">
-                                      {weeks.map(w => (
-                                        <div key={w.num} style={{ width: weekWidth, minWidth: weekWidth }} className="p-1 text-center text-[10px] text-neutral-500 dark:text-neutral-400 border-l border-neutral-200 dark:border-neutral-700">
-                                          S{w.num}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Filas de entregables */}
-                                  {deliverables.map((d, i) => {
-                                    const bars = d.frozen ? [] : getGanttBars(d);
+                              }
+                              if (d.status?.sentIniciado || d.status?.sentRevA) {
+                                bars.push({ start: revAWeek, width: Math.max(durRevA, 0.4), color: d.status?.sentRevA ? 'bg-green-500' : 'bg-orange-400', label: d.status?.sentRevA ? 'REV_A ✓' : 'REV_A en proceso' });
+                              }
+                              if (d.status?.comentariosARecibidos) {
+                                bars.push({ start: revBWeek, width: Math.max(durRevB, 0.4), color: d.status?.sentRevB ? 'bg-green-500' : 'bg-blue-400', label: d.status?.sentRevB ? 'REV_B ✓' : 'REV_B en proceso' });
+                              }
+                              if (d.status?.comentariosBRecibidos) {
+                                bars.push({ start: rev0Week, width: Math.max(durRev0, 0.4), color: 'bg-purple-400', label: 'REV_0 en proceso' });
+                              }
+                              return bars;
+                            };
 
-                                    return (
-                                      <div key={d.id} className={`flex border-b border-neutral-100 dark:border-neutral-700 ${d.frozen ? 'opacity-50 bg-blue-50 dark:bg-blue-900/20' : i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white'}`}>
-                                        <div style={{ width: labelWidth, minWidth: labelWidth }} className={`p-2 text-[10px] text-neutral-700 dark:text-neutral-200 truncate flex items-center gap-1 ${d.frozen ? 'line-through' : ''}`}>
-                                          {d.frozen ? (
-                                            <Snowflake className="w-2 h-2 text-blue-400" />
-                                          ) : (
-                                            <div className={`w-2 h-2 rounded-full ${d.statusInfo.color}`} />
-                                          )}
-                                          {d.nombre || d.name}
+                            return (
+                              <div className="relative">
+                                {/* Contenedor con scroll horizontal - labels fijos */}
+                                <div className="flex">
+                                  {/* Columna fija: Código + Nombre */}
+                                  <div className="flex-shrink-0 z-10" style={{ width: labelWidth }}>
+                                    {/* Header fijo */}
+                                    <div className="flex border-b border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800" style={{ height: '32px' }}>
+                                      <div style={{ width: codeWidth }} className="px-2 flex items-center text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Código</div>
+                                      <div style={{ width: nameWidth }} className="px-2 flex items-center text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Descripción</div>
+                                    </div>
+                                    {/* Filas fijas */}
+                                    {deliverables.map((d, i) => (
+                                      <div key={d.id} className={`flex border-b border-neutral-100 dark:border-neutral-700 ${d.frozen ? 'opacity-50 bg-blue-50 dark:bg-blue-900/20' : i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white dark:bg-neutral-900'}`} style={{ height: rowHeight }}>
+                                        <div style={{ width: codeWidth }} className={`px-2 flex items-center text-[9px] font-mono text-neutral-500 dark:text-neutral-400 truncate ${d.frozen ? 'line-through' : ''}`}>
+                                          {d.codigo || '-'}
                                         </div>
-                                        <div className="flex relative" style={{ height: rowHeight }}>
-                                          {/* Grid de semanas */}
-                                          {weeks.map(w => (
-                                            <div key={w.num} style={{ width: weekWidth, minWidth: weekWidth }} className="border-l border-neutral-100 dark:border-neutral-700" />
-                                          ))}
-                                          
-                                          {/* Barras de progreso */}
-                                          {bars.map((bar, idx) => (
-                                            bar.start <= weeksToShow && (
-                                              <div 
-                                                key={idx}
-                                                className={`absolute h-4 rounded-sm ${bar.color} flex items-center justify-center`}
-                                                style={{ 
-                                                  left: (bar.start - 1) * weekWidth, 
-                                                  width: Math.min(bar.width, weeksToShow - bar.start + 1) * weekWidth - 4,
-                                                  top: (rowHeight - 16) / 2
-                                                }}
-                                                title={bar.label}
-                                              >
-                                                {bar.width >= 2 && (
-                                                  <span className="text-[8px] text-white font-medium truncate px-1">
-                                                    {bar.color === 'bg-green-500' ? '✓' : ''}
-                                                  </span>
-                                                )}
-                                              </div>
-                                            )
-                                          ))}
-                                          
-                                          {/* Si no tiene ninguna barra, mostrar indicador de pendiente con duración real */}
-                                          {bars.length === 0 && !d.frozen && (
-                                            <div
-                                              className="absolute h-4 rounded-sm bg-neutral-200 flex items-center"
-                                              style={{
-                                                left: ((d.weekStart || d.secuencia || 1) - 1) * weekWidth,
-                                                width: Math.max(obtenerDuracionRevA(d, duracionesPorTipo) / 5, 0.4) * weekWidth - 4,
-                                                top: (rowHeight - 16) / 2
-                                              }}
-                                              title={`Pendiente (${obtenerDuracionRevA(d, duracionesPorTipo)} días)`}
-                                            >
-                                              <span className="text-[8px] text-neutral-500 dark:text-neutral-400 px-1">{obtenerDuracionRevA(d, duracionesPorTipo)}d</span>
-                                            </div>
+                                        <div style={{ width: nameWidth }} className={`px-2 flex items-center gap-1 text-[10px] text-neutral-700 dark:text-neutral-200 ${d.frozen ? 'line-through' : ''}`}>
+                                          {d.frozen ? (
+                                            <Snowflake className="w-2.5 h-2.5 text-blue-400 flex-shrink-0" />
+                                          ) : (
+                                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${d.statusInfo.color}`} />
                                           )}
+                                          <span className="truncate">{d.nombre || d.name}</span>
                                         </div>
                                       </div>
-                                    );
-                                  })}
-                                  
-                                  {/* Leyenda */}
-                                  <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-4 h-3 bg-neutral-200 rounded-sm" />
-                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">Pendiente</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-4 h-3 bg-orange-400 rounded-sm" />
-                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">REV_A en proceso</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-4 h-3 bg-blue-400 rounded-sm" />
-                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">REV_B en proceso</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-4 h-3 bg-purple-400 rounded-sm" />
-                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">REV_0 en proceso</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-4 h-3 bg-green-500 rounded-sm" />
-                                      <span className="text-xs text-neutral-600 dark:text-neutral-300">Completado</span>
+                                    ))}
+                                  </div>
+
+                                  {/* Área de barras con scroll horizontal */}
+                                  <div className="overflow-x-auto flex-1 border-l border-neutral-200 dark:border-neutral-700">
+                                    <div style={{ width: weeksToShow * weekWidth }}>
+                                      {/* Header de semanas */}
+                                      <div className="flex border-b border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800" style={{ height: '32px' }}>
+                                        {weeks.map(w => (
+                                          <div key={w.num} style={{ width: weekWidth, minWidth: weekWidth }} className={`flex items-center justify-center text-[10px] border-l border-neutral-200 dark:border-neutral-700 ${w.num === startWeekOfYear + currentWeekIdx ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 font-bold' : 'text-neutral-500 dark:text-neutral-400'}`}>
+                                            S{w.num}
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* Filas de barras */}
+                                      {deliverables.map((d, i) => {
+                                        const bars = d.frozen ? [] : getGanttBars(d);
+                                        return (
+                                          <div key={d.id} className={`flex relative border-b border-neutral-100 dark:border-neutral-700 ${d.frozen ? 'opacity-50 bg-blue-50 dark:bg-blue-900/20' : i % 2 === 0 ? 'bg-neutral-50 dark:bg-neutral-800/50' : 'bg-white dark:bg-neutral-900'}`} style={{ height: rowHeight }}>
+                                            {/* Grid de semanas */}
+                                            {weeks.map(w => (
+                                              <div key={w.num} style={{ width: weekWidth, minWidth: weekWidth }} className={`border-l ${w.num === startWeekOfYear + currentWeekIdx ? 'border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-900/10' : 'border-neutral-100 dark:border-neutral-700'}`} />
+                                            ))}
+
+                                            {/* Barras de progreso */}
+                                            {bars.map((bar, idx) => (
+                                              bar.start <= weeksToShow && (
+                                                <div
+                                                  key={idx}
+                                                  className={`absolute h-4 rounded-sm ${bar.color} flex items-center justify-center`}
+                                                  style={{
+                                                    left: (bar.start - 1) * weekWidth + 2,
+                                                    width: Math.max(Math.min(bar.width, weeksToShow - bar.start + 1) * weekWidth - 4, 6),
+                                                    top: (rowHeight - 16) / 2
+                                                  }}
+                                                  title={bar.label}
+                                                >
+                                                  {bar.width >= 1 && (
+                                                    <span className="text-[7px] text-white font-medium truncate px-0.5">
+                                                      {bar.color === 'bg-green-500' ? '✓' : ''}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              )
+                                            ))}
+
+                                            {/* Pendiente */}
+                                            {bars.length === 0 && !d.frozen && (
+                                              <div
+                                                className="absolute h-4 rounded-sm bg-neutral-200 dark:bg-neutral-600 flex items-center"
+                                                style={{
+                                                  left: ((d.weekStart || d.secuencia || 1) - 1) * weekWidth + 2,
+                                                  width: Math.max(obtenerDuracionRevA(d, duracionesPorTipo) / 5, 0.4) * weekWidth - 4,
+                                                  top: (rowHeight - 16) / 2
+                                                }}
+                                                title={`Pendiente (${obtenerDuracionRevA(d, duracionesPorTipo)} días)`}
+                                              >
+                                                <span className="text-[7px] text-neutral-500 dark:text-neutral-300 px-0.5">{obtenerDuracionRevA(d, duracionesPorTipo)}d</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   </div>
                                 </div>
-                              );
-                            })()}
-                          </div>
+
+                                {/* Leyenda */}
+                                <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+                                  {[
+                                    { color: 'bg-neutral-200', label: 'Pendiente' },
+                                    { color: 'bg-orange-400', label: 'REV_A' },
+                                    { color: 'bg-blue-400', label: 'REV_B' },
+                                    { color: 'bg-purple-400', label: 'REV_0' },
+                                    { color: 'bg-green-500', label: 'Completado' },
+                                  ].map(l => (
+                                    <div key={l.label} className="flex items-center gap-1">
+                                      <div className={`w-4 h-2.5 ${l.color} rounded-sm`} />
+                                      <span className="text-[10px] text-neutral-600 dark:text-neutral-300">{l.label}</span>
+                                    </div>
+                                  ))}
+                                  <div className="flex items-center gap-1 ml-2">
+                                    <div className="w-4 h-2.5 bg-orange-100 border border-orange-300 rounded-sm" />
+                                    <span className="text-[10px] text-neutral-600 dark:text-neutral-300">Semana actual</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </Card>
                     )}

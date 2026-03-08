@@ -513,3 +513,31 @@ export const getBackup = async (backupId) => {
     return null;
   }
 };
+
+// ============================================
+// DURACIONES POR TIPO DE DOCUMENTO
+// ============================================
+
+// Guardar duraciones en Firestore
+export const saveDuraciones = async (duracionesPorTipo, duracionRevision) => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.CONFIG, 'duraciones'), {
+      duracionesPorTipo,
+      duracionRevision,
+      updatedAt: new Date().toISOString()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error guardando duraciones:', error);
+    return false;
+  }
+};
+
+// Suscribirse a cambios de duraciones
+export const subscribeToDuraciones = (callback) => {
+  return onSnapshot(doc(db, COLLECTIONS.CONFIG, 'duraciones'), (docSnap) => {
+    if (docSnap.exists()) {
+      callback(docSnap.data());
+    }
+  });
+};

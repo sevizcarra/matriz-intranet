@@ -31,7 +31,9 @@ import {
   saveAutoBackup,
   saveCotizacion,
   deleteCotizacion as deleteCotizacionFS,
-  subscribeToCotizaciones
+  subscribeToCotizaciones,
+  saveDuraciones,
+  subscribeToDuraciones
 } from './firestoreService';
 
 // ============================================
@@ -725,6 +727,12 @@ export default function MatrizIntranet() {
       setCotizaciones(parsed);
     });
 
+    // Suscripción a duraciones por tipo de documento
+    const unsubDuraciones = subscribeToDuraciones((data) => {
+      if (data.duracionesPorTipo) setDuracionesPorTipo(data.duracionesPorTipo);
+      if (data.duracionRevision) setDuracionRevision(data.duracionRevision);
+    });
+
     // Marcar como listo después de un momento
     setTimeout(() => {
       setIsLoading(false);
@@ -739,6 +747,7 @@ export default function MatrizIntranet() {
       unsubTareas();
       unsubPresencia();
       unsubCotizaciones();
+      unsubDuraciones();
     };
   }, []);
 
@@ -5139,16 +5148,32 @@ ${cotHtml}
                   </div>
                 </Card>
 
-                <Button
-                  onClick={() => {
-                    setDuracionesPorTipo({ ...DURACION_POR_TIPO_DEFAULT });
-                    setDuracionRevision(DURACION_REVISION_DEFAULT);
-                    showNotification('success', 'Duraciones restauradas a valores por defecto');
-                  }}
-                  className="bg-neutral-500 hover:bg-neutral-600"
-                >
-                  Restaurar Valores por Defecto
-                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={async () => {
+                      const ok = await saveDuraciones(duracionesPorTipo, duracionRevision);
+                      if (ok) {
+                        showNotification('success', 'Duraciones guardadas correctamente');
+                      } else {
+                        showNotification('error', 'Error al guardar duraciones');
+                      }
+                    }}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Guardar Cambios
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      setDuracionesPorTipo({ ...DURACION_POR_TIPO_DEFAULT });
+                      setDuracionRevision(DURACION_REVISION_DEFAULT);
+                      await saveDuraciones({ ...DURACION_POR_TIPO_DEFAULT }, DURACION_REVISION_DEFAULT);
+                      showNotification('success', 'Duraciones restauradas y guardadas');
+                    }}
+                    className="bg-neutral-500 hover:bg-neutral-600"
+                  >
+                    Restaurar Valores por Defecto
+                  </Button>
+                </div>
               </div>
             )}
 

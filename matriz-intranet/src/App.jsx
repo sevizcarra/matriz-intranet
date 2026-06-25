@@ -4217,98 +4217,23 @@ export default function MatrizIntranet() {
                       const toB64 = (src) => new Promise(r => { const i = new Image(); i.crossOrigin='anonymous'; i.onload=()=>{ const c=document.createElement('canvas'); c.width=i.naturalWidth; c.height=i.naturalHeight; c.getContext('2d').drawImage(i,0,0); r(c.toDataURL('image/png')); }; i.onerror=()=>r(''); i.src=src; });
                       const logoB64 = await toB64('/logo-afor.png');
                       for (const [s,b] of Object.entries(imgMap)) cotHtml = cotHtml.split(s).join(b);
-                      const fecha = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
+                      // Remove no-print elements
+                      const tmp = document.createElement('div');
+                      tmp.innerHTML = cotHtml;
+                      tmp.querySelectorAll('.no-print').forEach(e => e.remove());
+                      cotHtml = tmp.innerHTML;
                       const pw = window.open('','_blank');
                       pw.document.write(`<html><head><title>AFOR — Propuesta ${cotCliente}</title>
 <style>
-@page{size:A4 portrait;margin:0}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:11px;line-height:1.5}
-.pg{width:100%;min-height:100vh;position:relative;page-break-after:always;overflow:hidden}
-.pg:last-child{page-break-after:auto}
-.no-print{display:none!important}
-img{max-width:100%}
-/* PORTADA */
-.cover{display:flex}
-.cover-bar{width:30%;background:#E86B11;min-height:100vh}
-.cover-ct{width:70%;padding:60px 50px;display:flex;flex-direction:column;justify-content:space-between}
-.cover-logo{height:65px}
-.cover-h{font-size:36px;font-weight:800;line-height:1.15}
-.cover-h span{color:#E86B11}
-.cover-sub{font-size:13px;color:#666;border-top:2px solid #ccc;padding-top:12px;margin-top:15px;max-width:400px}
-.cover-ft{font-size:10px;color:#999;display:flex;justify-content:space-between;border-top:1px solid #e0e0e0;padding-top:10px}
-/* NOSOTROS */
-.sn{color:#E86B11;font-size:12px;font-weight:700;margin-bottom:4px}
-.st{font-size:28px;font-weight:800;margin-bottom:18px;line-height:1.2}
-.sst{font-size:14px;font-weight:700;margin-bottom:10px}
-.stxt{font-size:11px;color:#444;margin-bottom:12px}
-.slbl{color:#E86B11;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px}
-.si{font-size:11px;color:#444;padding:3px 0 3px 18px;position:relative}
-.si:before{content:'—';position:absolute;left:0;color:#E86B11}
-.pil{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-.pn{font-size:22px;font-weight:800;color:#E86B11}
-.pt{font-size:11px;font-weight:700}
-.pd{font-size:10px;color:#888}
-.ab-stat{width:180px;background:#1a1a1a;color:white;padding:25px;display:flex;flex-direction:column;justify-content:center}
-.ab-stat .n{font-size:54px;font-weight:800;color:#E86B11;line-height:1}
-.ab-stat .l{font-size:11px;color:#ccc;margin-top:4px}
-.pf{position:absolute;bottom:18px;left:50px;right:50px;text-align:center;font-size:9px;color:#bbb;border-top:1px solid #eee;padding-top:6px}
-/* TRACK */
-.trk{background:#E86B11;color:white;padding:45px 50px}
-.trk .sn{color:rgba(255,255,255,.7)}
-.trk .st{color:white}
-.tt{width:100%;margin-top:10px;font-size:10px;border-collapse:collapse}
-.tt th{text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.3)}
-.tt td{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.15)}
-.tt .y{font-weight:700;width:45px}
-.tt .c{font-weight:700;width:130px}
-.ts{display:flex;gap:25px;margin-top:25px}
-.tsb{background:rgba(0,0,0,.15);padding:10px 18px}
-.tsb .n{font-size:26px;font-weight:800}
-.tsb .l{font-size:9px;opacity:.8}
-/* COT */
-.cot{padding:35px 50px}
-.cot table{width:100%;border-collapse:collapse;font-size:10px;margin-top:8px}
-.cot th{background:#E86B11;color:white;padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
-.cot td{padding:5px 8px;border-bottom:1px solid #eee}
-.ct{background:#f8f8f8;padding:10px 14px;border-radius:6px;font-size:10px;color:#555;margin-top:12px}
-.ct strong{color:#333}
-.cf{margin-top:16px;display:flex;justify-content:space-between;align-items:flex-end}
-.cf img{height:55px}
-.fl{border-top:1.5px solid #333;padding-top:4px;text-align:center}
-.fn{font-size:11px;font-weight:700}
-.fr{font-size:9px;color:#888}
-/* CIERRE */
-.cls{padding:50px;display:flex;flex-direction:column;justify-content:space-between}
-.cls-t{font-size:42px;font-weight:800;margin-bottom:12px}
-.cls-tx{font-size:12px;color:#666;max-width:340px;margin-bottom:30px}
-.cls-c{font-size:11px}
-.cls-c .lb{color:#999;width:65px;display:inline-block}
-.cls-c .vl{font-weight:600}
-.cls-blk{position:absolute;bottom:0;right:0;width:45%;height:45%;background:#E86B11}
-.cls-dk{position:absolute;top:0;right:0;width:70px;height:70px;background:#1a1a1a}
-@media print{.no-print{display:none!important}}
+@page { size: A4 portrait; margin: 12mm 10mm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; color: #1a1a1a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.no-print { display: none !important; }
+table { page-break-inside: auto; }
+tr { page-break-inside: avoid; }
 </style></head><body>
-<!-- PORTADA -->
-<div class="pg cover"><div class="cover-bar"></div><div class="cover-ct">
-<div>${logoB64?'<img src="'+logoB64+'" class="cover-logo"/><div style="font-size:10px;color:#E86B11;letter-spacing:2px;margin-top:2px">ASSETS FOR NON-PROCESS INFRASTRUCTURE</div>':''}</div>
-<div><div class="cover-h">PROPUESTA<br/>COMERCIAL,<br/><span>${(cotProyectoNombre||'PROYECTO').toUpperCase()}.</span></div>
-<div class="cover-sub">Presentación técnico-comercial para ${cotCliente||'Cliente'}.<br/>Fecha: ${fecha}</div></div>
-<div class="cover-ft"><span>www.afor.cl</span><span>contact@afor.cl — Santiago, Chile</span></div>
-</div></div>
-<!-- COTIZACIÓN -->
-<div class="pg cot">
-<div class="sn">01</div><div class="st">Propuesta Comercial</div>
-<div style="font-size:12px;color:#666;margin-bottom:5px">${cotProyectoNombre||''} — ${cotCliente||''}</div>
+<div style="min-width:700px;max-width:900px;margin:0 auto;">
 ${cotHtml}
-</div>
-<!-- CIERRE -->
-<div class="pg cls">
-<div>${logoB64?'<img src="'+logoB64+'" style="height:55px"/><div style="font-size:9px;color:#E86B11;letter-spacing:1.5px">ASSETS FOR NON-PROCESS INFRASTRUCTURE</div>':''}</div>
-<div><div class="cls-t">Gracias.</div>
-<div class="cls-tx">Agradecemos la confianza de nuestros clientes y socios estratégicos. Cada proyecto ha sido una oportunidad para demostrar que la arquitectura, integrada a la ingeniería, genera valor real.</div>
-<div class="cls-c"><div><span class="lb">Web</span><span class="vl">www.afor.cl</span></div><div><span class="lb">Email</span><span class="vl">contact@afor.cl</span></div><div><span class="lb">Ubicación</span><span class="vl">Santiago, Chile</span></div></div></div>
-<div class="cls-blk"></div><div class="cls-dk"></div>
 </div>
 </body></html>`);
                       pw.document.close();

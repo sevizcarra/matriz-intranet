@@ -4321,7 +4321,7 @@ img{max-width:100%}
 <div><span class="pn">03</span> <span class="pt">Coordinación Multidisciplinaria</span><br/><span class="pd">Compatibilidad con estructural, eléctrica, mecánica y PMO.</span></div>
 <div><span class="pn">04</span> <span class="pt">Modelo Flexible</span><br/><span class="pd">Equipo especializado disponible cuando su proyecto lo requiera.</span></div>
 </div>
-<div class="pf">AFOR — Architecture for Engineering</div>
+<div class="pf">AFOR — Assets for Non-Process Infrastructure</div>
 </div>
 <!-- TRACK RECORD -->
 <div class="pg trk">
@@ -4524,7 +4524,7 @@ ${cotHtml}
                 {/* Firma y footer */}
                 <div style={{ padding: '16px 40px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                   <div style={{ fontSize: '11px', color: '#999' }}>
-                    <div style={{ fontWeight: '600', color: '#666', marginBottom: '2px' }}>AFOR - Architecture for Engineering</div>
+                    <div style={{ fontWeight: '600', color: '#666', marginBottom: '2px' }}>AFOR - Assets for Non-Process Infrastructure</div>
                     <div>www.afor.cl | contacto@afor.cl</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
@@ -4629,7 +4629,7 @@ ${cotHtml}
               <div className="login-dot"></div>
               <div className="login-line"></div>
             </div>
-            <p className="text-neutral-500 text-xs tracking-[0.3em] uppercase">Architecture for Engineering</p>
+            <p className="text-neutral-500 text-xs tracking-[0.3em] uppercase">Assets for Non-Process Infrastructure</p>
             <h1 className="text-lg text-neutral-700 font-medium mt-3">Intranet</h1>
           </div>
 
@@ -6663,7 +6663,7 @@ ${cotHtml}
                   <div className="border-t-2 border-orange-500 pt-1">
                     <div className="flex justify-between text-[7px] text-neutral-400">
                       <div>
-                        <p className="font-medium text-neutral-600">AFOR - Architecture for Engineering</p>
+                        <p className="font-medium text-neutral-600">AFOR - Assets for Non-Process Infrastructure</p>
                         <p>www.afor.cl</p>
                       </div>
                       <p>Página 2 de 2</p>

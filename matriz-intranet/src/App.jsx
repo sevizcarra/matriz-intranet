@@ -3806,8 +3806,8 @@ export default function MatrizIntranet() {
                         <p className="font-bold text-neutral-800 text-xs">{totalGeneral.toFixed(1)}</p>
                       </div>
                       <div className="text-center p-1.5 bg-white rounded border">
-                        <p className="text-neutral-500 text-[8px]">Factor</p>
-                        <p className="font-bold text-blue-600 text-xs">1,5</p>
+                        <p className="text-neutral-500 text-[8px]">Markup</p>
+                        <p className="font-bold text-blue-600 text-xs">1,34</p>
                       </div>
                       <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
                         <p className="text-orange-600 text-[8px]">Valor Bruto HsH</p>

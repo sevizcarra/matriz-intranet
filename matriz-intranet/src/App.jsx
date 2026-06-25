@@ -3713,7 +3713,7 @@ export default function MatrizIntranet() {
                         <span className="text-orange-500">A</span>
                         <span className="text-neutral-800">TRIZ</span>
                       </p>
-                      <p className="text-[7px] text-neutral-400 tracking-wider">ARCHITECTURE FOR ENGINEERING</p>
+                      <p className="text-[7px] text-neutral-400 tracking-wider">ASSETS FOR NON-PROCESS INFRASTRUCTURE</p>
                     </div>
                   </div>
 
@@ -4291,77 +4291,20 @@ img{max-width:100%}
 </style></head><body>
 <!-- PORTADA -->
 <div class="pg cover"><div class="cover-bar"></div><div class="cover-ct">
-<div>${logoB64?'<img src="'+logoB64+'" class="cover-logo"/><div style="font-size:10px;color:#E86B11;letter-spacing:2px;margin-top:2px">ARCHITECTURE FOR ENGINEERING</div>':''}</div>
+<div>${logoB64?'<img src="'+logoB64+'" class="cover-logo"/><div style="font-size:10px;color:#E86B11;letter-spacing:2px;margin-top:2px">ASSETS FOR NON-PROCESS INFRASTRUCTURE</div>':''}</div>
 <div><div class="cover-h">PROPUESTA<br/>COMERCIAL,<br/><span>${(cotProyectoNombre||'PROYECTO').toUpperCase()}.</span></div>
 <div class="cover-sub">Presentación técnico-comercial para ${cotCliente||'Cliente'}.<br/>Fecha: ${fecha}</div></div>
 <div class="cover-ft"><span>www.afor.cl</span><span>contact@afor.cl — Santiago, Chile</span></div>
 </div></div>
-<!-- NOSOTROS -->
-<div class="pg" style="padding:45px 50px">
-<div style="display:flex;justify-content:space-between">
-<div style="flex:1;padding-right:30px">
-<div class="sn">01</div><div class="st">Nosotros</div>
-<div class="sst">Consultoría Técnica en Arquitectura para empresas de Ingeniería</div>
-<div class="stxt">Más de 10 años de experiencia profesional integrando la arquitectura como disciplina crítica en proyectos mineros e industriales.</div>
-<div class="stxt">Somos una oficina especializada en el desarrollo de infraestructura para la gran minería e industria. Entendemos el lenguaje de la ingeniería. Nuestro trabajo se integra con las especialidades estructurales, eléctricas, mecánicas y PMO, garantizando entregables libres de interferencias y compatibles con la codificación del mandante.</div>
-<div class="slbl">Servicios</div>
-<div class="si">Master Plan de Arquitectura para Faenas e Instalaciones</div>
-<div class="si">Edificación y remodelación de Oficinas y Casas de Cambio</div>
-<div class="si">Salas de Control, de Servidores, Eléctricas y Técnicas</div>
-<div class="si">Edificación técnica para RESPEL, Almacenamiento y Truck Shops</div>
-<div class="si">Revisión de contraparte de planos y documentos</div>
-<div class="si">Supervisión de Terreno de ejecución y avances</div>
-</div>
-<div class="ab-stat"><div class="n">10+</div><div class="l">años integrando arquitectura a la ingeniería</div></div>
-</div>
-<div class="slbl">Pilares</div>
-<div class="pil">
-<div><span class="pn">01</span> <span class="pt">Enfoque en Procesos</span><br/><span class="pd">Nos integramos a los procesos internos de su ingeniería.</span></div>
-<div><span class="pn">02</span> <span class="pt">Rigor Normativo</span><br/><span class="pd">Cumplimiento de OGUC, NCh y estándares mineros.</span></div>
-<div><span class="pn">03</span> <span class="pt">Coordinación Multidisciplinaria</span><br/><span class="pd">Compatibilidad con estructural, eléctrica, mecánica y PMO.</span></div>
-<div><span class="pn">04</span> <span class="pt">Modelo Flexible</span><br/><span class="pd">Equipo especializado disponible cuando su proyecto lo requiera.</span></div>
-</div>
-<div class="pf">AFOR — Assets for Non-Process Infrastructure</div>
-</div>
-<!-- TRACK RECORD -->
-<div class="pg trk">
-<div class="sn">02</div><div class="st">Track record <span style="font-size:14px;font-weight:400;opacity:.7">2017 — 2026</span></div>
-<div style="font-size:11px;font-weight:600;margin-top:12px;opacity:.8">Desarrollo de Ingeniería Propio <span style="font-weight:400">(vía CHKING)</span></div>
-<table class="tt"><thead><tr><th>Año</th><th>Cliente</th><th>Proyecto</th></tr></thead><tbody>
-<tr><td class="y">2025</td><td class="c">CMM</td><td>Servicio Ingeniería IPS/SPS Proyecto Minero Las Yacas</td></tr>
-<tr><td class="y">2025</td><td class="c">BHP-COLOSO</td><td>Ingeniería Remediación Edificio CHO — Puerto Coloso (Delivery)</td></tr>
-<tr><td class="y">2024</td><td class="c">BHP-MEL</td><td>Ingeniería SPS/DPS Facilities E-AT Stripping</td></tr>
-<tr><td class="y">2024</td><td class="c">BHP-MEL</td><td>AS Built EN-AT — Facilities Autonomía MEL</td></tr>
-<tr><td class="y">2023</td><td class="c">MECASFY</td><td>Edificio Puerta Sur</td></tr>
-<tr><td class="y">2022</td><td class="c">GT CHILE</td><td>Oficinas Corporativas GT Chile</td></tr>
-<tr><td class="y">2022</td><td class="c">BHP-MEL</td><td>Ingeniería Interim Facilities Autonomía MEL</td></tr>
-<tr><td class="y">2022</td><td class="c">BHP-MEL</td><td>Ingeniería DPS EN-AT</td></tr>
-<tr><td class="y">2022</td><td class="c">BHP-SPENCE</td><td>Ingeniería Sala de Control SMH</td></tr>
-<tr><td class="y">2021</td><td class="c">BHP-MEL</td><td>Logistic Solutions</td></tr>
-<tr><td class="y">2019</td><td class="c">BHP-MEL</td><td>Flowsheets 3D de Procesos</td></tr>
-<tr><td class="y">2019</td><td class="c">BHP-C.COLORADO</td><td>Idea Campamento Cerro Colorado</td></tr>
-<tr><td class="y">2019</td><td class="c">MECASFY</td><td>Ampliación Oficinas MECASFY</td></tr>
-<tr><td class="y">2018</td><td class="c">BHP-C.COLORADO</td><td>Garita de Accesos Cerro Colorado</td></tr>
-<tr><td class="y">2018</td><td class="c">CAL ALIANZA</td><td>Diagramas de Flujo Cal Alianza</td></tr>
-</tbody></table>
-<div style="font-size:11px;font-weight:600;margin-top:12px;opacity:.8">Contraparte / Revisión <span style="font-weight:400">(vía CHKING)</span></div>
-<table class="tt"><thead><tr><th>Año</th><th>Empresa</th><th>Proyecto</th></tr></thead><tbody>
-<tr><td class="y">2023</td><td class="c">HATCH</td><td>ILNSC — Innovación Lixiviación Nuevas Columnas de Simulación</td></tr>
-<tr><td class="y">2019</td><td class="c">ARCADIS</td><td>Bodega y Muestrera — Spence Growth Options</td></tr>
-<tr><td class="y">2018</td><td class="c">ATCO</td><td>Sala de Control Lixiviación — Spence Growth Options</td></tr>
-<tr><td class="y">2017</td><td class="c">ARCADIS</td><td>Instalaciones Auxiliares (Truckshop, RESPEL, etc.) — Spence Growth Options</td></tr>
-</tbody></table>
-<div class="ts"><div class="tsb"><div class="n">19</div><div class="l">proyectos</div></div><div class="tsb"><div class="n">10+</div><div class="l">años</div></div><div class="tsb"><div class="n">8</div><div class="l">clientes</div></div></div>
-</div>
 <!-- COTIZACIÓN -->
 <div class="pg cot">
-<div class="sn">03</div><div class="st">Propuesta Comercial</div>
+<div class="sn">01</div><div class="st">Propuesta Comercial</div>
 <div style="font-size:12px;color:#666;margin-bottom:5px">${cotProyectoNombre||''} — ${cotCliente||''}</div>
 ${cotHtml}
 </div>
 <!-- CIERRE -->
 <div class="pg cls">
-<div>${logoB64?'<img src="'+logoB64+'" style="height:55px"/><div style="font-size:9px;color:#E86B11;letter-spacing:1.5px">ARCHITECTURE FOR ENGINEERING</div>':''}</div>
+<div>${logoB64?'<img src="'+logoB64+'" style="height:55px"/><div style="font-size:9px;color:#E86B11;letter-spacing:1.5px">ASSETS FOR NON-PROCESS INFRASTRUCTURE</div>':''}</div>
 <div><div class="cls-t">Gracias.</div>
 <div class="cls-tx">Agradecemos la confianza de nuestros clientes y socios estratégicos. Cada proyecto ha sido una oportunidad para demostrar que la arquitectura, integrada a la ingeniería, genera valor real.</div>
 <div class="cls-c"><div><span class="lb">Web</span><span class="vl">www.afor.cl</span></div><div><span class="lb">Email</span><span class="vl">contact@afor.cl</span></div><div><span class="lb">Ubicación</span><span class="vl">Santiago, Chile</span></div></div></div>
@@ -6472,7 +6415,7 @@ ${cotHtml}
                   <div className="flex justify-between items-start border-b-2 border-orange-500 pb-2 mb-3">
                     <div>
                       <img src="/logo-afor.png" alt="AFOR" style={{ height: '36px' }} />
-                      <span className="text-[7px] text-neutral-400 tracking-wider block">ARCHITECTURE FOR ENGINEERING</span>
+                      <span className="text-[7px] text-neutral-400 tracking-wider block">ASSETS FOR NON-PROCESS INFRASTRUCTURE</span>
                     </div>
                     <div className="text-right">
                       <h1 className="text-sm font-bold text-neutral-800 uppercase">Log de Avance</h1>

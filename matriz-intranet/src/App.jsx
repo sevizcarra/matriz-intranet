@@ -124,10 +124,68 @@ const PrintStyles = () => (
 // DATOS BASE
 // ============================================
 
+// ============================================
+// TARJETA DE TARIFAS (fuente de verdad para precios)
+// ============================================
+const DEFAULT_TARIFAS = [
+  { id: 'jefe', nombre: 'Jefe de Proyectos', tarifaVenta: 1.95, tarifaCosto: 0.75 },
+  { id: 'lider', nombre: 'Líder de Especialidad', tarifaVenta: 1.70, tarifaCosto: 0.75 },
+  { id: 'ingeniero', nombre: 'Ingeniero / Arquitecto', tarifaVenta: 1.50, tarifaCosto: 0.75 },
+  { id: 'proyectista', nombre: 'Proyectista', tarifaVenta: 1.15, tarifaCosto: 0.50 },
+  { id: 'control', nombre: 'Control Documental', tarifaVenta: 0.70, tarifaCosto: 0.35 },
+];
+
+// ============================================
+// RECETAS POR ENTREGABLE (HH de cada rol por tipo)
+// ============================================
+const DEFAULT_RECETAS = [
+  { id: 'pla_gen', nombre: 'Plano general', tipoMatch: 'PLA', hh: { jefe: 0, lider: 2, ingeniero: 4, proyectista: 13, control: 1 } },
+  { id: 'pla_det', nombre: 'Plano de detalle', tipoMatch: 'PLA DET', hh: { jefe: 0, lider: 2, ingeniero: 6, proyectista: 16, control: 1 } },
+  { id: 'doc', nombre: 'Documento (memoria / EETT)', tipoMatch: 'DOC', hh: { jefe: 5, lider: 10, ingeniero: 12, proyectista: 0, control: 3 } },
+];
+
+// ============================================
+// MOTOR DE CÁLCULO COT
+// ============================================
+const calcPrecioVenta = (receta, tarifas) => {
+  return Object.entries(receta.hh).reduce((sum, [rolId, horas]) => {
+    const tarifa = tarifas.find(t => t.id === rolId);
+    return sum + (horas * (tarifa?.tarifaVenta || 0));
+  }, 0);
+};
+
+const calcCostoInterno = (receta, tarifas) => {
+  return Object.entries(receta.hh).reduce((sum, [rolId, horas]) => {
+    const tarifa = tarifas.find(t => t.id === rolId);
+    return sum + (horas * (tarifa?.tarifaCosto || 0));
+  }, 0);
+};
+
+const calcTotalHH = (receta) => {
+  return Object.values(receta.hh).reduce((sum, h) => sum + h, 0);
+};
+
+// Mapea un tipo del Excel a una receta (PLA DET debe evaluarse antes que PLA)
+const matchReceta = (tipoStr, recetas) => {
+  const tipo = (tipoStr || '').toUpperCase().trim();
+  // Ordenar por longitud de tipoMatch descendente para que "PLA DET" matchee antes que "PLA"
+  const sorted = [...recetas].sort((a, b) => b.tipoMatch.length - a.tipoMatch.length);
+  return sorted.find(r => tipo.includes(r.tipoMatch.toUpperCase())) || null;
+};
+
+// Roles para perfil de profesional (mapeo a tarjeta de tarifas)
+const ROLES_PROFESIONAL = [
+  { id: 'jefe', nombre: 'Jefe de Proyectos' },
+  { id: 'lider', nombre: 'Líder de Especialidad' },
+  { id: 'ingeniero', nombre: 'Ingeniero / Arquitecto' },
+  { id: 'proyectista', nombre: 'Proyectista' },
+  { id: 'control', nombre: 'Control Documental' },
+];
+
 const COLABORADORES_INICIAL = [
-  { id: 1, nombre: 'Cristóbal Ríos', cargo: 'Arquitecto', categoria: 'Ingeniero Senior', tarifaInterna: 0.75, iniciales: 'CR', proyectosAsignados: [] },
-  { id: 2, nombre: 'Dominique Thompson', cargo: 'Arquitecta', categoria: 'Proyectista', tarifaInterna: 0.5, iniciales: 'DT', proyectosAsignados: [] },
-  { id: 3, nombre: 'Sebastián Vizcarra', cargo: 'Arquitecto', categoria: 'Líder de Proyecto', tarifaInterna: 1.0, iniciales: 'SV', proyectosAsignados: [] },
+  { id: 1, nombre: 'Cristóbal Ríos', cargo: 'Arquitecto', categoria: 'Ingeniero / Arquitecto', rolTarifa: 'ingeniero', tarifaInterna: 0.75, iniciales: 'CR', proyectosAsignados: [] },
+  { id: 2, nombre: 'Dominique Thompson', cargo: 'Arquitecta', categoria: 'Proyectista', rolTarifa: 'proyectista', tarifaInterna: 0.5, iniciales: 'DT', proyectosAsignados: [] },
+  { id: 3, nombre: 'Sebastián Vizcarra', cargo: 'Arquitecto', categoria: 'Jefe de Proyectos', rolTarifa: 'jefe', tarifaInterna: 0.75, iniciales: 'SV', proyectosAsignados: [] },
 ];
 
 // Entregables del proyecto (35 documentos)
@@ -922,7 +980,7 @@ export default function MatrizIntranet() {
   // Estados para configuración
   const [configTab, setConfigTab] = useState('profesionales');
   const [showNewProfesional, setShowNewProfesional] = useState(false);
-  const [newProfesional, setNewProfesional] = useState({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5, email: '', password: '' });
+  const [newProfesional, setNewProfesional] = useState({ nombre: '', cargo: '', categoria: 'Proyectista', rolTarifa: 'proyectista', tarifaInterna: 0.5, email: '', password: '' });
   const [editProfesionalOpen, setEditProfesionalOpen] = useState(false);
   const [profesionalToEdit, setProfesionalToEdit] = useState(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -965,6 +1023,11 @@ export default function MatrizIntranet() {
   const [cotRevAPercent, setCotRevAPercent] = useState(70);
   const [cotRevBPercent, setCotRevBPercent] = useState(20);
   const [cotRev0Percent, setCotRev0Percent] = useState(10);
+  // Motor paramétrico COT
+  const [cotSimplificado, setCotSimplificado] = useState(false); // factor 0.8
+  const [cotDescuento, setCotDescuento] = useState(0); // % descuento lanzamiento
+  const [tarifas, setTarifas] = useState(DEFAULT_TARIFAS);
+  const [recetas, setRecetas] = useState(DEFAULT_RECETAS);
 
   // Duraciones editables por tipo de documento (días hábiles para REV_A)
   const [duracionesPorTipo, setDuracionesPorTipo] = useState({ ...DURACION_POR_TIPO_DEFAULT });
@@ -1167,7 +1230,7 @@ export default function MatrizIntranet() {
   };
 
   // Categorías de profesionales
-  const categoriasProfesional = ['Líder de Proyecto', 'Ingeniero Senior', 'Proyectista', 'Administrativo'];
+  const categoriasProfesional = ROLES_PROFESIONAL.map(r => r.nombre);
   
   // Función para obtener iniciales
   const getIniciales = (nombre) => {
@@ -1194,12 +1257,17 @@ export default function MatrizIntranet() {
     }
 
     const newId = Math.max(...profesionales.map(c => c.id), 0) + 1;
+    // Derivar rolTarifa desde la categoría seleccionada
+    const rolMatch = ROLES_PROFESIONAL.find(r => r.nombre === newProfesional.categoria);
+    const rolTarifa = rolMatch ? rolMatch.id : 'proyectista';
+    const tarifaMatch = tarifas.find(t => t.id === rolTarifa);
     const nuevoProfesional = {
       id: newId,
       nombre: newProfesional.nombre.trim(),
       cargo: newProfesional.cargo.trim(),
       categoria: newProfesional.categoria,
-      tarifaInterna: parseFloat(newProfesional.tarifaInterna) || 0.5,
+      rolTarifa: rolTarifa,
+      tarifaInterna: tarifaMatch ? tarifaMatch.tarifaCosto : 0.5,
       iniciales: getIniciales(newProfesional.nombre.trim())
     };
 
@@ -1219,7 +1287,7 @@ export default function MatrizIntranet() {
     // Agregar usuario al estado
     setUsuarios(prev => [...prev, nuevoUsuario]);
 
-    setNewProfesional({ nombre: '', cargo: '', categoria: 'Proyectista', tarifaInterna: 0.5, email: '', password: '' });
+    setNewProfesional({ nombre: '', cargo: '', categoria: 'Proyectista', rolTarifa: 'proyectista', tarifaInterna: 0.5, email: '', password: '' });
     setShowNewProfesional(false);
     showNotification('success', 'Profesional y usuario creados');
   };
@@ -3071,8 +3139,6 @@ export default function MatrizIntranet() {
         [''],
         ['FACTURACIÓN'],
         ['HsH Mes en Curso:', mesEnCursoHsH.toFixed(1)],
-        ['Factor:', '1,34'],
-        ['Valor Bruto HsH:', (mesEnCursoHsH * 1.34).toFixed(1)],
         [''],
         [''],
         ['_______________________________', '', '', '_______________________________'],
@@ -3664,18 +3730,14 @@ export default function MatrizIntranet() {
                   </div>
 
                   {/* Resumen con Factor */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-center">
                       <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-1">HsH Mes en Curso</p>
                       <p className="text-xl font-bold text-neutral-800 dark:text-neutral-100">{totalGeneral.toFixed(1)}</p>
                     </div>
-                    <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-center">
-                      <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-1">Markup</p>
-                      <p className="text-xl font-bold text-blue-600">1,34</p>
-                    </div>
                     <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 text-center">
-                      <p className="text-orange-600 dark:text-orange-400 text-xs mb-1">Valor Bruto HsH</p>
-                      <p className="text-xl font-bold text-orange-600">{(totalGeneral * 1.34).toFixed(1)}</p>
+                      <p className="text-orange-600 dark:text-orange-400 text-xs mb-1">Facturación (HsH)</p>
+                      <p className="text-xl font-bold text-orange-600">{totalGeneral.toFixed(1)}</p>
                     </div>
                   </div>
                 </div>
@@ -3806,19 +3868,15 @@ export default function MatrizIntranet() {
                       })()}
                     </div>
 
-                    {/* Segunda fila: Factor y Valor Bruto */}
-                    <div className="grid grid-cols-3 gap-2 text-[9px] mt-2">
+                    {/* Segunda fila: Facturación */}
+                    <div className="grid grid-cols-2 gap-2 text-[9px] mt-2">
                       <div className="text-center p-1.5 bg-white rounded border">
                         <p className="text-neutral-500 text-[8px]">HsH Mes en Curso</p>
                         <p className="font-bold text-neutral-800 text-xs">{totalGeneral.toFixed(1)}</p>
                       </div>
-                      <div className="text-center p-1.5 bg-white rounded border">
-                        <p className="text-neutral-500 text-[8px]">Markup</p>
-                        <p className="font-bold text-blue-600 text-xs">1,34</p>
-                      </div>
                       <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
-                        <p className="text-orange-600 text-[8px]">Valor Bruto HsH</p>
-                        <p className="font-bold text-orange-600 text-sm">{(totalGeneral * 1.34).toFixed(1)}</p>
+                        <p className="text-orange-600 text-[8px]">Facturación</p>
+                        <p className="font-bold text-orange-600 text-sm">{totalGeneral.toFixed(1)} HsH</p>
                       </div>
                     </div>
                   </div>
@@ -3908,14 +3966,20 @@ export default function MatrizIntranet() {
                       const rA = cot.revAEnabled !== false; const rB = cot.revBEnabled !== false; const r0 = cot.rev0Enabled !== false;
                       const pA = cot.revAPercent ?? 70; const pB = cot.revBPercent ?? 20; const p0 = cot.rev0Percent ?? 10;
                       const revFactor = ((rA ? pA : 0) + (rB ? pB : 0) + (r0 ? p0 : 0)) / 100;
+                      // Motor paramétrico: usar tarifas snapshot si existen, o las actuales
+                      const cotTarifas = cot.tarifasSnapshot ? (typeof cot.tarifasSnapshot === 'string' ? JSON.parse(cot.tarifasSnapshot) : cot.tarifasSnapshot) : tarifas;
+                      const cotRecetas = cot.recetasSnapshot ? (typeof cot.recetasSnapshot === 'string' ? JSON.parse(cot.recetasSnapshot) : cot.recetasSnapshot) : recetas;
                       const subtotal = cot.excelData ? cot.excelData.slice(1).filter(r => r[0] && r[3]).reduce((sum, r) => {
                         const t = (r[1] || 'PLA GEN').toUpperCase();
                         const cant = parseInt(r[4]) || 1;
                         const esCobroUnico = t.includes('VIS') || t.includes('REU INT') || t.includes('REU CTTAL');
-                        const p = t.includes('DOC') ? 30 : t.includes('PLA DET') ? 25 : t.includes('PLA GEN') ? 20 : t.includes('REU INT') ? 1 : t.includes('REU CTTAL') ? 1 : t.includes('VIS') ? 25 : 20;
-                        return sum + (p * cant * (esCobroUnico ? 1 : revFactor));
+                        const rec = matchReceta(t, cotRecetas);
+                        const precioUnit = esCobroUnico ? (t.includes('VIS') ? 25 : 1) : (rec ? calcPrecioVenta(rec, cotTarifas) : 20);
+                        return sum + (precioUnit * cant * (esCobroUnico ? 1 : revFactor));
                       }, 0) : 0;
-                      const total = (subtotal * 1.34 * 1.19);
+                      const fSimp = (cot.simplificado) ? 0.8 : 1.0;
+                      const fDesc = 1 - ((cot.descuento || 0) / 100);
+                      const total = subtotal * fSimp * fDesc * 1.19;
                       const items = cot.excelData ? cot.excelData.slice(1).filter(r => r[0] && r[3]).length : 0;
                       return (
                         <div key={cot._docId} className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-4 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
@@ -3945,6 +4009,7 @@ export default function MatrizIntranet() {
                                   setCotFirma(cot.firmada || false);
                                   setCotRevAEnabled(cot.revAEnabled !== false); setCotRevBEnabled(cot.revBEnabled !== false); setCotRev0Enabled(cot.rev0Enabled !== false);
                                   setCotRevAPercent(cot.revAPercent ?? 70); setCotRevBPercent(cot.revBPercent ?? 20); setCotRev0Percent(cot.rev0Percent ?? 10);
+                                  setCotSimplificado(cot.simplificado || false); setCotDescuento(cot.descuento || 0);
                                   setCotShowPreview(true);
                                   setCotViewingId(cot._docId);
                                 }}
@@ -3962,6 +4027,7 @@ export default function MatrizIntranet() {
                                   setCotFirma(cot.firmada || false);
                                   setCotRevAEnabled(cot.revAEnabled !== false); setCotRevBEnabled(cot.revBEnabled !== false); setCotRev0Enabled(cot.rev0Enabled !== false);
                                   setCotRevAPercent(cot.revAPercent ?? 70); setCotRevBPercent(cot.revBPercent ?? 20); setCotRev0Percent(cot.rev0Percent ?? 10);
+                                  setCotSimplificado(cot.simplificado || false); setCotDescuento(cot.descuento || 0);
                                   setCotViewingId(cot._docId);
                                   setCotMode('editar');
                                 }}
@@ -4120,74 +4186,116 @@ export default function MatrizIntranet() {
                 </div>
               )}
 
+              {/* Ajustes de precio */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Toggle versión simplificada */}
+                <div className={`p-4 rounded-lg border transition-all ${cotSimplificado ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50'}`}>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" checked={cotSimplificado} onChange={e => setCotSimplificado(e.target.checked)}
+                      className="w-5 h-5 accent-blue-600 rounded cursor-pointer" />
+                    <div>
+                      <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Versión simplificada</span>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Aplica factor ×0.8 sobre subtotal (no visible en COT cliente)</p>
+                    </div>
+                  </label>
+                </div>
+                {/* Descuento de lanzamiento */}
+                <div className="p-4 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
+                  <label className="block text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-1">Tarifa de lanzamiento</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-neutral-500 text-sm">−</span>
+                    <input type="number" value={cotDescuento} onChange={e => setCotDescuento(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                      className="w-20 text-center px-2 py-1.5 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      min="0" max="100" />
+                    <span className="text-neutral-500 text-sm">% (visible en COT cliente)</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Forma de pago - Control de revisiones */}
               <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
                 <h4 className="text-orange-800 dark:text-orange-300 font-medium text-sm mb-3">Forma de Pago (por revisiones)</h4>
                 <div className="grid grid-cols-3 gap-3">
-                  {/* REV_A */}
-                  <div className={`text-center p-3 rounded-lg border transition-all ${cotRevAEnabled ? 'border-orange-300 dark:border-orange-700 bg-white dark:bg-neutral-800' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 opacity-50'}`}>
-                    <label className="flex items-center justify-center gap-2 cursor-pointer mb-2">
-                      <input type="checkbox" checked={cotRevAEnabled} onChange={e => setCotRevAEnabled(e.target.checked)}
-                        className="w-4 h-4 accent-orange-600 rounded cursor-pointer" />
-                      <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">REV_A</span>
-                    </label>
-                    <div className="flex items-center justify-center gap-0.5">
-                      <input type="number" value={cotRevAPercent} onChange={e => setCotRevAPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                        disabled={!cotRevAEnabled}
-                        className="w-14 text-center text-2xl font-bold text-orange-600 bg-transparent border-b-2 border-orange-300 dark:border-orange-700 focus:outline-none focus:border-orange-500 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        min="0" max="100" />
-                      <span className="text-lg font-bold text-orange-600">%</span>
+                  {[
+                    { label: 'REV_A', enabled: cotRevAEnabled, setEnabled: setCotRevAEnabled, percent: cotRevAPercent, setPercent: setCotRevAPercent },
+                    { label: 'REV_B', enabled: cotRevBEnabled, setEnabled: setCotRevBEnabled, percent: cotRevBPercent, setPercent: setCotRevBPercent },
+                    { label: 'REV_0', enabled: cotRev0Enabled, setEnabled: setCotRev0Enabled, percent: cotRev0Percent, setPercent: setCotRev0Percent },
+                  ].map(rev => (
+                    <div key={rev.label} className={`text-center p-3 rounded-lg border transition-all ${rev.enabled ? 'border-orange-300 dark:border-orange-700 bg-white dark:bg-neutral-800' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 opacity-50'}`}>
+                      <label className="flex items-center justify-center gap-2 cursor-pointer mb-2">
+                        <input type="checkbox" checked={rev.enabled} onChange={e => rev.setEnabled(e.target.checked)}
+                          className="w-4 h-4 accent-orange-600 rounded cursor-pointer" />
+                        <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">{rev.label}</span>
+                      </label>
+                      <div className="flex items-center justify-center gap-0.5">
+                        <input type="number" value={rev.percent} onChange={e => rev.setPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                          disabled={!rev.enabled}
+                          className="w-14 text-center text-2xl font-bold text-orange-600 bg-transparent border-b-2 border-orange-300 dark:border-orange-700 focus:outline-none focus:border-orange-500 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          min="0" max="100" />
+                        <span className="text-lg font-bold text-orange-600">%</span>
+                      </div>
                     </div>
-                  </div>
-                  {/* REV_B */}
-                  <div className={`text-center p-3 rounded-lg border transition-all ${cotRevBEnabled ? 'border-orange-300 dark:border-orange-700 bg-white dark:bg-neutral-800' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 opacity-50'}`}>
-                    <label className="flex items-center justify-center gap-2 cursor-pointer mb-2">
-                      <input type="checkbox" checked={cotRevBEnabled} onChange={e => setCotRevBEnabled(e.target.checked)}
-                        className="w-4 h-4 accent-orange-600 rounded cursor-pointer" />
-                      <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">REV_B</span>
-                    </label>
-                    <div className="flex items-center justify-center gap-0.5">
-                      <input type="number" value={cotRevBPercent} onChange={e => setCotRevBPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                        disabled={!cotRevBEnabled}
-                        className="w-14 text-center text-2xl font-bold text-orange-600 bg-transparent border-b-2 border-orange-300 dark:border-orange-700 focus:outline-none focus:border-orange-500 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        min="0" max="100" />
-                      <span className="text-lg font-bold text-orange-600">%</span>
-                    </div>
-                  </div>
-                  {/* REV_0 */}
-                  <div className={`text-center p-3 rounded-lg border transition-all ${cotRev0Enabled ? 'border-orange-300 dark:border-orange-700 bg-white dark:bg-neutral-800' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 opacity-50'}`}>
-                    <label className="flex items-center justify-center gap-2 cursor-pointer mb-2">
-                      <input type="checkbox" checked={cotRev0Enabled} onChange={e => setCotRev0Enabled(e.target.checked)}
-                        className="w-4 h-4 accent-orange-600 rounded cursor-pointer" />
-                      <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">REV_0</span>
-                    </label>
-                    <div className="flex items-center justify-center gap-0.5">
-                      <input type="number" value={cotRev0Percent} onChange={e => setCotRev0Percent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                        disabled={!cotRev0Enabled}
-                        className="w-14 text-center text-2xl font-bold text-orange-600 bg-transparent border-b-2 border-orange-300 dark:border-orange-700 focus:outline-none focus:border-orange-500 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        min="0" max="100" />
-                      <span className="text-lg font-bold text-orange-600">%</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-                {(() => {
-                  const enabledSum = (cotRevAEnabled ? cotRevAPercent : 0) + (cotRevBEnabled ? cotRevBPercent : 0) + (cotRev0Enabled ? cotRev0Percent : 0);
-                  const allEnabled = cotRevAEnabled && cotRevBEnabled && cotRev0Enabled;
-                  return (
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 text-center">
-                      Validez: 90 días | Revisiones posteriores mantienen valor REV_0
-                      {enabledSum !== 100 && (
-                        <span className={`ml-2 font-medium ${enabledSum > 100 ? 'text-red-500' : 'text-amber-600'}`}>
-                          — Total revisiones: {enabledSum}%
-                        </span>
-                      )}
-                      {!allEnabled && (
-                        <span className="ml-2 text-blue-500 font-medium">— Cotización parcial</span>
-                      )}
-                    </p>
-                  );
-                })()}
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 text-center">
+                  Validez: 90 días | Revisiones posteriores mantienen valor REV_0
+                </p>
               </div>
+
+              {/* Panel de margen interno (solo admin) */}
+              {cotExcelData && (
+                <div className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-lg p-4">
+                  <h4 className="text-neutral-700 dark:text-neutral-200 font-medium text-sm mb-3 flex items-center gap-2">
+                    <Lock className="w-4 h-4" /> Estimación interna (no visible en COT)
+                  </h4>
+                  {(() => {
+                    let totalVenta = 0, totalCosto = 0, totalHH = 0, hhPorRol = {};
+                    tarifas.forEach(t => { hhPorRol[t.id] = 0; });
+                    const rows = cotExcelData.slice(1).filter(row => row[0] && row[3]);
+                    rows.forEach(row => {
+                      const tipo = (row[1] || 'PLA').toUpperCase();
+                      const cantidad = parseInt(row[4]) || 1;
+                      const receta = matchReceta(tipo, recetas);
+                      if (receta) {
+                        totalVenta += calcPrecioVenta(receta, tarifas) * cantidad;
+                        totalCosto += calcCostoInterno(receta, tarifas) * cantidad;
+                        totalHH += calcTotalHH(receta) * cantidad;
+                        Object.entries(receta.hh).forEach(([rolId, horas]) => {
+                          hhPorRol[rolId] = (hhPorRol[rolId] || 0) + horas * cantidad;
+                        });
+                      }
+                    });
+                    const factorSimp = cotSimplificado ? 0.8 : 1.0;
+                    const factorDesc = 1 - (cotDescuento / 100);
+                    const subtotalAplicado = totalVenta * factorSimp * factorDesc;
+                    const margenUF = subtotalAplicado - totalCosto;
+                    const margenPct = subtotalAplicado > 0 ? (margenUF / subtotalAplicado * 100) : 0;
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-4 gap-3 text-center">
+                          <div><p className="text-xs text-neutral-500 mb-1">Subtotal Venta</p><p className="text-lg font-bold text-neutral-800 dark:text-neutral-100">{totalVenta.toFixed(1)} UF</p></div>
+                          <div><p className="text-xs text-neutral-500 mb-1">Subtotal Aplicado</p><p className="text-lg font-bold text-orange-600">{subtotalAplicado.toFixed(1)} UF</p></div>
+                          <div><p className="text-xs text-neutral-500 mb-1">Costo Interno</p><p className="text-lg font-bold text-red-500">{totalCosto.toFixed(1)} UF</p></div>
+                          <div><p className="text-xs text-neutral-500 mb-1">Margen</p><p className={`text-lg font-bold ${margenUF >= 0 ? 'text-green-600' : 'text-red-600'}`}>{margenUF.toFixed(1)} UF ({margenPct.toFixed(0)}%)</p></div>
+                        </div>
+                        <div className="bg-white dark:bg-neutral-700 rounded p-3">
+                          <p className="text-xs text-neutral-500 mb-2 font-medium">HH por rol ({totalHH} HH totales)</p>
+                          <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                            {tarifas.map(t => (
+                              <div key={t.id}>
+                                <p className="text-neutral-400 truncate">{t.nombre.split('/')[0].trim()}</p>
+                                <p className="font-bold text-neutral-800 dark:text-neutral-100">{hhPorRol[t.id] || 0}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {cotSimplificado && <p className="text-xs text-blue-600 text-center">Factor simplificado ×0.8 aplicado</p>}
+                        {cotDescuento > 0 && <p className="text-xs text-amber-600 text-center">Descuento lanzamiento −{cotDescuento}% aplicado</p>}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Botones Crear COT / Guardar + Ver Preview */}
               <div className="flex gap-3">
@@ -4210,6 +4318,12 @@ export default function MatrizIntranet() {
                       firmada: !!cotFirma,
                       revAEnabled: cotRevAEnabled, revBEnabled: cotRevBEnabled, rev0Enabled: cotRev0Enabled,
                       revAPercent: cotRevAPercent, revBPercent: cotRevBPercent, rev0Percent: cotRev0Percent,
+                      // Motor paramétrico
+                      simplificado: cotSimplificado,
+                      descuento: cotDescuento,
+                      // Snapshot de tarifas y recetas (para integridad histórica)
+                      tarifasSnapshot: JSON.stringify(tarifas),
+                      recetasSnapshot: JSON.stringify(recetas),
                       fechaCreacion: cotMode === 'editar' && cotViewingId ? (cotizaciones.find(c => c._docId === cotViewingId)?.fechaCreacion || new Date().toISOString()) : new Date().toISOString(),
                       fechaModificacion: new Date().toISOString(),
                     };
@@ -4229,6 +4343,7 @@ export default function MatrizIntranet() {
                       setCotViewingId(null);
                       setCotRevAEnabled(true); setCotRevBEnabled(true); setCotRev0Enabled(true);
                       setCotRevAPercent(70); setCotRevBPercent(20); setCotRev0Percent(10);
+                      setCotSimplificado(false); setCotDescuento(0);
                     } else {
                       showNotification('error', 'Error al guardar la cotización');
                     }
@@ -4372,14 +4487,10 @@ ${cotHtml}
                       {cotExcelData && cotExcelData.slice(1).filter(row => row[0] && row[3]).map((row, idx) => {
                         const tipo = (row[1] || 'PLA GEN').toUpperCase();
                         const cantidad = parseInt(row[4]) || 1;
-                        const precio = tipo.includes('DOC') ? 30 :
-                                      tipo.includes('PLA DET') ? 25 :
-                                      tipo.includes('PLA GEN') ? 20 :
-                                      tipo.includes('REU INT') ? 1 :
-                                      tipo.includes('REU CTTAL') ? 1 :
-                                      tipo.includes('VIS') ? 25 : 20;
-                        const precioTotal = precio * cantidad;
                         const esCobroUnico = tipo.includes('VIS') || tipo.includes('REU INT') || tipo.includes('REU CTTAL');
+                        const receta = matchReceta(tipo, recetas);
+                        const precioUnit = esCobroUnico ? (tipo.includes('VIS') ? 25 : 1) : (receta ? calcPrecioVenta(receta, tarifas) : 20);
+                        const precioTotal = precioUnit * cantidad;
                         const bg = idx % 2 === 0 ? '#ffffff' : '#fafafa';
                         return (
                           <tr key={idx} style={{ background: bg }}>
@@ -4396,7 +4507,7 @@ ${cotHtml}
                                 return (
                                   <>
                                     {enabledRevCount > 0 && <td colSpan={enabledRevCount} style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center', color: '#888', fontSize: '10px', fontStyle: 'italic' }}>Cobro único</td>}
-                                    <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{precioTotal}</td>
+                                    <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{precioTotal.toFixed(1)}</td>
                                   </>
                                 );
                               }
@@ -4415,31 +4526,35 @@ ${cotHtml}
                       {(() => {
                         const revFactor = ((cotRevAEnabled ? cotRevAPercent : 0) + (cotRevBEnabled ? cotRevBPercent : 0) + (cotRev0Enabled ? cotRev0Percent : 0)) / 100;
                         const enabledRevCount = (cotRevAEnabled ? 1 : 0) + (cotRevBEnabled ? 1 : 0) + (cotRev0Enabled ? 1 : 0);
-                        const colSpanTotal = 3 + enabledRevCount; // N° + Desc + Tipo + enabled revs
-                        const subtotal = cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
+                        const colSpanTotal = 3 + enabledRevCount;
+                        const subtotalVenta = cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
                           const tipo = (row[1] || 'PLA GEN').toUpperCase();
                           const cantidad = parseInt(row[4]) || 1;
                           const esCobroUnico = tipo.includes('VIS') || tipo.includes('REU INT') || tipo.includes('REU CTTAL');
-                          const precio = tipo.includes('DOC') ? 30 :
-                                        tipo.includes('PLA DET') ? 25 :
-                                        tipo.includes('PLA GEN') ? 20 :
-                                        tipo.includes('REU INT') ? 1 :
-                                        tipo.includes('REU CTTAL') ? 1 :
-                                        tipo.includes('VIS') ? 25 : 20;
-                          return sum + (precio * cantidad * (esCobroUnico ? 1 : revFactor));
+                          const receta = matchReceta(tipo, recetas);
+                          const precioUnit = esCobroUnico ? (tipo.includes('VIS') ? 25 : 1) : (receta ? calcPrecioVenta(receta, tarifas) : 20);
+                          return sum + (precioUnit * cantidad * (esCobroUnico ? 1 : revFactor));
                         }, 0) : 0;
-                        const conFactor = subtotal * 1.34;
-                        const iva = conFactor * 0.19;
-                        const total = conFactor + iva;
+                        const factorSimp = cotSimplificado ? 0.8 : 1.0;
+                        const factorDesc = 1 - (cotDescuento / 100);
+                        const subtotalAplicado = subtotalVenta * factorSimp * factorDesc;
+                        const iva = subtotalAplicado * 0.19;
+                        const total = subtotalAplicado + iva;
                         return (
                           <>
                             <tr>
-                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>Subtotal{revFactor < 1 ? ` (${(revFactor * 100).toFixed(0)}%)` : ''}</td>
-                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>{subtotal.toFixed(1)} UF</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>Subtotal</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>{subtotalVenta.toFixed(1)} UF</td>
                             </tr>
+                            {cotDescuento > 0 && (
+                              <tr>
+                                <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px', color: '#059669' }}>Tarifa de lanzamiento (−{cotDescuento}%)</td>
+                                <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px', color: '#059669' }}>−{(subtotalVenta * factorSimp * (cotDescuento / 100)).toFixed(1)} UF</td>
+                              </tr>
+                            )}
                             <tr>
-                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>Markup 1,34</td>
-                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', background: '#fff7ed', fontSize: '13px', color: '#E86B11' }}>{conFactor.toFixed(1)} UF</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>Neto</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', background: '#fff7ed', fontSize: '13px', color: '#E86B11' }}>{subtotalAplicado.toFixed(1)} UF</td>
                             </tr>
                             <tr>
                               <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>IVA (19%)</td>
@@ -4786,6 +4901,7 @@ ${cotHtml}
             <div className="flex gap-2 mb-6 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto">
               {[
                 { id: 'profesionales', label: 'Profesionales', icon: Users },
+                { id: 'tarifas', label: 'Tarifas & Recetas', icon: DollarSign },
                 { id: 'plazos', label: 'Plazos', icon: Calendar },
                 { id: 'seguridad', label: 'Seguridad', icon: Lock },
                 { id: 'backup', label: 'Backup', icon: Database },
@@ -5003,6 +5119,136 @@ ${cotHtml}
                     </Card>
                   );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Tarifas & Recetas */}
+            {configTab === 'tarifas' && (
+              <div className="space-y-6">
+                {/* Tarjeta de Tarifas */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="text-neutral-800 dark:text-neutral-100 font-semibold">Tarjeta de Tarifas</h3>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">UF por hora-hombre de cada rol. Los cambios aplican a futuras COT.</p>
+                    </div>
+                    <button onClick={() => setTarifas(DEFAULT_TARIFAS)} className="text-xs text-orange-600 hover:text-orange-700 font-medium">
+                      Restaurar defaults
+                    </button>
+                  </div>
+                  <div className="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-neutral-100 dark:bg-neutral-700">
+                          <th className="text-left px-4 py-2 text-neutral-600 dark:text-neutral-300 font-medium">Rol</th>
+                          <th className="text-center px-4 py-2 text-neutral-600 dark:text-neutral-300 font-medium">Tarifa Venta (UF/HH)</th>
+                          <th className="text-center px-4 py-2 text-neutral-600 dark:text-neutral-300 font-medium">Tarifa Costo (UF/HH)</th>
+                          <th className="text-center px-4 py-2 text-neutral-600 dark:text-neutral-300 font-medium">Margen</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tarifas.map((t, i) => (
+                          <tr key={t.id} className={i % 2 === 0 ? '' : 'bg-neutral-50 dark:bg-neutral-800/50'}>
+                            <td className="px-4 py-2 font-medium text-neutral-800 dark:text-neutral-100">{t.nombre}</td>
+                            <td className="px-4 py-2 text-center">
+                              <input type="number" step="0.05" value={t.tarifaVenta}
+                                onChange={e => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  setTarifas(prev => prev.map(x => x.id === t.id ? { ...x, tarifaVenta: val } : x));
+                                }}
+                                className="w-20 text-center px-2 py-1 border border-neutral-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <input type="number" step="0.05" value={t.tarifaCosto}
+                                onChange={e => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  setTarifas(prev => prev.map(x => x.id === t.id ? { ...x, tarifaCosto: val } : x));
+                                }}
+                                className="w-20 text-center px-2 py-1 border border-neutral-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <span className={`text-sm font-semibold ${t.tarifaVenta > t.tarifaCosto ? 'text-green-600' : 'text-red-500'}`}>
+                                {t.tarifaVenta > 0 ? ((1 - t.tarifaCosto / t.tarifaVenta) * 100).toFixed(0) : 0}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Recetas por Entregable */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="text-neutral-800 dark:text-neutral-100 font-semibold">Recetas por Entregable</h3>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">Horas-hombre por rol para cada tipo de entregable. Define el precio unitario.</p>
+                    </div>
+                    <button onClick={() => setRecetas(DEFAULT_RECETAS)} className="text-xs text-orange-600 hover:text-orange-700 font-medium">
+                      Restaurar defaults
+                    </button>
+                  </div>
+                  <div className="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-neutral-100 dark:bg-neutral-700">
+                          <th className="text-left px-3 py-2 text-neutral-600 dark:text-neutral-300 font-medium">Entregable</th>
+                          {tarifas.map(t => (
+                            <th key={t.id} className="text-center px-2 py-2 text-neutral-600 dark:text-neutral-300 font-medium text-xs">{t.nombre.split('/')[0].split(' ').slice(0, 2).join(' ')}</th>
+                          ))}
+                          <th className="text-center px-2 py-2 text-neutral-600 dark:text-neutral-300 font-medium">Total HH</th>
+                          <th className="text-center px-2 py-2 text-neutral-600 dark:text-neutral-300 font-medium">Venta UF</th>
+                          <th className="text-center px-2 py-2 text-neutral-600 dark:text-neutral-300 font-medium">Costo UF</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recetas.map((r, i) => {
+                          const ventaUF = calcPrecioVenta(r, tarifas);
+                          const costoUF = calcCostoInterno(r, tarifas);
+                          const totalHH = calcTotalHH(r);
+                          return (
+                            <tr key={r.id} className={i % 2 === 0 ? '' : 'bg-neutral-50 dark:bg-neutral-800/50'}>
+                              <td className="px-3 py-2 font-medium text-neutral-800 dark:text-neutral-100">{r.nombre}</td>
+                              {tarifas.map(t => (
+                                <td key={t.id} className="px-2 py-2 text-center">
+                                  <input type="number" step="1" value={r.hh[t.id] || 0}
+                                    onChange={e => {
+                                      const val = parseInt(e.target.value) || 0;
+                                      setRecetas(prev => prev.map(x => x.id === r.id ? { ...x, hh: { ...x.hh, [t.id]: val } } : x));
+                                    }}
+                                    className="w-12 text-center px-1 py-1 border border-neutral-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                </td>
+                              ))}
+                              <td className="px-2 py-2 text-center font-semibold text-neutral-700 dark:text-neutral-200">{totalHH}</td>
+                              <td className="px-2 py-2 text-center font-semibold text-orange-600">{ventaUF.toFixed(2)}</td>
+                              <td className="px-2 py-2 text-center font-semibold text-red-500">{costoUF.toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Resumen de precios resultantes */}
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                  <h4 className="text-orange-800 dark:text-orange-300 font-medium text-sm mb-3">Precios resultantes por unidad</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    {recetas.map(r => {
+                      const venta = calcPrecioVenta(r, tarifas);
+                      const costo = calcCostoInterno(r, tarifas);
+                      const margen = venta > 0 ? ((venta - costo) / venta * 100) : 0;
+                      return (
+                        <div key={r.id} className="text-center p-3 bg-white dark:bg-neutral-800 rounded-lg">
+                          <p className="text-xs text-neutral-500 mb-1">{r.nombre}</p>
+                          <p className="text-xl font-bold text-orange-600">{venta.toFixed(2)} UF</p>
+                          <p className="text-xs text-neutral-500">Costo: {costo.toFixed(2)} UF | Margen: <span className="text-green-600 font-medium">{margen.toFixed(0)}%</span></p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

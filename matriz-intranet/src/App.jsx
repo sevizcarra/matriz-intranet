@@ -958,6 +958,13 @@ export default function MatrizIntranet() {
   const [cotViewingId, setCotViewingId] = useState(null);
   // Modo: 'crear' = formulario nueva COT, 'lista' = listado guardadas, 'editar' = editando COT existente
   const [cotMode, setCotMode] = useState('lista');
+  // Control manual de revisiones COT
+  const [cotRevAEnabled, setCotRevAEnabled] = useState(true);
+  const [cotRevBEnabled, setCotRevBEnabled] = useState(true);
+  const [cotRev0Enabled, setCotRev0Enabled] = useState(true);
+  const [cotRevAPercent, setCotRevAPercent] = useState(70);
+  const [cotRevBPercent, setCotRevBPercent] = useState(20);
+  const [cotRev0Percent, setCotRev0Percent] = useState(10);
 
   // Duraciones editables por tipo de documento (días hábiles para REV_A)
   const [duracionesPorTipo, setDuracionesPorTipo] = useState({ ...DURACION_POR_TIPO_DEFAULT });
@@ -3866,6 +3873,8 @@ export default function MatrizIntranet() {
                     setCotExcelData(null);
                     setCotExcelFileName('');
                     setCotFirma(null);
+                    setCotRevAEnabled(true); setCotRevBEnabled(true); setCotRev0Enabled(true);
+                    setCotRevAPercent(70); setCotRevBPercent(20); setCotRev0Percent(10);
                     setCotMode('crear');
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium"
@@ -3896,11 +3905,15 @@ export default function MatrizIntranet() {
                 ) : (
                   <div className="space-y-3">
                     {cotizaciones.sort((a, b) => (b.fechaCreacion || '').localeCompare(a.fechaCreacion || '')).map(cot => {
+                      const rA = cot.revAEnabled !== false; const rB = cot.revBEnabled !== false; const r0 = cot.rev0Enabled !== false;
+                      const pA = cot.revAPercent ?? 70; const pB = cot.revBPercent ?? 20; const p0 = cot.rev0Percent ?? 10;
+                      const revFactor = ((rA ? pA : 0) + (rB ? pB : 0) + (r0 ? p0 : 0)) / 100;
                       const subtotal = cot.excelData ? cot.excelData.slice(1).filter(r => r[0] && r[3]).reduce((sum, r) => {
                         const t = (r[1] || 'PLA GEN').toUpperCase();
                         const cant = parseInt(r[4]) || 1;
+                        const esCobroUnico = t.includes('VIS') || t.includes('REU INT') || t.includes('REU CTTAL');
                         const p = t.includes('DOC') ? 30 : t.includes('PLA DET') ? 25 : t.includes('PLA GEN') ? 20 : t.includes('REU INT') ? 1 : t.includes('REU CTTAL') ? 1 : t.includes('VIS') ? 25 : 20;
-                        return sum + (p * cant);
+                        return sum + (p * cant * (esCobroUnico ? 1 : revFactor));
                       }, 0) : 0;
                       const total = (subtotal * 1.34 * 1.19);
                       const items = cot.excelData ? cot.excelData.slice(1).filter(r => r[0] && r[3]).length : 0;
@@ -3930,6 +3943,8 @@ export default function MatrizIntranet() {
                                   setCotExcelData(cot.excelData || null);
                                   setCotExcelFileName(cot.excelFileName || '');
                                   setCotFirma(cot.firmada || false);
+                                  setCotRevAEnabled(cot.revAEnabled !== false); setCotRevBEnabled(cot.revBEnabled !== false); setCotRev0Enabled(cot.rev0Enabled !== false);
+                                  setCotRevAPercent(cot.revAPercent ?? 70); setCotRevBPercent(cot.revBPercent ?? 20); setCotRev0Percent(cot.rev0Percent ?? 10);
                                   setCotShowPreview(true);
                                   setCotViewingId(cot._docId);
                                 }}
@@ -3945,6 +3960,8 @@ export default function MatrizIntranet() {
                                   setCotExcelData(cot.excelData || null);
                                   setCotExcelFileName(cot.excelFileName || '');
                                   setCotFirma(cot.firmada || false);
+                                  setCotRevAEnabled(cot.revAEnabled !== false); setCotRevBEnabled(cot.revBEnabled !== false); setCotRev0Enabled(cot.rev0Enabled !== false);
+                                  setCotRevAPercent(cot.revAPercent ?? 70); setCotRevBPercent(cot.revBPercent ?? 20); setCotRev0Percent(cot.rev0Percent ?? 10);
                                   setCotViewingId(cot._docId);
                                   setCotMode('editar');
                                 }}
@@ -4103,26 +4120,73 @@ export default function MatrizIntranet() {
                 </div>
               )}
 
-              {/* Resumen de forma de pago */}
+              {/* Forma de pago - Control de revisiones */}
               <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-                <h4 className="text-orange-800 dark:text-orange-300 font-medium text-sm mb-2">Forma de Pago (por revisiones)</h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold text-orange-600">70%</p>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_A</p>
+                <h4 className="text-orange-800 dark:text-orange-300 font-medium text-sm mb-3">Forma de Pago (por revisiones)</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {/* REV_A */}
+                  <div className={`text-center p-3 rounded-lg border transition-all ${cotRevAEnabled ? 'border-orange-300 dark:border-orange-700 bg-white dark:bg-neutral-800' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 opacity-50'}`}>
+                    <label className="flex items-center justify-center gap-2 cursor-pointer mb-2">
+                      <input type="checkbox" checked={cotRevAEnabled} onChange={e => setCotRevAEnabled(e.target.checked)}
+                        className="w-4 h-4 accent-orange-600 rounded cursor-pointer" />
+                      <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">REV_A</span>
+                    </label>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <input type="number" value={cotRevAPercent} onChange={e => setCotRevAPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        disabled={!cotRevAEnabled}
+                        className="w-14 text-center text-2xl font-bold text-orange-600 bg-transparent border-b-2 border-orange-300 dark:border-orange-700 focus:outline-none focus:border-orange-500 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        min="0" max="100" />
+                      <span className="text-lg font-bold text-orange-600">%</span>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-orange-600">20%</p>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_B</p>
+                  {/* REV_B */}
+                  <div className={`text-center p-3 rounded-lg border transition-all ${cotRevBEnabled ? 'border-orange-300 dark:border-orange-700 bg-white dark:bg-neutral-800' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 opacity-50'}`}>
+                    <label className="flex items-center justify-center gap-2 cursor-pointer mb-2">
+                      <input type="checkbox" checked={cotRevBEnabled} onChange={e => setCotRevBEnabled(e.target.checked)}
+                        className="w-4 h-4 accent-orange-600 rounded cursor-pointer" />
+                      <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">REV_B</span>
+                    </label>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <input type="number" value={cotRevBPercent} onChange={e => setCotRevBPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        disabled={!cotRevBEnabled}
+                        className="w-14 text-center text-2xl font-bold text-orange-600 bg-transparent border-b-2 border-orange-300 dark:border-orange-700 focus:outline-none focus:border-orange-500 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        min="0" max="100" />
+                      <span className="text-lg font-bold text-orange-600">%</span>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-orange-600">10%</p>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-400">REV_0</p>
+                  {/* REV_0 */}
+                  <div className={`text-center p-3 rounded-lg border transition-all ${cotRev0Enabled ? 'border-orange-300 dark:border-orange-700 bg-white dark:bg-neutral-800' : 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 opacity-50'}`}>
+                    <label className="flex items-center justify-center gap-2 cursor-pointer mb-2">
+                      <input type="checkbox" checked={cotRev0Enabled} onChange={e => setCotRev0Enabled(e.target.checked)}
+                        className="w-4 h-4 accent-orange-600 rounded cursor-pointer" />
+                      <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">REV_0</span>
+                    </label>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <input type="number" value={cotRev0Percent} onChange={e => setCotRev0Percent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        disabled={!cotRev0Enabled}
+                        className="w-14 text-center text-2xl font-bold text-orange-600 bg-transparent border-b-2 border-orange-300 dark:border-orange-700 focus:outline-none focus:border-orange-500 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        min="0" max="100" />
+                      <span className="text-lg font-bold text-orange-600">%</span>
+                    </div>
                   </div>
                 </div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 text-center">
-                  Validez: 90 días | Revisiones posteriores mantienen valor REV_0
-                </p>
+                {(() => {
+                  const enabledSum = (cotRevAEnabled ? cotRevAPercent : 0) + (cotRevBEnabled ? cotRevBPercent : 0) + (cotRev0Enabled ? cotRev0Percent : 0);
+                  const allEnabled = cotRevAEnabled && cotRevBEnabled && cotRev0Enabled;
+                  return (
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 text-center">
+                      Validez: 90 días | Revisiones posteriores mantienen valor REV_0
+                      {enabledSum !== 100 && (
+                        <span className={`ml-2 font-medium ${enabledSum > 100 ? 'text-red-500' : 'text-amber-600'}`}>
+                          — Total revisiones: {enabledSum}%
+                        </span>
+                      )}
+                      {!allEnabled && (
+                        <span className="ml-2 text-blue-500 font-medium">— Cotización parcial</span>
+                      )}
+                    </p>
+                  );
+                })()}
               </div>
 
               {/* Botones Crear COT / Guardar + Ver Preview */}
@@ -4144,6 +4208,8 @@ export default function MatrizIntranet() {
                       excelDataJson: JSON.stringify(cleanExcelData),
                       excelFileName: cotExcelFileName || '',
                       firmada: !!cotFirma,
+                      revAEnabled: cotRevAEnabled, revBEnabled: cotRevBEnabled, rev0Enabled: cotRev0Enabled,
+                      revAPercent: cotRevAPercent, revBPercent: cotRevBPercent, rev0Percent: cotRev0Percent,
                       fechaCreacion: cotMode === 'editar' && cotViewingId ? (cotizaciones.find(c => c._docId === cotViewingId)?.fechaCreacion || new Date().toISOString()) : new Date().toISOString(),
                       fechaModificacion: new Date().toISOString(),
                     };
@@ -4161,6 +4227,8 @@ export default function MatrizIntranet() {
                       setCotExcelFileName('');
                       setCotFirma(null);
                       setCotViewingId(null);
+                      setCotRevAEnabled(true); setCotRevBEnabled(true); setCotRev0Enabled(true);
+                      setCotRevAPercent(70); setCotRevBPercent(20); setCotRev0Percent(10);
                     } else {
                       showNotification('error', 'Error al guardar la cotización');
                     }
@@ -4294,9 +4362,9 @@ ${cotHtml}
                         <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '4px 0 0 0' }}>N°</th>
                         <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Descripción</th>
                         <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tipo</th>
-                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_A (70%)</th>
-                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_B (20%)</th>
-                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_0 (10%)</th>
+                        {cotRevAEnabled && <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_A ({cotRevAPercent}%)</th>}
+                        {cotRevBEnabled && <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_B ({cotRevBPercent}%)</th>}
+                        {cotRev0Enabled && <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_0 ({cotRev0Percent}%)</th>}
                         <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '0 4px 0 0' }}>Total UF</th>
                       </tr>
                     </thead>
@@ -4320,33 +4388,45 @@ ${cotHtml}
                             <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center' }}>
                               <span style={{ background: esCobroUnico ? '#dbeafe' : '#fff7ed', color: esCobroUnico ? '#1e40af' : '#D15E0E', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600' }}>{tipo}</span>
                             </td>
-                            {esCobroUnico ? (
-                              <>
-                                <td colSpan="3" style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center', color: '#888', fontSize: '10px', fontStyle: 'italic' }}>Cobro único</td>
-                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{precioTotal}</td>
-                              </>
-                            ) : (
-                              <>
-                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * 0.7).toFixed(1)}</td>
-                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * 0.2).toFixed(1)}</td>
-                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * 0.1).toFixed(1)}</td>
-                                <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{precioTotal}</td>
-                              </>
-                            )}
+                            {(() => {
+                              const enabledRevCount = (cotRevAEnabled ? 1 : 0) + (cotRevBEnabled ? 1 : 0) + (cotRev0Enabled ? 1 : 0);
+                              const revFactor = ((cotRevAEnabled ? cotRevAPercent : 0) + (cotRevBEnabled ? cotRevBPercent : 0) + (cotRev0Enabled ? cotRev0Percent : 0)) / 100;
+                              const itemTotal = esCobroUnico ? precioTotal : (precioTotal * revFactor);
+                              if (esCobroUnico) {
+                                return (
+                                  <>
+                                    {enabledRevCount > 0 && <td colSpan={enabledRevCount} style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center', color: '#888', fontSize: '10px', fontStyle: 'italic' }}>Cobro único</td>}
+                                    <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{precioTotal}</td>
+                                  </>
+                                );
+                              }
+                              return (
+                                <>
+                                  {cotRevAEnabled && <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * cotRevAPercent / 100).toFixed(1)}</td>}
+                                  {cotRevBEnabled && <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * cotRevBPercent / 100).toFixed(1)}</td>}
+                                  {cotRev0Enabled && <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * cotRev0Percent / 100).toFixed(1)}</td>}
+                                  <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{itemTotal.toFixed(1)}</td>
+                                </>
+                              );
+                            })()}
                           </tr>
                         );
                       })}
                       {(() => {
+                        const revFactor = ((cotRevAEnabled ? cotRevAPercent : 0) + (cotRevBEnabled ? cotRevBPercent : 0) + (cotRev0Enabled ? cotRev0Percent : 0)) / 100;
+                        const enabledRevCount = (cotRevAEnabled ? 1 : 0) + (cotRevBEnabled ? 1 : 0) + (cotRev0Enabled ? 1 : 0);
+                        const colSpanTotal = 3 + enabledRevCount; // N° + Desc + Tipo + enabled revs
                         const subtotal = cotExcelData ? cotExcelData.slice(1).filter(row => row[0] && row[3]).reduce((sum, row) => {
                           const tipo = (row[1] || 'PLA GEN').toUpperCase();
                           const cantidad = parseInt(row[4]) || 1;
+                          const esCobroUnico = tipo.includes('VIS') || tipo.includes('REU INT') || tipo.includes('REU CTTAL');
                           const precio = tipo.includes('DOC') ? 30 :
                                         tipo.includes('PLA DET') ? 25 :
                                         tipo.includes('PLA GEN') ? 20 :
                                         tipo.includes('REU INT') ? 1 :
                                         tipo.includes('REU CTTAL') ? 1 :
                                         tipo.includes('VIS') ? 25 : 20;
-                          return sum + (precio * cantidad);
+                          return sum + (precio * cantidad * (esCobroUnico ? 1 : revFactor));
                         }, 0) : 0;
                         const conFactor = subtotal * 1.34;
                         const iva = conFactor * 0.19;
@@ -4354,19 +4434,19 @@ ${cotHtml}
                         return (
                           <>
                             <tr>
-                              <td colSpan="6" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>Subtotal</td>
-                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>{subtotal} UF</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>Subtotal{revFactor < 1 ? ` (${(revFactor * 100).toFixed(0)}%)` : ''}</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>{subtotal.toFixed(1)} UF</td>
                             </tr>
                             <tr>
-                              <td colSpan="6" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>Markup 1,34</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>Markup 1,34</td>
                               <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', background: '#fff7ed', fontSize: '13px', color: '#E86B11' }}>{conFactor.toFixed(1)} UF</td>
                             </tr>
                             <tr>
-                              <td colSpan="6" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>IVA (19%)</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>IVA (19%)</td>
                               <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>{iva.toFixed(1)} UF</td>
                             </tr>
                             <tr className="total-row">
-                              <td colSpan="6" style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#E86B11', color: 'white', fontSize: '13px' }}>TOTAL PROPUESTA</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#E86B11', color: 'white', fontSize: '13px' }}>TOTAL PROPUESTA</td>
                               <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#E86B11', color: 'white', fontSize: '15px' }}>{total.toFixed(1)} UF</td>
                             </tr>
                           </>
@@ -4381,7 +4461,7 @@ ${cotHtml}
                   <div style={{ background: '#f8f8f8', borderRadius: '8px', padding: '16px 20px', border: '1px solid #e8e8e8' }}>
                     <div style={{ fontSize: '10px', fontWeight: '700', color: '#E86B11', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '10px' }}>Condiciones Comerciales</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: '11px', color: '#555' }}>
-                      <div><strong style={{ color: '#333' }}>Forma de Pago:</strong> REV_A (70%) al envío, REV_B (20%) al envío, REV_0 (10%) al envío</div>
+                      <div><strong style={{ color: '#333' }}>Forma de Pago:</strong> {[cotRevAEnabled && `REV_A (${cotRevAPercent}%) al envío`, cotRevBEnabled && `REV_B (${cotRevBPercent}%) al envío`, cotRev0Enabled && `REV_0 (${cotRev0Percent}%) al envío`].filter(Boolean).join(', ')}</div>
                       <div><strong style={{ color: '#333' }}>Validez de la Oferta:</strong> 90 días corridos desde la fecha de emisión</div>
                       <div><strong style={{ color: '#333' }}>Plazo de Entrega:</strong> A coordinar según alcance del proyecto</div>
                       <div><strong style={{ color: '#333' }}>Revisiones Adicionales:</strong> Se valorarán al valor de REV_0</div>

@@ -824,24 +824,6 @@ export default function MatrizIntranet() {
   }, []);
 
   // ============================================
-  // AUTO-GUARDADO: Tarifas y Recetas en Firestore
-  // ============================================
-  const tarifasInitRef = React.useRef(false);
-  const recetasInitRef = React.useRef(false);
-  useEffect(() => {
-    if (!firestoreReady) return;
-    if (!tarifasInitRef.current) { tarifasInitRef.current = true; return; }
-    const timer = setTimeout(() => { saveTarifas(tarifas); }, 500);
-    return () => clearTimeout(timer);
-  }, [tarifas, firestoreReady]);
-  useEffect(() => {
-    if (!firestoreReady) return;
-    if (!recetasInitRef.current) { recetasInitRef.current = true; return; }
-    const timer = setTimeout(() => { saveRecetas(recetas); }, 500);
-    return () => clearTimeout(timer);
-  }, [recetas, firestoreReady]);
-
-  // ============================================
   // PRESENCIA - Heartbeat y tracking de página
   // ============================================
   useEffect(() => {
@@ -1060,6 +1042,22 @@ export default function MatrizIntranet() {
   const [cotDescuento, setCotDescuento] = useState(0); // % descuento lanzamiento
   const [tarifas, setTarifas] = useState(DEFAULT_TARIFAS);
   const [recetas, setRecetas] = useState(DEFAULT_RECETAS);
+
+  // AUTO-GUARDADO: Tarifas y Recetas en Firestore
+  const tarifasInitRef = React.useRef(false);
+  const recetasInitRef = React.useRef(false);
+  useEffect(() => {
+    if (!firestoreReady) return;
+    if (!tarifasInitRef.current) { tarifasInitRef.current = true; return; }
+    const timer = setTimeout(() => { saveTarifas(tarifas); }, 500);
+    return () => clearTimeout(timer);
+  }, [tarifas, firestoreReady]);
+  useEffect(() => {
+    if (!firestoreReady) return;
+    if (!recetasInitRef.current) { recetasInitRef.current = true; return; }
+    const timer = setTimeout(() => { saveRecetas(recetas); }, 500);
+    return () => clearTimeout(timer);
+  }, [recetas, firestoreReady]);
 
   // Duraciones editables por tipo de documento (días hábiles para REV_A)
   const [duracionesPorTipo, setDuracionesPorTipo] = useState({ ...DURACION_POR_TIPO_DEFAULT });

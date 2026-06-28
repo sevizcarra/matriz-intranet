@@ -4438,9 +4438,10 @@ export default function MatrizIntranet() {
                       const pw = window.open('','_blank');
                       pw.document.write(`<html><head><title>AFOR — Propuesta ${cotCliente}</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 @page { size: A4 portrait; margin: 12mm 10mm; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; color: #1a1a1a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; color: #0a0a0a; background: #fafaf7; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .no-print { display: none !important; }
 table { page-break-inside: auto; }
 tr { page-break-inside: avoid; }
@@ -4467,50 +4468,60 @@ ${cotHtml}
                 </div>
               </div>
 
-              {/* Contenido del Preview - formato apaisado AFOR */}
-              <div id="cotizacion-preview" style={{ minWidth: '900px', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
-                {/* Franja naranja superior */}
-                <div style={{ height: '6px', background: 'linear-gradient(90deg, #E86B11, #D15E0E)' }}></div>
-                {/* Header con logo real */}
-                <div style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
-                  <img src="/logo-afor.png" alt="AFOR" style={{ height: '60px' }} />
-                  <div style={{ textAlign: 'right', fontSize: '12px', color: '#666' }}>
-                    <div style={{ fontSize: '10px', color: '#999', textTransform: 'uppercase', letterSpacing: '1px' }}>Fecha de emisión</div>
-                    <div style={{ fontWeight: '600', fontSize: '13px', color: '#333' }}>{new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
-                  </div>
-                </div>
+              {/* Contenido del Preview - estilo afor.cl */}
+              <div id="cotizacion-preview" style={{ minWidth: '900px', fontFamily: "'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif", color: '#0a0a0a', background: '#fafaf7' }}>
+                {/* Línea accent superior */}
+                <div style={{ height: '3px', background: '#b8470a' }}></div>
 
-                {/* Info proyecto y cliente */}
-                <div style={{ padding: '20px 40px', background: '#fafafa', borderBottom: '1px solid #e5e5e5', display: 'flex', justifyContent: 'space-between' }}>
+                {/* Header minimalista */}
+                <div style={{ padding: '32px 48px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Proyecto</div>
-                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a' }}>{cotProyectoNombre || '—'}</div>
+                    <img src="/logo-afor.png" alt="AFOR" style={{ height: '44px', marginBottom: '6px' }} />
+                    <div style={{ fontSize: '10px', color: '#7a7a78', letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: '500' }}>Propuesta de Servicios Profesionales</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Cliente</div>
-                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a' }}>{cotCliente || '—'}</div>
+                    <div style={{ fontSize: '9px', color: '#7a7a78', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: '600', marginBottom: '4px' }}>Fecha</div>
+                    <div style={{ fontWeight: '500', fontSize: '13px', color: '#0a0a0a' }}>{new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
                   </div>
                 </div>
 
-                {/* Título sección */}
-                <div style={{ padding: '20px 40px 10px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#E86B11', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px', borderBottom: '2px solid #E86B11', paddingBottom: '6px', display: 'inline-block' }}>
-                    Alcance y Valorización
+                {/* Separador fino */}
+                <div style={{ margin: '0 48px', height: '1px', background: '#e8e6e1' }}></div>
+
+                {/* Info proyecto y cliente - estilo elegante */}
+                <div style={{ padding: '24px 48px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#7a7a78', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: '600', marginBottom: '6px' }}>Proyecto</div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#0a0a0a', letterSpacing: '-0.3px', lineHeight: '1.2' }}>{cotProyectoNombre || '—'}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '9px', color: '#7a7a78', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: '600', marginBottom: '6px' }}>Cliente</div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#0a0a0a', letterSpacing: '-0.3px', lineHeight: '1.2' }}>{cotCliente || '—'}</div>
                   </div>
                 </div>
 
-                {/* Tabla de items */}
-                <div style={{ padding: '0 40px 16px' }}>
+                {/* Título sección con acento */}
+                <div style={{ padding: '12px 48px 8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '28px', height: '2px', background: '#b8470a' }}></div>
+                    <div style={{ fontSize: '10px', fontWeight: '600', color: '#b8470a', textTransform: 'uppercase', letterSpacing: '2px' }}>
+                      Alcance y Valorización
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tabla de items - estilo limpio */}
+                <div style={{ padding: '12px 48px 20px' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                     <thead>
                       <tr>
-                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '4px 0 0 0' }}>N°</th>
-                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'left', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Descripción</th>
-                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tipo</th>
-                        {cotRevAEnabled && <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_A ({cotRevAPercent}%)</th>}
-                        {cotRevBEnabled && <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_B ({cotRevBPercent}%)</th>}
-                        {cotRev0Enabled && <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REV_0 ({cotRev0Percent}%)</th>}
-                        <th style={{ background: '#E86B11', color: 'white', padding: '8px 10px', textAlign: 'right', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderRadius: '0 4px 0 0' }}>Total UF</th>
+                        <th style={{ background: '#0a0a0a', color: '#fafaf7', padding: '10px 12px', textAlign: 'left', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>N°</th>
+                        <th style={{ background: '#0a0a0a', color: '#fafaf7', padding: '10px 12px', textAlign: 'left', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Descripción</th>
+                        <th style={{ background: '#0a0a0a', color: '#fafaf7', padding: '10px 12px', textAlign: 'center', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Tipo</th>
+                        {cotRevAEnabled && <th style={{ background: '#0a0a0a', color: '#fafaf7', padding: '10px 12px', textAlign: 'right', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>REV_A ({cotRevAPercent}%)</th>}
+                        {cotRevBEnabled && <th style={{ background: '#0a0a0a', color: '#fafaf7', padding: '10px 12px', textAlign: 'right', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>REV_B ({cotRevBPercent}%)</th>}
+                        {cotRev0Enabled && <th style={{ background: '#0a0a0a', color: '#fafaf7', padding: '10px 12px', textAlign: 'right', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>REV_0 ({cotRev0Percent}%)</th>}
+                        <th style={{ background: '#0a0a0a', color: '#fafaf7', padding: '10px 12px', textAlign: 'right', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Total UF</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4521,13 +4532,13 @@ ${cotHtml}
                         const receta = matchReceta(tipo, recetas);
                         const precioUnit = esCobroUnico ? (tipo.includes('VIS') ? 25 : 1) : (receta ? calcPrecioVenta(receta, tarifas) : 20);
                         const precioTotal = precioUnit * cantidad;
-                        const bg = idx % 2 === 0 ? '#ffffff' : '#fafafa';
+                        const bg = idx % 2 === 0 ? '#fafaf7' : '#f2f0eb';
                         return (
                           <tr key={idx} style={{ background: bg }}>
-                            <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', color: '#666', fontSize: '11px' }}>{row[0]}</td>
-                            <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', fontWeight: '500' }}>{row[3]}</td>
-                            <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-                              <span style={{ background: esCobroUnico ? '#dbeafe' : '#fff7ed', color: esCobroUnico ? '#1e40af' : '#D15E0E', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600' }}>{tipo}</span>
+                            <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', color: '#7a7a78', fontSize: '11px', fontWeight: '500' }}>{row[0]}</td>
+                            <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', fontWeight: '500', color: '#0a0a0a' }}>{row[3]}</td>
+                            <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', textAlign: 'center' }}>
+                              <span style={{ background: esCobroUnico ? '#e8e6e1' : 'transparent', color: esCobroUnico ? '#3a3a38' : '#b8470a', padding: '2px 10px', borderRadius: '2px', fontSize: '9px', fontWeight: '600', letterSpacing: '0.5px', border: esCobroUnico ? 'none' : '1px solid #b8470a' }}>{tipo}</span>
                             </td>
                             {(() => {
                               const enabledRevCount = (cotRevAEnabled ? 1 : 0) + (cotRevBEnabled ? 1 : 0) + (cotRev0Enabled ? 1 : 0);
@@ -4536,17 +4547,17 @@ ${cotHtml}
                               if (esCobroUnico) {
                                 return (
                                   <>
-                                    {enabledRevCount > 0 && <td colSpan={enabledRevCount} style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'center', color: '#888', fontSize: '10px', fontStyle: 'italic' }}>Cobro único</td>}
-                                    <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{precioTotal.toFixed(1)}</td>
+                                    {enabledRevCount > 0 && <td colSpan={enabledRevCount} style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', textAlign: 'center', color: '#7a7a78', fontSize: '10px', fontStyle: 'italic' }}>Cobro único</td>}
+                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', textAlign: 'right', fontWeight: '600', color: '#0a0a0a' }}>{precioTotal.toFixed(1)}</td>
                                   </>
                                 );
                               }
                               return (
                                 <>
-                                  {cotRevAEnabled && <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * cotRevAPercent / 100).toFixed(1)}</td>}
-                                  {cotRevBEnabled && <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * cotRevBPercent / 100).toFixed(1)}</td>}
-                                  {cotRev0Enabled && <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right' }}>{(precioTotal * cotRev0Percent / 100).toFixed(1)}</td>}
-                                  <td style={{ padding: '7px 10px', borderBottom: '1px solid #eee', textAlign: 'right', fontWeight: '600' }}>{itemTotal.toFixed(1)}</td>
+                                  {cotRevAEnabled && <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', textAlign: 'right', color: '#3a3a38' }}>{(precioTotal * cotRevAPercent / 100).toFixed(1)}</td>}
+                                  {cotRevBEnabled && <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', textAlign: 'right', color: '#3a3a38' }}>{(precioTotal * cotRevBPercent / 100).toFixed(1)}</td>}
+                                  {cotRev0Enabled && <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', textAlign: 'right', color: '#3a3a38' }}>{(precioTotal * cotRev0Percent / 100).toFixed(1)}</td>}
+                                  <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', textAlign: 'right', fontWeight: '600', color: '#0a0a0a' }}>{itemTotal.toFixed(1)}</td>
                                 </>
                               );
                             })()}
@@ -4572,27 +4583,29 @@ ${cotHtml}
                         const total = subtotalAplicado + iva;
                         return (
                           <>
+                            {/* Spacer row */}
+                            <tr><td colSpan={colSpanTotal + 1} style={{ height: '4px' }}></td></tr>
                             <tr>
-                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>Subtotal</td>
-                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #E86B11', background: '#fff7ed', fontSize: '12px' }}>{subtotalVenta.toFixed(1)} UF</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#3a3a38', borderTop: '1px solid #0a0a0a' }}>Subtotal</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', fontSize: '12px', color: '#0a0a0a', borderTop: '1px solid #0a0a0a' }}>{subtotalVenta.toFixed(1)} UF</td>
                             </tr>
                             {cotDescuento > 0 && (
                               <tr>
-                                <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px', color: '#059669' }}>Tarifa de lanzamiento (−{cotDescuento}%)</td>
-                                <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px', color: '#059669' }}>−{(subtotalVenta * factorSimp * (cotDescuento / 100)).toFixed(1)} UF</td>
+                                <td colSpan={colSpanTotal} style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#b8470a' }}>Tarifa de lanzamiento (−{cotDescuento}%)</td>
+                                <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '600', fontSize: '12px', color: '#b8470a' }}>−{(subtotalVenta * factorSimp * (cotDescuento / 100)).toFixed(1)} UF</td>
                               </tr>
                             )}
                             <tr>
-                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>Neto</td>
-                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', background: '#fff7ed', fontSize: '13px', color: '#E86B11' }}>{subtotalAplicado.toFixed(1)} UF</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#3a3a38' }}>Neto</td>
+                              <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '600', fontSize: '13px', color: '#0a0a0a' }}>{subtotalAplicado.toFixed(1)} UF</td>
                             </tr>
                             <tr>
-                              <td colSpan={colSpanTotal} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>IVA (19%)</td>
-                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', background: '#fff7ed', fontSize: '12px' }}>{iva.toFixed(1)} UF</td>
+                              <td colSpan={colSpanTotal} style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#7a7a78' }}>IVA (19%)</td>
+                              <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#7a7a78' }}>{iva.toFixed(1)} UF</td>
                             </tr>
-                            <tr className="total-row">
-                              <td colSpan={colSpanTotal} style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#E86B11', color: 'white', fontSize: '13px' }}>TOTAL PROPUESTA</td>
-                              <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #E86B11', background: '#E86B11', color: 'white', fontSize: '15px' }}>{total.toFixed(1)} UF</td>
+                            <tr>
+                              <td colSpan={colSpanTotal} style={{ padding: '14px 12px', textAlign: 'right', fontWeight: '600', borderTop: '2px solid #0a0a0a', fontSize: '13px', color: '#0a0a0a', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Propuesta</td>
+                              <td style={{ padding: '14px 12px', textAlign: 'right', fontWeight: '700', borderTop: '2px solid #0a0a0a', fontSize: '18px', color: '#0a0a0a' }}>{total.toFixed(1)} <span style={{ fontSize: '12px', fontWeight: '500', color: '#7a7a78' }}>UF</span></td>
                             </tr>
                           </>
                         );
@@ -4602,31 +4615,36 @@ ${cotHtml}
                 </div>
 
                 {/* Condiciones Comerciales */}
-                <div style={{ padding: '0 40px 20px' }}>
-                  <div style={{ background: '#f8f8f8', borderRadius: '8px', padding: '16px 20px', border: '1px solid #e8e8e8' }}>
-                    <div style={{ fontSize: '10px', fontWeight: '700', color: '#E86B11', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '10px' }}>Condiciones Comerciales</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: '11px', color: '#555' }}>
-                      <div><strong style={{ color: '#333' }}>Forma de Pago:</strong> {[cotRevAEnabled && `REV_A (${cotRevAPercent}%) al envío`, cotRevBEnabled && `REV_B (${cotRevBPercent}%) al envío`, cotRev0Enabled && `REV_0 (${cotRev0Percent}%) al envío`].filter(Boolean).join(', ')}</div>
-                      <div><strong style={{ color: '#333' }}>Validez de la Oferta:</strong> 90 días corridos desde la fecha de emisión</div>
-                      <div><strong style={{ color: '#333' }}>Plazo de Entrega:</strong> A coordinar según alcance del proyecto</div>
-                      <div><strong style={{ color: '#333' }}>Revisiones Adicionales:</strong> Se valorarán al valor de REV_0</div>
-                    </div>
+                <div style={{ padding: '0 48px 24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                    <div style={{ width: '28px', height: '2px', background: '#b8470a' }}></div>
+                    <div style={{ fontSize: '10px', fontWeight: '600', color: '#b8470a', textTransform: 'uppercase', letterSpacing: '2px' }}>Condiciones Comerciales</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 40px', fontSize: '11px', color: '#3a3a38', lineHeight: '1.5' }}>
+                    <div><span style={{ color: '#0a0a0a', fontWeight: '600' }}>Forma de Pago</span><br/>{[cotRevAEnabled && `REV_A (${cotRevAPercent}%) al envío`, cotRevBEnabled && `REV_B (${cotRevBPercent}%) al envío`, cotRev0Enabled && `REV_0 (${cotRev0Percent}%) al envío`].filter(Boolean).join(', ')}</div>
+                    <div><span style={{ color: '#0a0a0a', fontWeight: '600' }}>Validez de la Oferta</span><br/>90 días corridos desde la fecha de emisión</div>
+                    <div><span style={{ color: '#0a0a0a', fontWeight: '600' }}>Plazo de Entrega</span><br/>A coordinar según alcance del proyecto</div>
+                    <div><span style={{ color: '#0a0a0a', fontWeight: '600' }}>Revisiones Adicionales</span><br/>Se valorarán al valor de REV_0</div>
                   </div>
                 </div>
 
+                {/* Separador */}
+                <div style={{ margin: '0 48px', height: '1px', background: '#e8e6e1' }}></div>
+
                 {/* Firma y footer */}
-                <div style={{ padding: '16px 40px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <div style={{ fontSize: '11px', color: '#999' }}>
-                    <div style={{ fontWeight: '600', color: '#666', marginBottom: '2px' }}>AFOR - Assets for Non-Process Infrastructure</div>
-                    <div>www.afor.cl | contacto@afor.cl</div>
+                <div style={{ padding: '24px 48px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div style={{ fontSize: '11px', color: '#7a7a78' }}>
+                    <div style={{ fontWeight: '600', color: '#0a0a0a', marginBottom: '3px', fontSize: '12px' }}>AFOR</div>
+                    <div>Assets for Non-Process Infrastructure</div>
+                    <div style={{ marginTop: '2px' }}>www.afor.cl · contacto@afor.cl</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     {cotFirma ? (
                       <div>
-                        <img src="/firma-sav.png" alt="Firma" style={{ height: '65px', marginBottom: '4px' }} className="firma-img" />
-                        <div style={{ borderTop: '1.5px solid #333', paddingTop: '4px', paddingLeft: '16px', paddingRight: '16px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#1a1a1a' }}>Sebastián A. Vizcarra B.</div>
-                          <div style={{ fontSize: '10px', color: '#888' }}>Arquitecto Líder</div>
+                        <img src="/firma-sav.png" alt="Firma" style={{ height: '60px', marginBottom: '4px' }} className="firma-img" />
+                        <div style={{ borderTop: '1.5px solid #0a0a0a', paddingTop: '6px', paddingLeft: '20px', paddingRight: '20px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#0a0a0a', letterSpacing: '0.3px' }}>Sebastián A. Vizcarra B.</div>
+                          <div style={{ fontSize: '10px', color: '#7a7a78', marginTop: '1px' }}>Arquitecto Líder</div>
                         </div>
                       </div>
                     ) : (
@@ -4635,23 +4653,23 @@ ${cotHtml}
                           <button
                             onClick={() => setCotFirma(true)}
                             className="no-print"
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 20px', background: '#1e40af', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 24px', background: '#0a0a0a', color: '#fafaf7', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', letterSpacing: '0.5px' }}
                           >
                             <Edit3 className="w-4 h-4" />
                             Firmar
                           </button>
                         </div>
-                        <div style={{ borderTop: '1.5px solid #333', paddingTop: '4px', paddingLeft: '16px', paddingRight: '16px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#1a1a1a' }}>Sebastián A. Vizcarra B.</div>
-                          <div style={{ fontSize: '10px', color: '#888' }}>Arquitecto Líder</div>
+                        <div style={{ borderTop: '1.5px solid #0a0a0a', paddingTop: '6px', paddingLeft: '20px', paddingRight: '20px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#0a0a0a', letterSpacing: '0.3px' }}>Sebastián A. Vizcarra B.</div>
+                          <div style={{ fontSize: '10px', color: '#7a7a78', marginTop: '1px' }}>Arquitecto Líder</div>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Línea inferior naranja */}
-                <div style={{ height: '4px', background: 'linear-gradient(135deg, #E86B11 0%, #D15E0E 100%)' }}></div>
+                {/* Línea accent inferior */}
+                <div style={{ height: '3px', background: '#b8470a' }}></div>
               </div>
             </div>
           </div>

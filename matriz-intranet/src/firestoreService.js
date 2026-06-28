@@ -263,6 +263,16 @@ export const saveCotizacion = async (cotizacion) => {
   }
 };
 
+export const updateCotEstado = async (cotDocId, estado, historial, firmada) => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.COTIZACIONES, cotDocId), { estado, historial, firmada });
+    return true;
+  } catch (error) {
+    console.error('Error updating cotizacion estado:', error);
+    return false;
+  }
+};
+
 export const deleteCotizacion = async (cotDocId) => {
   try {
     await deleteDoc(doc(db, COLLECTIONS.COTIZACIONES, cotDocId));

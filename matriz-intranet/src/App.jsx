@@ -30,6 +30,7 @@ import {
   restoreFromBackup,
   saveAutoBackup,
   saveCotizacion,
+  updateCotEstado,
   deleteCotizacion as deleteCotizacionFS,
   subscribeToCotizaciones,
   saveDuraciones,
@@ -4040,9 +4041,10 @@ export default function MatrizIntranet() {
                                         const nuevoEstado = e.target.value;
                                         const ahora = new Date().toISOString();
                                         const nuevoLog = [...historial, { estado: nuevoEstado, fecha: ahora, usuario: currentUser?.nombre || 'Admin' }];
-                                        const updated = { ...cot, estado: nuevoEstado, historial: nuevoLog, firmada: ['firmada','enviada','comentada','reenviada','aceptada'].includes(nuevoEstado) };
-                                        await saveCotizacion(updated);
-                                        showNotification('success', `Estado cambiado a "${COT_ESTADOS.find(x => x.id === nuevoEstado)?.label}"`);
+                                        const esFirmada = ['firmada','enviada','comentada','reenviada','aceptada'].includes(nuevoEstado);
+                                        const ok = await updateCotEstado(cot._docId, nuevoEstado, nuevoLog, esFirmada);
+                                        if (ok) showNotification('success', `Estado cambiado a "${COT_ESTADOS.find(x => x.id === nuevoEstado)?.label}"`);
+                                        else showNotification('error', 'Error al cambiar estado');
                                       }}
                                       className={`${estadoInfo.color} text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer appearance-none pr-6 focus:ring-2 focus:ring-orange-300`}
                                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center' }}

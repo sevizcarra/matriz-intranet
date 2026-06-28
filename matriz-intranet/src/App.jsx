@@ -4581,23 +4581,34 @@ ${cotHtml}
                         const subtotalAplicado = subtotalVenta * factorSimp * factorDesc;
                         const iva = subtotalAplicado * 0.19;
                         const total = subtotalAplicado + iva;
+                        const hayAjuste = cotSimplificado || cotDescuento > 0;
                         return (
                           <>
                             {/* Spacer row */}
                             <tr><td colSpan={colSpanTotal + 1} style={{ height: '4px' }}></td></tr>
-                            <tr>
-                              <td colSpan={colSpanTotal} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#3a3a38', borderTop: '1px solid #0a0a0a' }}>Subtotal</td>
-                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', fontSize: '12px', color: '#0a0a0a', borderTop: '1px solid #0a0a0a' }}>{subtotalVenta.toFixed(1)} UF</td>
-                            </tr>
+                            {/* Subtotal — solo si hay ajustes, si no se salta directo a Neto */}
+                            {hayAjuste && (
+                              <tr>
+                                <td colSpan={colSpanTotal} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#3a3a38', borderTop: '1px solid #0a0a0a' }}>Subtotal</td>
+                                <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', fontSize: '12px', color: '#0a0a0a', borderTop: '1px solid #0a0a0a' }}>{subtotalVenta.toFixed(1)} UF</td>
+                              </tr>
+                            )}
+                            {cotSimplificado && (
+                              <tr>
+                                <td colSpan={colSpanTotal} style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#b8470a' }}>Versión simplificada (−20%)</td>
+                                <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '600', fontSize: '12px', color: '#b8470a' }}>−{(subtotalVenta * 0.2).toFixed(1)} UF</td>
+                              </tr>
+                            )}
                             {cotDescuento > 0 && (
                               <tr>
                                 <td colSpan={colSpanTotal} style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#b8470a' }}>Tarifa de lanzamiento (−{cotDescuento}%)</td>
                                 <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '600', fontSize: '12px', color: '#b8470a' }}>−{(subtotalVenta * factorSimp * (cotDescuento / 100)).toFixed(1)} UF</td>
                               </tr>
                             )}
+                            {/* Neto */}
                             <tr>
-                              <td colSpan={colSpanTotal} style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#3a3a38' }}>Neto</td>
-                              <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '600', fontSize: '13px', color: '#0a0a0a' }}>{subtotalAplicado.toFixed(1)} UF</td>
+                              <td colSpan={colSpanTotal} style={{ padding: hayAjuste ? '6px 12px' : '10px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#3a3a38', borderTop: hayAjuste ? 'none' : '1px solid #0a0a0a' }}>Neto</td>
+                              <td style={{ padding: hayAjuste ? '6px 12px' : '10px 12px', textAlign: 'right', fontWeight: '600', fontSize: '13px', color: '#0a0a0a', borderTop: hayAjuste ? 'none' : '1px solid #0a0a0a' }}>{subtotalAplicado.toFixed(1)} UF</td>
                             </tr>
                             <tr>
                               <td colSpan={colSpanTotal} style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '500', fontSize: '12px', color: '#7a7a78' }}>IVA (19%)</td>

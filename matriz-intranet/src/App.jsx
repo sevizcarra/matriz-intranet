@@ -6603,8 +6603,15 @@ ${cotHtml}
               <Button variant="secondary" className="flex-1" onClick={() => setEditDateOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="flex-1" onClick={() => {
+              <Button className="flex-1" onClick={async () => {
                 setDashboardStartDate(tempDate);
+                // Persistir en Firestore y estado local
+                const proyecto = proyectos.find(p => p.id === selectedProject);
+                if (proyecto) {
+                  const updated = { ...proyecto, inicio: tempDate };
+                  setProyectos(prev => prev.map(p => p.id === selectedProject ? updated : p));
+                  await saveProyecto(updated);
+                }
                 setEditDateOpen(false);
               }}>
                 Guardar

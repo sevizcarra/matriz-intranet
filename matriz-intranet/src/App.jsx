@@ -31,6 +31,7 @@ import {
   saveAutoBackup,
   saveCotizacion,
   updateCotEstado,
+  updateProyectoField,
   deleteCotizacion as deleteCotizacionFS,
   subscribeToCotizaciones,
   saveDuraciones,
@@ -1174,6 +1175,16 @@ export default function MatrizIntranet() {
       }
     }
   }, [selectedProject]);
+
+  // Sincronizar dashboardStartDate con Firestore (onSnapshot puede traer datos actualizados)
+  React.useEffect(() => {
+    if (selectedProject) {
+      const proyecto = proyectos.find(p => p.id === selectedProject);
+      if (proyecto && proyecto.inicio) {
+        setDashboardStartDate(proyecto.inicio);
+      }
+    }
+  }, [proyectos, selectedProject]);
 
   // Función para eliminar proyecto
   const handleDeleteProject = async () => {
@@ -6677,12 +6688,11 @@ ${cotHtml}
               </Button>
               <Button className="flex-1" onClick={async () => {
                 setDashboardStartDate(tempDate);
-                // Persistir en Firestore y estado local
-                const proyecto = proyectos.find(p => p.id === selectedProject);
-                if (proyecto) {
-                  const updated = { ...proyecto, inicio: tempDate };
-                  setProyectos(prev => prev.map(p => p.id === selectedProject ? updated : p));
-                  await saveProyecto(updated);
+                // Persistir en Firestore (solo el campo inicio) y estado local
+                setProyectos(prev => prev.map(p => p.id === selectedProject ? { ...p, inicio: tempDate } : p));
+                const ok = await updateProyectoField(selectedProject, { inicio: tempDate });
+                if (!ok) {
+                  showNotification('error', 'Error al guardar fecha de inicio');
                 }
                 setEditDateOpen(false);
               }}>

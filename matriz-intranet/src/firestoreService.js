@@ -52,6 +52,16 @@ export const saveProyecto = async (proyecto) => {
   }
 };
 
+export const updateProyectoField = async (proyectoId, fields) => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.PROYECTOS, proyectoId), fields);
+    return true;
+  } catch (error) {
+    console.error('Error updating proyecto field:', error);
+    return false;
+  }
+};
+
 export const deleteProyecto = async (proyectoId) => {
   try {
     await deleteDoc(doc(db, COLLECTIONS.PROYECTOS, proyectoId));

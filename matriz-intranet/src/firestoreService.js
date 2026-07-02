@@ -261,12 +261,14 @@ export const subscribeToTareas = (callback) => {
 export const saveCotizacion = async (cotizacion) => {
   try {
     if (cotizacion._docId) {
-      await setDoc(doc(db, COLLECTIONS.COTIZACIONES, cotizacion._docId), cotizacion);
+      const docId = cotizacion._docId;
+      const { _docId, ...data } = cotizacion;
+      await setDoc(doc(db, COLLECTIONS.COTIZACIONES, docId), data, { merge: true });
+      return docId;
     } else {
       const docRef = await addDoc(collection(db, COLLECTIONS.COTIZACIONES), cotizacion);
       return docRef.id;
     }
-    return cotizacion._docId;
   } catch (error) {
     console.error('Error saving cotizacion:', error);
     return null;

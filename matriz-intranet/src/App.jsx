@@ -4465,6 +4465,8 @@ export default function MatrizIntranet() {
                     const cleanExcelData = cotExcelData.map(row =>
                       row.map(cell => (cell === undefined || cell === null) ? '' : cell)
                     );
+                    // Al editar, preservar estado e historial existentes
+                    const cotExistente = (cotMode === 'editar' && cotViewingId) ? cotizaciones.find(c => c._docId === cotViewingId) : null;
                     const cotData = {
                       codigo: cotCodigo || '',
                       cliente: cotCliente,
@@ -4481,7 +4483,10 @@ export default function MatrizIntranet() {
                       // Snapshot de tarifas y recetas (para integridad histórica)
                       tarifasSnapshot: JSON.stringify(tarifas),
                       recetasSnapshot: JSON.stringify(recetas),
-                      fechaCreacion: cotMode === 'editar' && cotViewingId ? (cotizaciones.find(c => c._docId === cotViewingId)?.fechaCreacion || new Date().toISOString()) : new Date().toISOString(),
+                      // Preservar estado e historial
+                      estado: cotExistente?.estado || 'borrador',
+                      historial: cotExistente?.historial || [],
+                      fechaCreacion: cotExistente?.fechaCreacion || new Date().toISOString(),
                       fechaModificacion: new Date().toISOString(),
                     };
                     if (cotMode === 'editar' && cotViewingId) {

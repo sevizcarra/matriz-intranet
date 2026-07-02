@@ -4682,7 +4682,7 @@ ${cotHtml}
                             <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', color: '#7a7a78', fontSize: '11px', fontWeight: '500' }}>{row[0]}</td>
                             <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', fontWeight: '500', color: '#0a0a0a' }}>{row[3]}</td>
                             <td style={{ padding: '8px 12px', borderBottom: '1px solid #e8e6e1', textAlign: 'center' }}>
-                              <span style={{ background: (esCobroUnico || esVisita) ? '#e8e6e1' : 'transparent', color: (esCobroUnico || esVisita) ? '#3a3a38' : '#b8470a', padding: '2px 10px', borderRadius: '2px', fontSize: '9px', fontWeight: '600', letterSpacing: '0.5px', border: (esCobroUnico || esVisita) ? 'none' : '1px solid #b8470a' }}>{tipo}</span>
+                              <span style={{ background: (esCobroUnico || esVisita) ? '#e8e6e1' : 'transparent', color: (esCobroUnico || esVisita) ? '#3a3a38' : '#b8470a', padding: '2px 10px', borderRadius: '2px', fontSize: '9px', fontWeight: '600', letterSpacing: '0.5px', border: (esCobroUnico || esVisita) ? 'none' : '1px solid #b8470a', whiteSpace: 'nowrap' }}>{tipo}</span>
                             </td>
                             {(() => {
                               const enabledRevCount = (cotRevAEnabled ? 1 : 0) + (cotRevBEnabled ? 1 : 0) + (cotRev0Enabled ? 1 : 0);

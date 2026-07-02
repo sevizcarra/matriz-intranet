@@ -803,7 +803,14 @@ export default function MatrizIntranet() {
       if (data) setTarifas(data);
     });
     const unsubRecetas = subscribeToRecetas((data) => {
-      if (data) setRecetas(data);
+      if (data) {
+        // Merge: asegurar que recetas nuevas de DEFAULT_RECETAS no se pierdan
+        const merged = [...data];
+        DEFAULT_RECETAS.forEach(def => {
+          if (!merged.find(r => r.id === def.id)) merged.push(def);
+        });
+        setRecetas(merged);
+      }
     });
 
     // Marcar como listo después de un momento

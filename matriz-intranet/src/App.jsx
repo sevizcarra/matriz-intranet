@@ -4539,23 +4539,23 @@ export default function MatrizIntranet() {
                       pw.document.write(`<html><head><title>AFOR — Propuesta ${cotCliente}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-@page { size: landscape; margin: 6mm 10mm; }
+@page { size: letter portrait; margin: 10mm 12mm; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 100%; }
 body { font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; color: #0a0a0a; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .no-print { display: none !important; }
 table { page-break-inside: auto; }
 tr { page-break-inside: avoid; }
-.cot-header { padding: 14px 36px 10px !important; }
-.cot-separator { margin: 0 36px !important; }
-.cot-info { padding: 10px 36px !important; gap: 24px !important; }
-.cot-section-title { padding: 6px 36px 4px !important; }
-.cot-table-wrap { padding: 4px 36px 8px !important; }
-.cot-condiciones { padding: 0 36px 8px !important; }
-.cot-footer { padding: 10px 36px 12px !important; }
+.cot-header { padding: 18px 32px 12px !important; }
+.cot-separator { margin: 0 32px !important; }
+.cot-info { padding: 14px 32px !important; gap: 20px !important; }
+.cot-section-title { padding: 8px 32px 4px !important; }
+.cot-table-wrap { padding: 4px 32px 10px !important; }
+.cot-condiciones { padding: 0 32px 10px !important; }
+.cot-footer { padding: 14px 32px 16px !important; }
 .firma-img { height: 50px !important; }
 </style></head><body>
-<div style="min-width:700px;max-width:100%;margin:0 auto;">
+<div style="max-width:100%;margin:0 auto;">
 ${cotHtml}
 </div>
 </body></html>`);

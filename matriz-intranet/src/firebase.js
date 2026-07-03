@@ -7,6 +7,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDgBZEoRxd6TcTxfEDDs_60cj_Hq9mreJE",
@@ -24,6 +25,7 @@ const app = initializeApp(firebaseConfig);
 // Exportar servicios
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 // Habilitar persistencia offline - los datos se cachean en IndexedDB
 // Así la app funciona incluso sin conexión y no pierde datos

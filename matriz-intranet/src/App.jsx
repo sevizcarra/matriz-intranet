@@ -39,7 +39,9 @@ import {
   saveTarifas,
   saveRecetas,
   subscribeToTarifas,
-  subscribeToRecetas
+  subscribeToRecetas,
+  uploadCotArchivo,
+  deleteCotArchivo
 } from './firestoreService';
 
 // ============================================
@@ -4195,6 +4197,58 @@ export default function MatrizIntranet() {
                                     );
                                   })}
                                 </div>
+                              )}
+                            </div>
+                          )}
+                          {/* Archivos adjuntos */}
+                          {((cot.archivos && cot.archivos.length > 0) || estadoActual === 'aceptada') && (
+                            <div className={`border-t border-neutral-200 dark:border-neutral-700 px-4 py-3 ${logAbierto ? '' : 'rounded-b-lg'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                                  <FileDown className="w-3.5 h-3.5" /> Documentos adjuntos
+                                </div>
+                                <label className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-medium cursor-pointer">
+                                  <Upload className="w-3.5 h-3.5" /> Subir archivo
+                                  <input type="file" className="hidden" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    if (file.size > 10 * 1024 * 1024) {
+                                      showNotification('error', 'Archivo muy grande (máx 10 MB)');
+                                      return;
+                                    }
+                                    showNotification('info', `Subiendo ${file.name}...`);
+                                    const result = await uploadCotArchivo(cot._docId, file);
+                                    if (result) showNotification('success', `${file.name} subido correctamente`);
+                                    else showNotification('error', 'Error al subir archivo');
+                                    e.target.value = '';
+                                  }} />
+                                </label>
+                              </div>
+                              {cot.archivos && cot.archivos.length > 0 ? (
+                                <div className="space-y-1.5">
+                                  {cot.archivos.map((arch, i) => (
+                                    <div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded px-3 py-2">
+                                      <a href={arch.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium truncate">
+                                        <FileText className="w-3.5 h-3.5 shrink-0" />
+                                        {arch.nombre}
+                                      </a>
+                                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                                        <span className="text-neutral-400">{arch.size ? (arch.size / 1024 < 1024 ? `${(arch.size / 1024).toFixed(0)} KB` : `${(arch.size / 1024 / 1024).toFixed(1)} MB`) : ''}</span>
+                                        <button onClick={async () => {
+                                          if (window.confirm(`¿Eliminar ${arch.nombre}?`)) {
+                                            const ok = await deleteCotArchivo(cot._docId, arch.path);
+                                            if (ok) showNotification('success', 'Archivo eliminado');
+                                            else showNotification('error', 'Error al eliminar');
+                                          }
+                                        }} className="text-neutral-400 hover:text-red-500 transition-colors">
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-neutral-400 dark:text-neutral-500 italic">Sin documentos. Sube la OC u otros archivos relacionados.</p>
                               )}
                             </div>
                           )}

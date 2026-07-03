@@ -1,7 +1,8 @@
 // ============================================
 // SERVICIO DE FIRESTORE
 // ============================================
-import { db } from './firebase';
+import { db, storage } from './firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import {
   collection,
   doc,
@@ -300,6 +301,49 @@ export const subscribeToCotizaciones = (callback) => {
     const cotizaciones = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
     callback(cotizaciones);
   });
+};
+
+// ============================================
+// ARCHIVOS ADJUNTOS DE COTIZACIONES (Firebase Storage)
+// ============================================
+export const uploadCotArchivo = async (cotDocId, file) => {
+  try {
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `cotizaciones/${cotDocId}/${timestamp}_${safeName}`;
+    const storageRef = ref(storage, storagePath);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    // Agregar referencia al documento de la COT
+    const cotRef = doc(db, COLLECTIONS.COTIZACIONES, cotDocId);
+    const cotSnap = await getDoc(cotRef);
+    const archivos = cotSnap.exists() ? (cotSnap.data().archivos || []) : [];
+    archivos.push({ nombre: file.name, url, path: storagePath, fecha: new Date().toISOString(), size: file.size });
+    await updateDoc(cotRef, { archivos });
+    return { nombre: file.name, url, path: storagePath };
+  } catch (error) {
+    console.error('Error uploading archivo:', error);
+    return null;
+  }
+};
+
+export const deleteCotArchivo = async (cotDocId, archivoPath) => {
+  try {
+    // Eliminar de Storage
+    const storageRef = ref(storage, archivoPath);
+    await deleteObject(storageRef);
+    // Quitar referencia del documento
+    const cotRef = doc(db, COLLECTIONS.COTIZACIONES, cotDocId);
+    const cotSnap = await getDoc(cotRef);
+    if (cotSnap.exists()) {
+      const archivos = (cotSnap.data().archivos || []).filter(a => a.path !== archivoPath);
+      await updateDoc(cotRef, { archivos });
+    }
+    return true;
+  } catch (error) {
+    console.error('Error deleting archivo:', error);
+    return false;
+  }
 };
 
 // ============================================

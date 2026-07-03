@@ -4065,7 +4065,7 @@ export default function MatrizIntranet() {
                       const logAbierto = cotLogOpen === cot._docId;
                       const esRechazada = estadoActual === 'rechazada';
                       return (
-                        <div key={cot._docId} className={`border rounded-lg transition-colors ${esRechazada ? 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/60 opacity-50' : 'border-neutral-200 dark:border-neutral-700 hover:border-orange-300 dark:hover:border-orange-700'}`}>
+                        <div key={cot._docId} className={`border rounded-lg transition-colors ${esRechazada ? 'border-neutral-300 dark:border-neutral-700' : 'border-neutral-200 dark:border-neutral-700 hover:border-orange-300 dark:hover:border-orange-700'}`} style={esRechazada ? { opacity: 0.45, filter: 'grayscale(100%)', background: '#f0f0f0' } : {}}>
                           <div className="p-4">
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">

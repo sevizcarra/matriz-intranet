@@ -4200,15 +4200,15 @@ export default function MatrizIntranet() {
                               )}
                             </div>
                           )}
-                          {/* Archivos adjuntos — siempre visible */}
-                          {(
-                            <div className={`border-t border-neutral-200 dark:border-neutral-700 px-4 py-3 ${logAbierto ? '' : 'rounded-b-lg'}`}>
+                          {/* Subir OC — visible en COTs aceptadas o que ya tienen archivos */}
+                          {(esAceptada || (cot.archivos && cot.archivos.length > 0)) && (
+                            <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3 rounded-b-lg bg-emerald-50 dark:bg-emerald-900/10">
                               <div className="flex items-center justify-between mb-2">
-                                <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
-                                  <FileDown className="w-3.5 h-3.5" /> Documentos adjuntos
+                                <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                  <FileDown className="w-3.5 h-3.5" /> Orden de Compra
                                 </div>
-                                <label className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-medium cursor-pointer">
-                                  <Upload className="w-3.5 h-3.5" /> Subir archivo
+                                <label className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium cursor-pointer px-3 py-1.5 rounded-lg transition-colors">
+                                  <Upload className="w-3.5 h-3.5" /> Subir OC
                                   <input type="file" className="hidden" onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
@@ -4227,8 +4227,8 @@ export default function MatrizIntranet() {
                               {cot.archivos && cot.archivos.length > 0 ? (
                                 <div className="space-y-1.5">
                                   {cot.archivos.map((arch, i) => (
-                                    <div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded px-3 py-2">
-                                      <a href={arch.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium truncate">
+                                    <div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-neutral-800 border border-emerald-200 dark:border-emerald-800 rounded px-3 py-2">
+                                      <a href={arch.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 font-medium truncate">
                                         <FileText className="w-3.5 h-3.5 shrink-0" />
                                         {arch.nombre}
                                       </a>
@@ -4248,7 +4248,7 @@ export default function MatrizIntranet() {
                                   ))}
                                 </div>
                               ) : (
-                                <p className="text-xs text-neutral-400 dark:text-neutral-500 italic">Sin documentos. Sube la OC u otros archivos relacionados.</p>
+                                <p className="text-xs text-emerald-600/60 dark:text-emerald-500/50 italic">Sube la Orden de Compra del cliente.</p>
                               )}
                             </div>
                           )}

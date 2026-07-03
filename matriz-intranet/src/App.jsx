@@ -1048,6 +1048,7 @@ export default function MatrizIntranet() {
     { id: 'comentada', label: 'Comentada', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
     { id: 'reenviada', label: 'Reenviada', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
     { id: 'aceptada', label: 'Aceptada', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+    { id: 'rechazada', label: 'Rechazada', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
   ];
   const [cotLogOpen, setCotLogOpen] = useState(null); // _docId de la COT con log abierto
   // Lista de cotizaciones guardadas en Firestore
@@ -4062,8 +4063,9 @@ export default function MatrizIntranet() {
                       const estadoInfo = COT_ESTADOS.find(e => e.id === estadoActual) || COT_ESTADOS[0];
                       const historial = cot.historial || [];
                       const logAbierto = cotLogOpen === cot._docId;
+                      const esRechazada = estadoActual === 'rechazada';
                       return (
-                        <div key={cot._docId} className="border border-neutral-200 dark:border-neutral-700 rounded-lg hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
+                        <div key={cot._docId} className={`border rounded-lg transition-colors ${esRechazada ? 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/60 opacity-50' : 'border-neutral-200 dark:border-neutral-700 hover:border-orange-300 dark:hover:border-orange-700'}`}>
                           <div className="p-4">
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">

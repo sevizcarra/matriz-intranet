@@ -4069,7 +4069,7 @@ export default function MatrizIntranet() {
                       const esAceptada = estadoActual === 'aceptada';
                       const esInactiva = esRechazada || esAceptada;
                       return (
-                        <div key={cot._docId} className={`border rounded-lg transition-colors ${esInactiva ? 'border-neutral-300 dark:border-neutral-700' : 'border-neutral-200 dark:border-neutral-700 hover:border-orange-300 dark:hover:border-orange-700'}`} style={esRechazada ? { opacity: 0.45, filter: 'grayscale(100%)', background: '#f0f0f0' } : esAceptada ? { opacity: 0.55, background: '#ecfdf5', borderColor: '#a7f3d0' } : {}}>
+                        <div key={cot._docId} className={`border rounded-lg transition-colors ${esInactiva ? 'border-neutral-300 dark:border-neutral-700' : 'border-neutral-200 dark:border-neutral-700 hover:border-orange-300 dark:hover:border-orange-700'}`} style={esRechazada ? { opacity: 0.45, filter: 'grayscale(100%)', background: '#f0f0f0' } : esAceptada ? { opacity: 0.75, background: '#ecfdf5', borderColor: '#6ee7b7' } : {}}>
                           <div className="p-4">
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">
@@ -4202,7 +4202,7 @@ export default function MatrizIntranet() {
                           )}
                           {/* Subir OC — visible en COTs aceptadas o que ya tienen archivos */}
                           {(esAceptada || (cot.archivos && cot.archivos.length > 0)) && (
-                            <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3 rounded-b-lg bg-emerald-50 dark:bg-emerald-900/10">
+                            <div className="px-4 py-3 rounded-b-lg" style={{ borderTop: '2px solid #6ee7b7', background: '#d1fae5' }}>
                               <div className="flex items-center justify-between mb-2">
                                 <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                                   <FileDown className="w-3.5 h-3.5" /> Orden de Compra

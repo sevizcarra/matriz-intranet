@@ -6738,26 +6738,32 @@ ${cotHtml}
                   // Calcular datos para Curva S
                   const totalEntregables = entregablesImpr.filter(d => !d.frozen).length;
                   const startDate = new Date(dashboardStartDate);
-                  const weeksToShow = 24;
+                  const startWeekOfYear = getWeekOfYear(startDate);
 
-                  // Curva programada: acumulado de entregables que deberían estar listos por semana
+                  // Calcular duración real del proyecto desde entregables
+                  const deliverableEndWeeksImpr = entregablesImpr
+                    .filter(d => !d.frozen)
+                    .map(d => {
+                      const sw = d.weekStart || d.secuencia || 1;
+                      const dA = obtenerDuracionRevA(d, duracionesPorTipo);
+                      const totalDays = dA + duracionRevision + duracionRevision;
+                      return sw + totalDays / 5;
+                    });
+                  const maxEndWeekImpr = deliverableEndWeeksImpr.length > 0 ? Math.max(...deliverableEndWeeksImpr) : 10;
+                  const weeksToShow = Math.max(Math.ceil(maxEndWeekImpr) + 2, 6);
+
+                  // Curva programada: basada en semana de fin de cada entregable (Valor Ganado)
                   const programada = [];
                   // Curva real: acumulado de entregables efectivamente terminados por semana
                   const real = [];
 
                   for (let w = 0; w <= weeksToShow; w++) {
-                    const weekDate = addWeeks(startDate, w);
-                    // Programada: entregables cuyo deadline REV_0 es <= esta semana
-                    let acumProg = 0;
-                    entregablesImpr.forEach(d => {
-                      if (d.frozen) return;
-                      const dur = obtenerDuracionRevA(d, duracionesPorTipo);
-                      const deadlines = calculateDeadlines(dashboardStartDate, d.weekStart || d.secuencia, dur, duracionRevision, duracionRevision);
-                      if (deadlines.deadlineRev0 <= weekDate) acumProg++;
-                    });
+                    // Programada: entregables cuya semana de fin (weekStart + totalDays/5) <= w
+                    const acumProg = deliverableEndWeeksImpr.filter(ew => ew <= w).length;
                     programada.push(acumProg);
 
                     // Real: entregables que ya tienen sentRev0Date <= esta semana
+                    const weekDate = addWeeks(startDate, w);
                     let acumReal = 0;
                     entregablesImpr.forEach(d => {
                       if (d.frozen) return;
@@ -6872,11 +6878,11 @@ ${cotHtml}
                           <text x={padL - 3} y={yScale(v) + 3} textAnchor="end" fill="#999" fontSize="7">{v}%</text>
                         </g>
                       ))}
-                      {/* Grid vertical (cada 4 semanas) */}
-                      {Array.from({ length: Math.floor(weeksToShow / 4) + 1 }, (_, i) => i * 4).map(w => (
+                      {/* Grid vertical — etiquetas con semana del año */}
+                      {Array.from({ length: weeksToShow + 1 }, (_, i) => i).filter(w => weeksToShow <= 10 || w % Math.ceil(weeksToShow / 8) === 0 || w === weeksToShow).map(w => (
                         <g key={w}>
                           <line x1={xScale(w)} y1={padT} x2={xScale(w)} y2={padT + chartH} stroke="#e5e5e5" strokeWidth="0.5" />
-                          <text x={xScale(w)} y={svgH - 5} textAnchor="middle" fill="#999" fontSize="7">S{w}</text>
+                          <text x={xScale(w)} y={svgH - 5} textAnchor="middle" fill="#999" fontSize="7">S{startWeekOfYear + w}</text>
                         </g>
                       ))}
                       {/* Línea hoy */}
@@ -6930,8 +6936,8 @@ ${cotHtml}
                     <thead>
                       <tr className="bg-neutral-800 text-white">
                         <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '20px'}}>#</th>
-                        <th className="border border-neutral-600 px-1 py-0.5 text-left" style={{width: '110px'}}>Código</th>
-                        <th className="border border-neutral-600 px-1 py-0.5 text-left">Descripción</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-left" style={{width: '180px'}}>Código</th>
+                        <th className="border border-neutral-600 px-1 py-0.5 text-left" style={{width: '160px'}}>Descripción</th>
                         <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '30px'}}>Dur</th>
                         <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '25px'}}>Sec</th>
                         <th className="border border-neutral-600 px-1 py-0.5 text-center" style={{width: '62px'}}>REV_A</th>

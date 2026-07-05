@@ -6413,9 +6413,9 @@ ${cotHtml}
                                       </div>
                                       <div className="text-right">
                                         <p className="text-lg font-light tracking-widest">
-                                          <span className="text-neutral-800">M</span>
-                                          <span className="text-orange-500">A</span>
-                                          <span className="text-neutral-800">TRIZ</span>
+                                          <span className="text-neutral-800">AF</span>
+                                          <span className="text-orange-500">O</span>
+                                          <span className="text-neutral-800">R</span>
                                         </p>
                                         <p className="text-[7px] text-neutral-400 tracking-wider">ASSETS FOR NON-PROCESS INFRASTRUCTURE</p>
                                       </div>

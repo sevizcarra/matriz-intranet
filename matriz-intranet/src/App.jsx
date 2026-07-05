@@ -48,7 +48,7 @@ import {
 // SISTEMA DE USUARIOS Y ROLES
 // ============================================
 const USUARIOS_INICIAL = [
-  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'svizcarra@afor.cl', password: 'admin123', rol: 'admin', profesionalId: 3 },
+  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'svizcarra@afor.cl', password: 'Sebas1947!', rol: 'admin', profesionalId: 3 },
   { id: 'user1', nombre: 'Cristóbal Ríos', email: 'cristobal@matriz.cl', password: 'crios123', rol: 'profesional', profesionalId: 1 },
   { id: 'user2', nombre: 'Dominique Thompson', email: 'dominique@matriz.cl', password: 'dthompson123', rol: 'profesional', profesionalId: 2 },
 ];
@@ -894,7 +894,7 @@ export default function MatrizIntranet() {
   const [showPassword, setShowPassword] = useState(false);
   const [currentAdminPassword, setCurrentAdminPassword] = useState(''); // Para verificar antes de cambiar
   const [newAdminPassword, setNewAdminPassword] = useState('');
-  const [adminStoredPassword, setAdminStoredPassword] = useState('admin123'); // Contraseña del admin
+  const [adminStoredPassword, setAdminStoredPassword] = useState('Sebas1947!'); // Contraseña del admin
   
   // Estados para formularios
   const [showNewProject, setShowNewProject] = useState(false);

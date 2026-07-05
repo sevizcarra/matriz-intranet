@@ -48,7 +48,7 @@ import {
 // SISTEMA DE USUARIOS Y ROLES
 // ============================================
 const USUARIOS_INICIAL = [
-  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'sebastianvizcarra@gmail.com', password: 'admin123', rol: 'admin', profesionalId: 3 },
+  { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'svizcarra@afor.cl', password: 'admin123', rol: 'admin', profesionalId: 3 },
   { id: 'user1', nombre: 'Cristóbal Ríos', email: 'cristobal@matriz.cl', password: 'crios123', rol: 'profesional', profesionalId: 1 },
   { id: 'user2', nombre: 'Dominique Thompson', email: 'dominique@matriz.cl', password: 'dthompson123', rol: 'profesional', profesionalId: 2 },
 ];

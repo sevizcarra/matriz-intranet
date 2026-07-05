@@ -285,6 +285,11 @@ const obtenerDuracionRevA = (entregable, duraciones = DURACION_POR_TIPO_DEFAULT)
     return duraciones['REU'] || 1;
   }
 
+  // INF: Informes
+  if (cod.includes('INF') || nom.includes('INFORME')) {
+    return duraciones['INF'] || 10;
+  }
+
   // VIS
   if (cod.includes('VIS') || nom.includes('VISITA')) {
     return duraciones['VIS'] || 1;
@@ -6180,17 +6185,27 @@ ${cotHtml}
                           <h3 className="text-neutral-800 dark:text-neutral-100 text-sm mb-1">Curva S - Avance del Proyecto</h3>
                           <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-3">Comparación avance proyectado vs real</p>
                           {(() => {
-                            const weeksToShow = 20;
+                            // Calcular duración real del proyecto desde entregables
+                            const deliverableEndWeeks = deliverables
+                              .filter(d => !d.frozen)
+                              .map(d => {
+                                const sw = d.weekStart || d.secuencia || 1;
+                                const dA = obtenerDuracionRevA(d, duracionesPorTipo);
+                                const totalDays = dA + duracionRevision + duracionRevision;
+                                return sw + totalDays / 5;
+                              });
+                            const maxEndWeek = deliverableEndWeeks.length > 0 ? Math.max(...deliverableEndWeeks) : 10;
+                            const weeksToShow = Math.max(Math.ceil(maxEndWeek) + 2, 6);
                             const chartWidth = 550;
                             const chartHeight = 150;
                             const padding = { top: 20, right: 70, bottom: 30, left: 35 };
-                            
-                            // Calcular avance proyectado (curva S típica)
+
+                            // Curva proyectada basada en entregables reales (Valor Ganado)
+                            const totalDeliverables = deliverableEndWeeks.length || 1;
                             const projectedData = [];
                             for (let w = 0; w <= weeksToShow; w++) {
-                              // Curva S usando función sigmoide
-                              const progress = 100 / (1 + Math.exp(-0.5 * (w - weeksToShow / 2)));
-                              projectedData.push({ week: w, value: progress });
+                              const completedByWeek = deliverableEndWeeks.filter(ew => ew <= w).length;
+                              projectedData.push({ week: w, value: (completedByWeek / totalDeliverables) * 100 });
                             }
                             
                             // Calcular semanas del año (continuidad anual)
@@ -6610,19 +6625,30 @@ ${cotHtml}
                                             ))}
 
                                             {/* Pendiente */}
-                                            {bars.length === 0 && !d.frozen && (
-                                              <div
-                                                className="absolute h-4 rounded-sm bg-neutral-200 dark:bg-neutral-600 flex items-center"
-                                                style={{
-                                                  left: ((d.weekStart || d.secuencia || 1) - 1) * weekWidth + 2,
-                                                  width: Math.max(obtenerDuracionRevA(d, duracionesPorTipo) / 5, 0.4) * weekWidth - 4,
-                                                  top: (rowHeight - 16) / 2
-                                                }}
-                                                title={`Pendiente (${obtenerDuracionRevA(d, duracionesPorTipo)} días)`}
-                                              >
-                                                <span className="text-[7px] text-neutral-500 dark:text-neutral-300 px-0.5">{obtenerDuracionRevA(d, duracionesPorTipo)}d</span>
-                                              </div>
-                                            )}
+                                            {bars.length === 0 && !d.frozen && (() => {
+                                              const ws = (d.weekStart || d.secuencia || 1);
+                                              const dA = obtenerDuracionRevA(d, duracionesPorTipo);
+                                              const dB = duracionRevision;
+                                              const d0 = duracionRevision;
+                                              const wA = Math.max(dA / 5, 0.15);
+                                              const wB = Math.max(dB / 5, 0.15);
+                                              const w0 = Math.max(d0 / 5, 0.15);
+                                              const baseLeft = (ws - 1) * weekWidth + 2;
+                                              const barTop = (rowHeight - 16) / 2;
+                                              return (
+                                                <>
+                                                  <div className="absolute h-4 rounded-l-sm bg-orange-300 dark:bg-orange-600 flex items-center justify-center" style={{ left: baseLeft, width: Math.max(wA * weekWidth, 6), top: barTop }} title={`REV_A: ${dA} días`}>
+                                                    <span className="text-[7px] text-white font-medium truncate px-0.5">{dA}d</span>
+                                                  </div>
+                                                  <div className="absolute h-4 bg-blue-300 dark:bg-blue-600 flex items-center justify-center" style={{ left: baseLeft + wA * weekWidth, width: Math.max(wB * weekWidth, 6), top: barTop }} title={`REV_B: ${dB} días`}>
+                                                    <span className="text-[7px] text-white font-medium truncate px-0.5">{dB}d</span>
+                                                  </div>
+                                                  <div className="absolute h-4 rounded-r-sm bg-purple-300 dark:bg-purple-600 flex items-center justify-center" style={{ left: baseLeft + (wA + wB) * weekWidth, width: Math.max(w0 * weekWidth, 6), top: barTop }} title={`REV_0: ${d0} días`}>
+                                                    <span className="text-[7px] text-white font-medium truncate px-0.5">{d0}d</span>
+                                                  </div>
+                                                </>
+                                              );
+                                            })()}
                                           </div>
                                         );
                                       })}

@@ -5792,9 +5792,209 @@ ${cotHtml}
                     {/* Tab: Gantt */}
                     {dashboardTab === 'gantt' && (
                       <Card className="overflow-hidden">
-                        <div className="p-3 border-b border-neutral-200 dark:border-neutral-700">
-                          <h3 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Carta Gantt</h3>
-                          <p className="text-neutral-500 dark:text-neutral-400 text-xs">Visualización temporal del proyecto — desliza horizontalmente para ver más semanas</p>
+                        <div className="p-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
+                          <div>
+                            <h3 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Carta Gantt</h3>
+                            <p className="text-neutral-500 dark:text-neutral-400 text-xs">Visualización temporal del proyecto — desliza horizontalmente para ver más semanas</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              // Datos para la impresión
+                              const startDate = new Date(dashboardStartDate);
+                              const startWOY = getWeekOfYear(startDate);
+                              const weeksP = 28;
+                              const wW = 24; // width por semana en print
+                              const rH = 20; // row height en print
+                              const cW = 140; // code width
+                              const nW = 200; // name width
+
+                              // Generar filas HTML
+                              const rowsHtml = deliverables.map((d, i) => {
+                                const bg = d.frozen ? '#eff6ff' : (i % 2 === 0 ? '#fafaf7' : '#ffffff');
+                                const txtDeco = d.frozen ? 'text-decoration:line-through;' : '';
+                                const opacity = d.frozen ? 'opacity:0.5;' : '';
+
+                                // Barras SVG
+                                let barsHtml = '';
+                                if (!d.frozen) {
+                                  const ws = d.weekStart || d.secuencia || 1;
+                                  const dA = obtenerDuracionRevA(d, duracionesPorTipo);
+                                  const dB = duracionRevision;
+                                  const d0Val = duracionRevision;
+                                  const wA = Math.max(dA / 5, 0.15);
+                                  const wBw = Math.max(dB / 5, 0.15);
+                                  const w0w = Math.max(d0Val / 5, 0.15);
+                                  const st = d.status || {};
+
+                                  if (st.sentRev0) {
+                                    // Terminado
+                                    const left = (ws - 1) * wW;
+                                    const width = Math.max((wA + wBw + w0w) * wW, 6);
+                                    barsHtml = `<rect x="${left}" y="3" width="${width}" height="14" rx="2" fill="#22c55e"/>
+                                      <text x="${left + width/2}" y="13" text-anchor="middle" fill="white" font-size="7" font-weight="600">✓</text>`;
+                                  } else {
+                                    // Barras de progreso parcial
+                                    if (st.sentIniciado || st.sentRevA) {
+                                      const left = (ws - 1) * wW;
+                                      const width = Math.max(wA * wW, 6);
+                                      const fill = st.sentRevA ? '#22c55e' : '#fb923c';
+                                      barsHtml += `<rect x="${left}" y="3" width="${width}" height="14" rx="2" fill="${fill}"/>`;
+                                    }
+                                    if (st.comentariosARecibidos) {
+                                      const left = (ws - 1 + wA) * wW;
+                                      const width = Math.max(wBw * wW, 6);
+                                      const fill = st.sentRevB ? '#22c55e' : '#60a5fa';
+                                      barsHtml += `<rect x="${left}" y="3" width="${width}" height="14" rx="2" fill="${fill}"/>`;
+                                    }
+                                    if (st.comentariosBRecibidos) {
+                                      const left = (ws - 1 + wA + wBw) * wW;
+                                      const width = Math.max(w0w * wW, 6);
+                                      barsHtml += `<rect x="${left}" y="3" width="${width}" height="14" rx="2" fill="#c084fc"/>`;
+                                    }
+                                    // Si no hay barras de progreso, mostrar pendiente
+                                    if (!st.sentIniciado && !st.sentRevA && !st.comentariosARecibidos && !st.comentariosBRecibidos) {
+                                      const baseLeft = (ws - 1) * wW;
+                                      barsHtml += `<rect x="${baseLeft}" y="3" width="${Math.max(wA * wW, 6)}" height="14" rx="2 0 0 2" fill="#fdba74"/>
+                                        <text x="${baseLeft + Math.max(wA * wW, 6)/2}" y="13" text-anchor="middle" fill="white" font-size="6" font-weight="500">${dA}d</text>`;
+                                      const bLeft = baseLeft + wA * wW;
+                                      barsHtml += `<rect x="${bLeft}" y="3" width="${Math.max(wBw * wW, 6)}" height="14" fill="#93c5fd"/>
+                                        <text x="${bLeft + Math.max(wBw * wW, 6)/2}" y="13" text-anchor="middle" fill="white" font-size="6" font-weight="500">${dB}d</text>`;
+                                      const oLeft = bLeft + wBw * wW;
+                                      barsHtml += `<rect x="${oLeft}" y="3" width="${Math.max(w0w * wW, 6)}" height="14" rx="0 2 2 0" fill="#d8b4fe"/>
+                                        <text x="${oLeft + Math.max(w0w * wW, 6)/2}" y="13" text-anchor="middle" fill="white" font-size="6" font-weight="500">${d0Val}d</text>`;
+                                    }
+                                  }
+                                }
+
+                                const tipo = getTipoDocumento(d.codigo, d.nombre || d.name, d.tipoManual);
+                                const tipoColor = getTipoColor(tipo);
+                                return `<tr style="background:${bg};${opacity}">
+                                  <td style="border:1px solid #e5e5e5;padding:2px 6px;font-family:monospace;font-size:8px;color:#666;${txtDeco}width:${cW}px;white-space:nowrap;">${d.codigo || '-'}</td>
+                                  <td style="border:1px solid #e5e5e5;padding:2px 6px;font-size:8px;color:#333;${txtDeco}width:${nW}px;">
+                                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${tipoColor};margin-right:4px;vertical-align:middle;"></span>
+                                    ${d.nombre || d.name || ''}
+                                  </td>
+                                  <td style="border:1px solid #e5e5e5;padding:0;position:relative;">
+                                    <svg width="${weeksP * wW}" height="${rH}" style="display:block;">
+                                      ${barsHtml}
+                                    </svg>
+                                  </td>
+                                </tr>`;
+                              }).join('');
+
+                              // Header de semanas
+                              const weeksHeaderHtml = Array.from({ length: weeksP }, (_, i) => {
+                                const wNum = startWOY + i;
+                                const today = new Date();
+                                const diffW = Math.round((today - startDate) / (7 * 24 * 60 * 60 * 1000));
+                                const isCurrent = i === Math.min(Math.max(diffW, 0), weeksP);
+                                return `<th style="border:1px solid #e5e5e5;width:${wW}px;min-width:${wW}px;font-size:7px;font-weight:${isCurrent ? '700' : '500'};color:${isCurrent ? '#ea580c' : '#999'};background:${isCurrent ? '#fff7ed' : '#f5f5f4'};padding:2px 0;text-align:center;">S${wNum}</th>`;
+                              }).join('');
+
+                              // Leyenda
+                              const leyenda = [
+                                { color: '#fdba74', label: 'REV_A (pendiente)' },
+                                { color: '#93c5fd', label: 'REV_B (pendiente)' },
+                                { color: '#d8b4fe', label: 'REV_0 (pendiente)' },
+                                { color: '#fb923c', label: 'En proceso' },
+                                { color: '#22c55e', label: 'Completado' },
+                              ].map(l => `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;">
+                                <span style="display:inline-block;width:12px;height:8px;border-radius:2px;background:${l.color};"></span>
+                                <span style="font-size:8px;color:#666;">${l.label}</span>
+                              </span>`).join('');
+
+                              const pw = window.open('', '_blank');
+                              pw.document.write(`<html><head><title>AFOR — Carta Gantt ${proyecto.nombre}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@page { size: letter landscape; margin: 10mm 8mm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; color: #0a0a0a; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+table { border-collapse: collapse; }
+tr { page-break-inside: avoid; }
+</style></head><body>
+<div style="max-width:100%;margin:0 auto;">
+  <!-- Accent line -->
+  <div style="height:3px;background:#b8470a;"></div>
+
+  <!-- Header -->
+  <div style="padding:20px 24px 14px;display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <img src="/logo-afor.png" alt="AFOR" style="height:36px;margin-bottom:4px;" />
+      <div style="font-size:9px;color:#7a7a78;letter-spacing:0.8px;text-transform:uppercase;font-weight:500;">Carta Gantt</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:9px;color:#7a7a78;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin-bottom:4px;">Proyecto</div>
+      <div style="font-weight:600;font-size:14px;color:#0a0a0a;letter-spacing:0.5px;">${proyecto.id}</div>
+    </div>
+  </div>
+
+  <!-- Separator -->
+  <div style="margin:0 24px;height:1px;background:#e8e6e1;"></div>
+
+  <!-- Project + Client info -->
+  <div style="padding:14px 24px;display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+    <div>
+      <div style="font-size:9px;color:#7a7a78;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin-bottom:4px;">Proyecto</div>
+      <div style="font-size:16px;font-weight:600;color:#0a0a0a;line-height:1.2;">${proyecto.nombre}</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:9px;color:#7a7a78;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin-bottom:4px;">Cliente</div>
+      <div style="font-size:16px;font-weight:600;color:#0a0a0a;line-height:1.2;">${proyecto.cliente || '—'}</div>
+    </div>
+  </div>
+
+  <!-- Section title -->
+  <div style="padding:8px 24px 6px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:24px;height:2px;background:#b8470a;"></div>
+      <div style="font-size:9px;font-weight:600;color:#b8470a;text-transform:uppercase;letter-spacing:2px;">Carta Gantt</div>
+    </div>
+  </div>
+
+  <!-- Gantt Table -->
+  <div style="padding:6px 24px 12px;overflow:visible;">
+    <table style="width:100%;">
+      <thead>
+        <tr style="background:#f5f5f4;">
+          <th style="border:1px solid #e5e5e5;width:${cW}px;font-size:8px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;padding:4px 6px;text-align:left;">Código</th>
+          <th style="border:1px solid #e5e5e5;width:${nW}px;font-size:8px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;padding:4px 6px;text-align:left;">Descripción</th>
+          ${weeksHeaderHtml}
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Legend -->
+  <div style="padding:8px 24px 16px;">
+    ${leyenda}
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:12px 24px;border-top:1px solid #e8e6e1;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:10px;font-weight:600;color:#0a0a0a;">AFOR</div>
+      <div style="font-size:7px;color:#999;">Assets for Non-Process Infrastructure</div>
+      <div style="font-size:7px;color:#999;">www.afor.cl · contacto@afor.cl</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:8px;color:#999;">Fecha de emisión</div>
+      <div style="font-size:10px;font-weight:500;color:#333;">${new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+    </div>
+  </div>
+</div>
+</body></html>`);
+                              pw.document.close();
+                              setTimeout(() => pw.print(), 600);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            Imprimir
+                          </button>
                         </div>
                         <div className="p-3">
                           {(() => {

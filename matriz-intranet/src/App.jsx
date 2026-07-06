@@ -5496,12 +5496,15 @@ ${cotHtml}
                             const padding = { top: 20, right: 70, bottom: 30, left: 35 };
 
                             // Curva proyectada basada en entregables reales (Valor Ganado)
+                            // Incluir puntos fraccionarios exactos donde termina cada entregable
+                            // para que la curva suba en el mismo punto que la barra del Gantt
                             const totalDeliverables = deliverableEndWeeks.length || 1;
-                            const projectedData = [];
-                            for (let w = 0; w <= weeksToShow; w++) {
+                            const integerWeeks = Array.from({ length: weeksToShow + 1 }, (_, i) => i);
+                            const allPoints = [...new Set([...integerWeeks, ...deliverableEndWeeks])].sort((a, b) => a - b).filter(w => w <= weeksToShow);
+                            const projectedData = allPoints.map(w => {
                               const completedByWeek = deliverableEndWeeks.filter(ew => ew <= w).length;
-                              projectedData.push({ week: w, value: (completedByWeek / totalDeliverables) * 100 });
-                            }
+                              return { week: w, value: (completedByWeek / totalDeliverables) * 100 };
+                            });
                             
                             // Calcular semanas del año (continuidad anual)
                             const startDate = new Date(dashboardStartDate);
@@ -7036,17 +7039,17 @@ tr { page-break-inside: avoid; }
                   const maxEndWeekImpr = deliverableEndWeeksImpr.length > 0 ? Math.max(...deliverableEndWeeksImpr) : 10;
                   const weeksToShow = Math.max(Math.ceil(maxEndWeekImpr) + 2, 6);
 
-                  // Curva programada: basada en semana de fin de cada entregable (Valor Ganado)
-                  const programada = [];
-                  // Curva real: acumulado de entregables efectivamente terminados por semana
+                  // Curva programada: incluir puntos fraccionarios exactos de fin de entregable
+                  const intWeeks = Array.from({ length: weeksToShow + 1 }, (_, i) => i);
+                  const allProgPoints = [...new Set([...intWeeks, ...deliverableEndWeeksImpr])].sort((a, b) => a - b).filter(w => w <= weeksToShow);
+                  const progPct = allProgPoints.map(w => {
+                    const acum = deliverableEndWeeksImpr.filter(ew => ew <= w).length;
+                    return totalEntregables > 0 ? (acum / totalEntregables * 100) : 0;
+                  });
+
+                  // Curva real: sigue usando semanas enteras (depende de fechas reales)
                   const real = [];
-
                   for (let w = 0; w <= weeksToShow; w++) {
-                    // Programada: entregables cuya semana de fin (weekStart + totalDays/5) <= w
-                    const acumProg = deliverableEndWeeksImpr.filter(ew => ew <= w).length;
-                    programada.push(acumProg);
-
-                    // Real: entregables que ya tienen sentRev0Date <= esta semana
                     const weekDate = addWeeks(startDate, w);
                     let acumReal = 0;
                     entregablesImpr.forEach(d => {
@@ -7059,9 +7062,6 @@ tr { page-break-inside: avoid; }
                     });
                     real.push(acumReal);
                   }
-
-                  // Convertir a porcentaje
-                  const progPct = programada.map(v => totalEntregables > 0 ? (v / totalEntregables * 100) : 0);
                   const realPct = real.map(v => totalEntregables > 0 ? (v / totalEntregables * 100) : 0);
 
                   // SVG dimensions
@@ -7077,7 +7077,7 @@ tr { page-break-inside: avoid; }
                   const xScale = (i) => padL + (i / weeksToShow) * chartW;
                   const yScale = (v) => padT + chartH - (v / 100) * chartH;
 
-                  const progPath = progPct.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`).join(' ');
+                  const progPath = progPct.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(allProgPoints[i]).toFixed(1)},${yScale(v).toFixed(1)}`).join(' ');
                   const realPath = realPct.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`).join(' ');
 
                   // Semana actual relativa al inicio

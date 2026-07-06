@@ -5480,13 +5480,14 @@ ${cotHtml}
                           <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-3">Comparación avance proyectado vs real</p>
                           {(() => {
                             // Calcular duración real del proyecto desde entregables
+                            // Usar (sw - 1) porque las barras Gantt arrancan en posición 0-based
                             const deliverableEndWeeks = deliverables
                               .filter(d => !d.frozen)
                               .map(d => {
                                 const sw = d.weekStart || d.secuencia || 1;
                                 const dA = obtenerDuracionRevA(d, duracionesPorTipo);
                                 const totalDays = dA + duracionRevision + duracionRevision;
-                                return sw + totalDays / 5;
+                                return (sw - 1) + totalDays / 5;
                               });
                             const maxEndWeek = deliverableEndWeeks.length > 0 ? Math.max(...deliverableEndWeeks) : 10;
                             const weeksToShow = Math.max(Math.ceil(maxEndWeek) + 2, 6);
@@ -7023,13 +7024,14 @@ tr { page-break-inside: avoid; }
                   const startWeekOfYear = getWeekOfYear(startDate);
 
                   // Calcular duración real del proyecto desde entregables
+                  // Usar (sw - 1) porque las barras Gantt arrancan en posición 0-based
                   const deliverableEndWeeksImpr = entregablesImpr
                     .filter(d => !d.frozen)
                     .map(d => {
                       const sw = d.weekStart || d.secuencia || 1;
                       const dA = obtenerDuracionRevA(d, duracionesPorTipo);
                       const totalDays = dA + duracionRevision + duracionRevision;
-                      return sw + totalDays / 5;
+                      return (sw - 1) + totalDays / 5;
                     });
                   const maxEndWeekImpr = deliverableEndWeeksImpr.length > 0 ? Math.max(...deliverableEndWeeksImpr) : 10;
                   const weeksToShow = Math.max(Math.ceil(maxEndWeekImpr) + 2, 6);

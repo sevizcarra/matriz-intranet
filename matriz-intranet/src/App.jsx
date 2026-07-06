@@ -574,12 +574,22 @@ const addBusinessDays = (date, days) => {
 
 const formatDateShort = (date) => {
   if (!date) return '-';
+  // Si es string YYYY-MM-DD, parsear directo para evitar desfase de timezone
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [y, m, d] = date.split('-');
+    return `${d}/${m}/${y.slice(-2)}`;
+  }
   const d = new Date(date);
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
 };
 
 const formatDateFull = (date) => {
   if (!date) return '-';
+  // Si es string YYYY-MM-DD, parsear directo para evitar desfase de timezone
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [y, m, d] = date.split('-');
+    return `${d}/${m}/${y}`;
+  }
   const d = new Date(date);
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };

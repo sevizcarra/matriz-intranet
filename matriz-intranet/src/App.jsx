@@ -5794,8 +5794,17 @@ ${cotHtml}
                               // Datos para la impresión
                               const startDate = new Date(dashboardStartDate);
                               const startWOY = getWeekOfYear(startDate);
-                              const weeksP = 28;
-                              const wW = 24; // width por semana en print
+                              // Calcular semanas dinámicamente según último entregable
+                              const maxEndWPrint = Math.max(...deliverables.filter(d => !d.frozen).map(d => {
+                                const sw = d.weekStart || d.secuencia || 1;
+                                const dA = obtenerDuracionRevA(d, duracionesPorTipo);
+                                const totalDays = dA + duracionRevision + duracionRevision;
+                                return (sw - 1) + totalDays / 5;
+                              }), 4);
+                              const weeksP = Math.max(Math.ceil(maxEndWPrint) + 2, 6);
+                              // Ancho por semana: aprovechar el ancho disponible (~700px para landscape letter menos márgenes y columnas fijas)
+                              const availableWidth = 700 - 140 - 200; // ~360px para semanas
+                              const wW = Math.max(Math.floor(availableWidth / weeksP), 18); // mínimo 18px por semana
                               const rH = 20; // row height en print
                               const cW = 140; // code width
                               const nW = 200; // name width
@@ -5991,7 +6000,14 @@ tr { page-break-inside: avoid; }
                         <div className="p-3">
                           {(() => {
                             const startDate = new Date(dashboardStartDate);
-                            const weeksToShow = 28;
+                            // Calcular semanas dinámicamente según último entregable
+                            const maxEndWeekGantt = Math.max(...deliverables.filter(d => !d.frozen).map(d => {
+                              const sw = d.weekStart || d.secuencia || 1;
+                              const dA = obtenerDuracionRevA(d, duracionesPorTipo);
+                              const totalDays = dA + duracionRevision + duracionRevision;
+                              return (sw - 1) + totalDays / 5;
+                            }), 4);
+                            const weeksToShow = Math.max(Math.ceil(maxEndWeekGantt) + 2, 6);
                             const weekWidth = 34;
                             const rowHeight = 26;
                             const codeWidth = 120;

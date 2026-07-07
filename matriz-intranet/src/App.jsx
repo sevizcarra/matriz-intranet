@@ -1810,6 +1810,168 @@ export default function MatrizIntranet() {
         )}
       </div>
 
+      {/* Resumen Global de Documentos */}
+      {(() => {
+        if (proyectosActivosVisibles.length === 0) return null;
+
+        const today = new Date();
+        // Recopilar todos los entregables de todos los proyectos activos
+        const allDocs = [];
+        proyectosActivosVisibles.forEach(proyecto => {
+          const entregables = proyecto.entregables || [];
+          const usaPersonalizados = entregables.length > 0;
+          entregables.forEach(d => {
+            if (d.frozen) return;
+            const statusKey = usaPersonalizados ? `${proyecto.id}_${d.id}` : d.id;
+            const status = statusData[statusKey];
+            const deadlines = calculateDeadlines(proyecto.inicio || dashboardStartDate, d.weekStart || d.secuencia, obtenerDuracionRevA(d, duracionesPorTipo), duracionRevision, duracionRevision);
+            const statusInfo = calculateStatus(status, deadlines);
+            allDocs.push({
+              proyecto: proyecto.id,
+              proyectoNombre: proyecto.nombre,
+              nombre: d.nombre || d.codigo || d.id,
+              codigo: d.codigo || d.id,
+              status,
+              statusInfo,
+              deadlines,
+              fase: proyecto.fase,
+            });
+          });
+        });
+
+        const totalDocs = allDocs.length;
+        const completed = allDocs.filter(d => d.statusInfo.status === 'TERMINADO');
+        const inProgress = allDocs.filter(d => d.statusInfo.status === 'En Proceso');
+        const delayed = allDocs.filter(d => d.statusInfo.status === 'ATRASADO');
+        const pending = allDocs.filter(d => d.statusInfo.status === 'Pendiente');
+
+        if (totalDocs === 0) return null;
+
+        const pctCompleted = totalDocs > 0 ? (completed.length / totalDocs * 100) : 0;
+
+        // Calcular avance ponderado global
+        let sumWeightedProgress = 0;
+        allDocs.forEach(d => {
+          const s = d.status;
+          if (!s) return;
+          if (s.sentRev0) sumWeightedProgress += 100;
+          else if (s.sentRevB) sumWeightedProgress += 90;
+          else if (s.sentRevA) sumWeightedProgress += 70;
+        });
+        const avgWeightedProgress = totalDocs > 0 ? (sumWeightedProgress / totalDocs) : 0;
+
+        return (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-orange-500" />
+              <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">Resumen Global de Documentos</h2>
+              <span className="bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 text-[10px] px-1.5 py-0.5 rounded-full">{totalDocs} docs</span>
+            </div>
+
+            <Card className="p-3 sm:p-4 space-y-3">
+              {/* Barra de avance global */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">Avance ponderado global</span>
+                  <span className="text-sm font-bold text-neutral-800 dark:text-neutral-100">{avgWeightedProgress.toFixed(1)}%</span>
+                </div>
+                <div className="h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-orange-500 rounded-full transition-all" style={{ width: `${avgWeightedProgress}%` }} />
+                </div>
+              </div>
+
+              {/* Contadores por estado */}
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="p-2 rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">{completed.length}</p>
+                  <p className="text-[10px] text-green-600 dark:text-green-400">Completados</p>
+                </div>
+                <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-900/20">
+                  <p className="text-lg font-bold text-orange-600 dark:text-orange-400">{inProgress.length}</p>
+                  <p className="text-[10px] text-orange-600 dark:text-orange-400">En Proceso</p>
+                </div>
+                <div className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20">
+                  <p className="text-lg font-bold text-red-600 dark:text-red-400">{delayed.length}</p>
+                  <p className="text-[10px] text-red-600 dark:text-red-400">Atrasados</p>
+                </div>
+                <div className="p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800">
+                  <p className="text-lg font-bold text-neutral-600 dark:text-neutral-300">{pending.length}</p>
+                  <p className="text-[10px] text-neutral-500 dark:text-neutral-400">Pendientes</p>
+                </div>
+              </div>
+
+              {/* Detalle por proyecto */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Por proyecto</p>
+                {proyectosActivosVisibles.map(proyecto => {
+                  const docsProyecto = allDocs.filter(d => d.proyecto === proyecto.id);
+                  const cP = docsProyecto.filter(d => d.statusInfo.status === 'TERMINADO').length;
+                  const eP = docsProyecto.filter(d => d.statusInfo.status === 'En Proceso').length;
+                  const aP = docsProyecto.filter(d => d.statusInfo.status === 'ATRASADO').length;
+                  const pP = docsProyecto.filter(d => d.statusInfo.status === 'Pendiente').length;
+                  const tP = docsProyecto.length;
+                  let sumP = 0;
+                  docsProyecto.forEach(d => {
+                    const s = d.status;
+                    if (!s) return;
+                    if (s.sentRev0) sumP += 100;
+                    else if (s.sentRevB) sumP += 90;
+                    else if (s.sentRevA) sumP += 70;
+                  });
+                  const avgP = tP > 0 ? (sumP / tP) : 0;
+                  return (
+                    <div
+                      key={proyecto.id}
+                      className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
+                      onClick={() => { setSelectedProject(proyecto.id); setCurrentPage('proyecto-detail'); }}
+                    >
+                      <span className="text-orange-500 font-mono text-xs w-20 shrink-0">{proyecto.id}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex-1 h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
+                            <div className="h-full bg-orange-500 rounded-full" style={{ width: `${avgP}%` }} />
+                          </div>
+                          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-200 w-12 text-right">{avgP.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {cP > 0 && <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">{cP}</span>}
+                        {eP > 0 && <span className="text-[10px] px-1 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">{eP}</span>}
+                        {aP > 0 && <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">{aP}</span>}
+                        {pP > 0 && <span className="text-[10px] px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400">{pP}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Lista de atrasados si hay */}
+              {delayed.length > 0 && (
+                <div className="border-t border-neutral-200 dark:border-neutral-700 pt-2 mt-2">
+                  <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1.5 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Documentos atrasados
+                  </p>
+                  <div className="space-y-1">
+                    {delayed.slice(0, 5).map((d, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs py-1 px-2 rounded bg-red-50 dark:bg-red-900/10">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-orange-500 font-mono">{d.proyecto}</span>
+                          <span className="text-neutral-700 dark:text-neutral-200 truncate">{d.nombre}</span>
+                        </div>
+                        <span className="text-red-600 dark:text-red-400 shrink-0 ml-2">{d.codigo}</span>
+                      </div>
+                    ))}
+                    {delayed.length > 5 && (
+                      <p className="text-[10px] text-neutral-500 dark:text-neutral-400 text-center">+{delayed.length - 5} más</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        );
+      })()}
+
       {/* Mis Tareas Pendientes */}
       {(() => {
         const misTareasPendientes = tareas.filter(t =>

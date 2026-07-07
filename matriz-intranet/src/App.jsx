@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
   Building2, User, DollarSign, FileText, Check, X, Pencil, Trash2, Settings,
   BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2,
-  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi, Download, Upload, Database, Shield, Edit3, History, CheckCircle
+  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi, Download, Upload, Database, Shield, Edit3, History, CheckCircle, Copy
 } from 'lucide-react';
 import {
   subscribeToProyectos,
@@ -3618,6 +3618,31 @@ export default function MatrizIntranet() {
                                   title="Editar"
                                 >
                                   <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setCotCodigo((cot.codigo || '') + ' (copia)');
+                                    setCotCliente(cot.cliente || '');
+                                    setCotClienteRut(cot.clienteRut || '');
+                                    setCotClienteContacto(cot.clienteContacto || '');
+                                    setCotClienteEmail(cot.clienteEmail || '');
+                                    setCotProyectoNombre(cot.proyectoNombre || '');
+                                    setCotFase(cot.fase || '');
+                                    setCotExcelData(cot.excelData || null);
+                                    setCotExcelFileName(cot.excelFileName || '');
+                                    setCotFirma(false);
+                                    setCotFirmante(cot.firmante || 'sav');
+                                    setCotRevAEnabled(cot.revAEnabled !== false); setCotRevBEnabled(cot.revBEnabled !== false); setCotRev0Enabled(cot.rev0Enabled !== false);
+                                    setCotRevAPercent(cot.revAPercent ?? 70); setCotRevBPercent(cot.revBPercent ?? 20); setCotRev0Percent(cot.rev0Percent ?? 10);
+                                    setCotSimplificado(cot.simplificado || false); setCotDescuento(cot.descuento || 0);
+                                    setCotViewingId(null);
+                                    setCotMode('nueva');
+                                    showNotification('success', 'Cotización duplicada — edita y guarda como nueva');
+                                  }}
+                                  className="p-2 text-neutral-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                                  title="Duplicar"
+                                >
+                                  <Copy className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={async () => {

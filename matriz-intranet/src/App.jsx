@@ -261,6 +261,54 @@ const getRevFinalLabel = (fase) => {
   return 'REV_0'; // FEL3, EXE, o sin definir
 };
 
+// Calcular porcentaje de avance individual de un entregable
+const getDeliverableProgress = (status) => {
+  if (!status) return 0;
+  if (status.sentRev0) return 100;
+  if (status.sentRevB) return 90;
+  if (status.sentRevA) return 70;
+  // sentIniciado o sin progreso = 0%
+  return 0;
+};
+
+// Generar path SVG suave con spline monotono cúbico (Fritsch-Carlson)
+const smoothPath = (points) => {
+  if (!points || points.length < 2) return '';
+  if (points.length === 2) return `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)} L${points[1].x.toFixed(1)},${points[1].y.toFixed(1)}`;
+  const n = points.length;
+  const dx = [], dy = [], m = [];
+  for (let i = 0; i < n - 1; i++) {
+    dx.push(points[i + 1].x - points[i].x);
+    dy.push(points[i + 1].y - points[i].y);
+    m.push(dx[i] === 0 ? 0 : dy[i] / dx[i]);
+  }
+  const tangents = [m[0]];
+  for (let i = 1; i < n - 1; i++) {
+    if (m[i - 1] * m[i] <= 0) { tangents.push(0); }
+    else { tangents.push((m[i - 1] + m[i]) / 2); }
+  }
+  tangents.push(m[n - 2]);
+  for (let i = 0; i < n - 1; i++) {
+    if (Math.abs(m[i]) < 1e-10) { tangents[i] = 0; tangents[i + 1] = 0; }
+    else {
+      const alpha = tangents[i] / m[i];
+      const beta = tangents[i + 1] / m[i];
+      const s = alpha * alpha + beta * beta;
+      if (s > 9) { const tau = 3 / Math.sqrt(s); tangents[i] = tau * alpha * m[i]; tangents[i + 1] = tau * beta * m[i]; }
+    }
+  }
+  let path = `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const d = dx[i] / 3;
+    const cp1x = points[i].x + d;
+    const cp1y = points[i].y + tangents[i] * d;
+    const cp2x = points[i + 1].x - d;
+    const cp2y = points[i + 1].y - tangents[i + 1] * d;
+    path += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${points[i + 1].x.toFixed(1)},${points[i + 1].y.toFixed(1)}`;
+  }
+  return path;
+};
+
 const TIPOS_ENTREGABLE = [
   { id: 'DOC', nombre: 'Documento', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' },
   { id: 'PLA', nombre: 'Plano', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' },
@@ -5536,39 +5584,41 @@ ${cotHtml}
                             // La posición en el gráfico es relativa al proyecto
                             const currentWeek = projectWeek;
 
-                            // Calcular avance real basado en entregas completadas
+                            // Calcular avance real ponderado por entregable
+                            // Inicio=0%, RevA=70%, RevB=90%, Rev0/P=100%, promedio global
                             const realData = [];
                             const totalEntregables = stats.total || deliverables.length || 1;
                             for (let w = 0; w <= Math.min(currentWeek, weeksToShow); w++) {
-                              // Contar entregables completados hasta esta semana
-                              const completedThisWeek = deliverables.filter(d => {
-                                // Considerar completado si tiene Rev0, RevB o RevA
-                                const hasProgress = d.status?.sentRev0 || d.status?.sentRevB || d.status?.sentRevA || d.status?.sentIniciado;
-                                if (!hasProgress) return false;
-                                // Si tiene fecha, verificar si es antes de esta semana
-                                const completedDate = d.status?.sentRev0Date ? new Date(d.status.sentRev0Date) :
-                                                     d.status?.sentRevBDate ? new Date(d.status.sentRevBDate) :
-                                                     d.status?.sentRevADate ? new Date(d.status.sentRevADate) : today;
-                                const weeksSinceStart = Math.floor((completedDate - startDate) / (7 * 24 * 60 * 60 * 1000));
-                                return weeksSinceStart <= w;
-                              }).length;
-                              const cumulativeReal = (completedThisWeek / totalEntregables) * 100;
-                              realData.push({ week: w, value: cumulativeReal });
+                              const weekDate = new Date(startDate.getTime() + w * 7 * 24 * 60 * 60 * 1000);
+                              let sumProgress = 0;
+                              deliverables.filter(d => !d.frozen).forEach(d => {
+                                const s = d.status;
+                                if (!s) return;
+                                // Determinar el mayor hito alcanzado hasta esta semana
+                                let progress = 0;
+                                if (s.sentRev0 && s.sentRev0Date && new Date(s.sentRev0Date) <= weekDate) { progress = 100; }
+                                else if (s.sentRevB && s.sentRevBDate && new Date(s.sentRevBDate) <= weekDate) { progress = 90; }
+                                else if (s.sentRevA && s.sentRevADate && new Date(s.sentRevADate) <= weekDate) { progress = 70; }
+                                else if (s.sentRev0 && !s.sentRev0Date) { progress = 100; }
+                                else if (s.sentRevB && !s.sentRevBDate) { progress = 90; }
+                                else if (s.sentRevA && !s.sentRevADate) { progress = 70; }
+                                // sentIniciado = 0% (solo indica que comenzó, no hay avance entregable)
+                                sumProgress += progress;
+                              });
+                              const avgProgress = sumProgress / totalEntregables;
+                              realData.push({ week: w, value: avgProgress });
                             }
-                            
+
                             // Escalas
                             const xScale = (w) => padding.left + (w / weeksToShow) * (chartWidth - padding.left - padding.right);
                             const yScale = (v) => chartHeight - padding.bottom - (v / 100) * (chartHeight - padding.top - padding.bottom);
-                            
-                            // Generar path para curva proyectada
-                            const projectedPath = projectedData.map((p, i) => 
-                              `${i === 0 ? 'M' : 'L'} ${xScale(p.week)} ${yScale(p.value)}`
-                            ).join(' ');
-                            
-                            // Generar path para curva real
-                            const realPath = realData.length > 0 ? realData.map((p, i) => 
-                              `${i === 0 ? 'M' : 'L'} ${xScale(p.week)} ${yScale(p.value)}`
-                            ).join(' ') : null;
+
+                            // Generar paths suaves con spline cúbico (forma S real)
+                            const projectedPoints = projectedData.map(p => ({ x: xScale(p.week), y: yScale(p.value) }));
+                            const projectedPath = smoothPath(projectedPoints);
+
+                            const realPoints = realData.map(p => ({ x: xScale(p.week), y: yScale(p.value) }));
+                            const realPath = realPoints.length > 1 ? smoothPath(realPoints) : null;
                             
                             // Valores para mostrar
                             const projectedAtCurrentWeek = currentWeek <= weeksToShow 
@@ -7096,22 +7146,26 @@ tr { page-break-inside: avoid; }
                     return totalEntregables > 0 ? (acum / totalEntregables * 100) : 0;
                   });
 
-                  // Curva real: sigue usando semanas enteras (depende de fechas reales)
-                  const real = [];
+                  // Curva real ponderada: inicio=0%, RevA=70%, RevB=90%, Rev0/P=100%
+                  const realPct = [];
                   for (let w = 0; w <= weeksToShow; w++) {
                     const weekDate = addWeeks(startDate, w);
-                    let acumReal = 0;
+                    let sumProgress = 0;
                     entregablesImpr.forEach(d => {
                       if (d.frozen) return;
                       const status = statusData[getStatusKey(d)];
-                      if (status?.sentRev0Date) {
-                        const fecha = new Date(status.sentRev0Date);
-                        if (fecha <= weekDate) acumReal++;
-                      }
+                      if (!status) return;
+                      let progress = 0;
+                      if (status.sentRev0 && status.sentRev0Date && new Date(status.sentRev0Date) <= weekDate) { progress = 100; }
+                      else if (status.sentRevB && status.sentRevBDate && new Date(status.sentRevBDate) <= weekDate) { progress = 90; }
+                      else if (status.sentRevA && status.sentRevADate && new Date(status.sentRevADate) <= weekDate) { progress = 70; }
+                      else if (status.sentRev0 && !status.sentRev0Date) { progress = 100; }
+                      else if (status.sentRevB && !status.sentRevBDate) { progress = 90; }
+                      else if (status.sentRevA && !status.sentRevADate) { progress = 70; }
+                      sumProgress += progress;
                     });
-                    real.push(acumReal);
+                    realPct.push(totalEntregables > 0 ? (sumProgress / totalEntregables) : 0);
                   }
-                  const realPct = real.map(v => totalEntregables > 0 ? (v / totalEntregables * 100) : 0);
 
                   // SVG dimensions
                   const svgW = 680;
@@ -7126,8 +7180,10 @@ tr { page-break-inside: avoid; }
                   const xScale = (i) => padL + (i / weeksToShow) * chartW;
                   const yScale = (v) => padT + chartH - (v / 100) * chartH;
 
-                  const progPath = progPct.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(allProgPoints[i]).toFixed(1)},${yScale(v).toFixed(1)}`).join(' ');
-                  const realPath = realPct.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`).join(' ');
+                  const progPoints = progPct.map((v, i) => ({ x: xScale(allProgPoints[i]), y: yScale(v) }));
+                  const progPath = smoothPath(progPoints);
+                  const realPoints = realPct.map((v, i) => ({ x: xScale(i), y: yScale(v) }));
+                  const realPath = smoothPath(realPoints);
 
                   // Semana actual relativa al inicio
                   const today = new Date();

@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronDown, ChevronLeft, TrendingUp, Calendar, Lock, Eye, EyeOff,
   Building2, User, DollarSign, FileText, Check, X, Pencil, Trash2, Settings,
   BarChart3, AlertTriangle, Printer, FileDown, UserPlus, Save, LogOut, Loader2,
-  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi, Download, Upload, Database, Shield, Edit3, History
+  Moon, Sun, Snowflake, ClipboardList, MessageSquare, Send, Circle, Wifi, Download, Upload, Database, Shield, Edit3, History, CheckCircle
 } from 'lucide-react';
 import {
   subscribeToProyectos,
@@ -3440,56 +3440,34 @@ export default function MatrizIntranet() {
                               )}
                             </div>
                           )}
-                          {/* Subir OC — visible en COTs aceptadas o que ya tienen archivos */}
-                          {(esAceptada || (cot.archivos && cot.archivos.length > 0)) && (
-                            <div className="px-4 py-3 rounded-b-lg" style={{ borderTop: '2px solid #6ee7b7', background: '#d1fae5' }}>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                          {/* Estado OC — visible en COTs aceptadas */}
+                          {esAceptada && (
+                            <div className="px-4 py-3 rounded-b-lg" style={{ borderTop: '2px solid #6ee7b7', background: cot.estadoOC === 'recibida' ? '#d1fae5' : '#fef3c7' }}>
+                              <div className="flex items-center justify-between">
+                                <div className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5" style={{ color: cot.estadoOC === 'recibida' ? '#047857' : '#92400e' }}>
                                   <FileDown className="w-3.5 h-3.5" /> Orden de Compra
                                 </div>
-                                <label className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium cursor-pointer px-3 py-1.5 rounded-lg transition-colors">
-                                  <Upload className="w-3.5 h-3.5" /> Subir OC
-                                  <input type="file" className="hidden" onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    if (file.size > 10 * 1024 * 1024) {
-                                      showNotification('error', 'Archivo muy grande (máx 10 MB)');
-                                      return;
-                                    }
-                                    showNotification('info', `Subiendo ${file.name}...`);
-                                    const result = await uploadCotArchivo(cot._docId, file);
-                                    if (result) showNotification('success', `${file.name} subido correctamente`);
-                                    else showNotification('error', 'Error al subir archivo');
-                                    e.target.value = '';
-                                  }} />
-                                </label>
-                              </div>
-                              {cot.archivos && cot.archivos.length > 0 ? (
-                                <div className="space-y-1.5">
-                                  {cot.archivos.map((arch, i) => (
-                                    <div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-neutral-800 border border-emerald-200 dark:border-emerald-800 rounded px-3 py-2">
-                                      <a href={arch.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 font-medium truncate">
-                                        <FileText className="w-3.5 h-3.5 shrink-0" />
-                                        {arch.nombre}
-                                      </a>
-                                      <div className="flex items-center gap-2 shrink-0 ml-2">
-                                        <span className="text-neutral-400">{arch.size ? (arch.size / 1024 < 1024 ? `${(arch.size / 1024).toFixed(0)} KB` : `${(arch.size / 1024 / 1024).toFixed(1)} MB`) : ''}</span>
-                                        <button onClick={async () => {
-                                          if (window.confirm(`¿Eliminar ${arch.nombre}?`)) {
-                                            const ok = await deleteCotArchivo(cot._docId, arch.path);
-                                            if (ok) showNotification('success', 'Archivo eliminado');
-                                            else showNotification('error', 'Error al eliminar');
-                                          }
-                                        }} className="text-neutral-400 hover:text-red-500 transition-colors">
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={async () => {
+                                      const nuevoEstado = cot.estadoOC === 'recibida' ? 'en_tramite' : 'recibida';
+                                      await saveCotizacion({ _docId: cot._docId, estadoOC: nuevoEstado });
+                                      showNotification('success', nuevoEstado === 'recibida' ? 'OC marcada como recibida' : 'OC marcada en trámite');
+                                    }}
+                                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                                      cot.estadoOC === 'recibida'
+                                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                        : 'bg-amber-500 text-white hover:bg-amber-600'
+                                    }`}
+                                  >
+                                    {cot.estadoOC === 'recibida' ? (
+                                      <><CheckCircle className="w-3.5 h-3.5" /> OC Recibida</>
+                                    ) : (
+                                      <><Clock className="w-3.5 h-3.5" /> OC en Trámite</>
+                                    )}
+                                  </button>
                                 </div>
-                              ) : (
-                                <p className="text-xs text-emerald-600/60 dark:text-emerald-500/50 italic">Sube la Orden de Compra del cliente.</p>
-                              )}
+                              </div>
                             </div>
                           )}
                         </div>

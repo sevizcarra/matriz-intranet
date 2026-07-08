@@ -1405,6 +1405,29 @@ export default function MatrizIntranet() {
           await saveHora(horaActualizada);
         }
 
+        // Migrar el avance de entregables (statusData) del ID viejo al nuevo
+        const prefijoViejo = oldId + '_';
+        const statusMigrado = {};
+        let statusCambio = false;
+        Object.entries(statusData).forEach(([key, val]) => {
+          if (key.startsWith(prefijoViejo)) {
+            statusMigrado[newId + '_' + key.slice(prefijoViejo.length)] = val;
+            statusCambio = true;
+          } else {
+            statusMigrado[key] = val;
+          }
+        });
+        if (statusCambio) {
+          setStatusData(statusMigrado);
+          await saveStatusData(statusMigrado);
+        }
+
+        // Migrar tareas vinculadas al proyecto
+        const tareasDelProyecto = tareas.filter(t => t.proyectoId === oldId);
+        for (const tarea of tareasDelProyecto) {
+          await saveTarea({ ...tarea, proyectoId: newId });
+        }
+
         // Si era el proyecto seleccionado, actualizar selección
         if (selectedProject === oldId) {
           setSelectedProject(newId);

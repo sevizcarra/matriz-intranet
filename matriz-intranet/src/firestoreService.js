@@ -200,6 +200,18 @@ export const saveStatusData = async (statusData) => {
   }
 };
 
+// Actualiza SOLO las claves modificadas de statusData (merge profundo).
+// Evita el last-writer-wins global: dos usuarios marcando checkboxes a la vez ya no se pisan.
+export const updateStatusDataFields = async (fields) => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.CONFIG, 'statusData'), { data: fields }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error('Error updating statusData fields:', error);
+    return false;
+  }
+};
+
 export const subscribeToStatusData = (callback) => {
   return onSnapshot(doc(db, COLLECTIONS.CONFIG, 'statusData'), (docSnap) => {
     if (docSnap.exists()) {

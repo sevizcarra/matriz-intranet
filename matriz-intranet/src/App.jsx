@@ -20,6 +20,7 @@ import {
   saveHora,
   deleteHora as deleteHoraFS,
   saveStatusData,
+  updateStatusDataFields,
   saveTarea,
   deleteTarea as deleteTareaFS,
   updatePresencia,
@@ -663,6 +664,14 @@ const parseLocalDate = (value) => {
   return new Date(value);
 };
 
+// Setter que espeja el valor en un ref del padre: si el componente de página
+// se remonta (p.ej. por el heartbeat de presencia), el formulario no pierde lo escrito.
+const mkRefSetter = (ref, key, setLocal) => (v) => {
+  const val = typeof v === 'function' ? v(ref.current[key]) : v;
+  ref.current[key] = val;
+  setLocal(val);
+};
+
 // Fecha de hoy como 'YYYY-MM-DD' en hora LOCAL (no UTC)
 const hoyLocalStr = () => {
   const n = new Date();
@@ -828,6 +837,10 @@ export default function MatrizIntranet() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [firestoreReady, setFirestoreReady] = useState(false);
+  // Fix C6: no guardar statusData hasta recibir el primer snapshot del servidor,
+  // y guardar solo las claves que cambiaron (merge) en vez del documento completo.
+  const statusLoadedRef = React.useRef(false);
+  const lastSavedStatusRef = React.useRef(null);
   const [firestoreError, setFirestoreError] = useState(null);
   // Estado persistente para Facturación (evita reset al re-render)
   const [selectedProyectoFacturacion, setSelectedProyectoFacturacion] = useState('');
@@ -1136,6 +1149,10 @@ export default function MatrizIntranet() {
   const [profesionalToEdit, setProfesionalToEdit] = useState(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: string }
+
+  // Fix C5: refs espejo para que los formularios de Horas y Tareas sobrevivan remontajes
+  const horasFormRef = React.useRef({ profesional: '', proyecto: '', semana: '', entregable: '', horas: '', revision: 'REV_A', tipoCarga: 'PLA', descripcionCarga: '' });
+  const tareasFormRef = React.useRef({ showNewTarea: false, selectedTarea: null, nuevoComentario: '', filtroEstado: 'todas', nuevaTarea: { titulo: '', descripcion: '', asignadoA: '', proyectoId: '', entregableId: '', prioridad: 'media', fechaLimite: '' } });
   
   // Función para mostrar notificación
   const showNotification = (type, message) => {
@@ -1166,6 +1183,7 @@ export default function MatrizIntranet() {
   const [cotExcelData, setCotExcelData] = useState(null);
   const [cotExcelFileName, setCotExcelFileName] = useState('');
   const [cotShowPreview, setCotShowPreview] = useState(false);
+  const [cotSnapOverride, setCotSnapOverride] = useState(null); // {tarifas, recetas} snapshot de la COT guardada que se previsualiza
   const [cotGenerando, setCotGenerando] = useState(false);
   const [cotFirma, setCotFirma] = useState(null);
   const [cotFirmante, setCotFirmante] = useState('sav'); // 'sav' | 'fmontt'
@@ -1283,7 +1301,9 @@ export default function MatrizIntranet() {
   // ============================================
   useEffect(() => {
     const unsubStatusData = subscribeToStatusData((data) => {
+      statusLoadedRef.current = true; // ya conocemos el estado real del servidor
       if (data && Object.keys(data).length > 0) {
+        lastSavedStatusRef.current = data;
         setStatusData(data);
       }
     });
@@ -1296,12 +1316,21 @@ export default function MatrizIntranet() {
   // ============================================
   // Guardar statusData cuando cambie
   useEffect(() => {
-    if (firestoreReady && Object.keys(statusData).length > 0) {
-      const timer = setTimeout(() => {
-        saveStatusData(statusData);
-      }, 1000); // Debounce de 1 segundo
-      return () => clearTimeout(timer);
-    }
+    // No escribir nunca antes del primer snapshot: evita pisar datos reales con datos demo
+    if (!firestoreReady || !statusLoadedRef.current) return;
+    if (Object.keys(statusData).length === 0) return;
+    const timer = setTimeout(() => {
+      const prev = lastSavedStatusRef.current || {};
+      const cambios = {};
+      let hayCambios = false;
+      Object.entries(statusData).forEach(([k, v]) => {
+        if (prev[k] !== v) { cambios[k] = v; hayCambios = true; }
+      });
+      if (!hayCambios) return;
+      lastSavedStatusRef.current = statusData;
+      updateStatusDataFields(cambios);
+    }, 1000); // Debounce de 1 segundo
+    return () => clearTimeout(timer);
   }, [statusData, firestoreReady]);
 
   // Función para manejar checkboxes del dashboard
@@ -1439,6 +1468,7 @@ export default function MatrizIntranet() {
         });
         if (statusCambio) {
           setStatusData(statusMigrado);
+          lastSavedStatusRef.current = statusMigrado;
           await saveStatusData(statusMigrado);
         }
 
@@ -2287,14 +2317,23 @@ export default function MatrizIntranet() {
   // PÁGINA: CARGA DE HORAS
   // ============================================
   const HorasPage = () => {
-    const [profesional, setProfesional] = useState('');
-    const [proyecto, setProyecto] = useState('');
-    const [semana, setSemana] = useState('');
-    const [entregable, setEntregable] = useState('');
-    const [horas, setHoras] = useState('');
-    const [revision, setRevision] = useState('REV_A');
-    const [tipoCarga, setTipoCarga] = useState('PLA'); // PLA, DOC, INF, REU, VIS
-    const [descripcionCarga, setDescripcionCarga] = useState(''); // Para REU y VIS
+    // Fix C5: estado local espejado en horasFormRef (sobrevive remontajes)
+    const [profesional, setProfesionalLocal] = useState(horasFormRef.current.profesional);
+    const [proyecto, setProyectoLocal] = useState(horasFormRef.current.proyecto);
+    const [semana, setSemanaLocal] = useState(horasFormRef.current.semana);
+    const [entregable, setEntregableLocal] = useState(horasFormRef.current.entregable);
+    const [horas, setHorasLocal] = useState(horasFormRef.current.horas);
+    const [revision, setRevisionLocal] = useState(horasFormRef.current.revision);
+    const [tipoCarga, setTipoCargaLocal] = useState(horasFormRef.current.tipoCarga); // PLA, DOC, INF, REU, VIS
+    const [descripcionCarga, setDescripcionCargaLocal] = useState(horasFormRef.current.descripcionCarga); // Para REU y VIS
+    const setProfesional = mkRefSetter(horasFormRef, 'profesional', setProfesionalLocal);
+    const setProyecto = mkRefSetter(horasFormRef, 'proyecto', setProyectoLocal);
+    const setSemana = mkRefSetter(horasFormRef, 'semana', setSemanaLocal);
+    const setEntregable = mkRefSetter(horasFormRef, 'entregable', setEntregableLocal);
+    const setHoras = mkRefSetter(horasFormRef, 'horas', setHorasLocal);
+    const setRevision = mkRefSetter(horasFormRef, 'revision', setRevisionLocal);
+    const setTipoCarga = mkRefSetter(horasFormRef, 'tipoCarga', setTipoCargaLocal);
+    const setDescripcionCarga = mkRefSetter(horasFormRef, 'descripcionCarga', setDescripcionCargaLocal);
 
     const weeks = getWeeksOfMonth(mesHoras);
 
@@ -2623,21 +2662,17 @@ export default function MatrizIntranet() {
   // PÁGINA: TAREAS
   // ============================================
   const TareasPage = () => {
-    const [showNewTarea, setShowNewTarea] = useState(false);
-    const [selectedTarea, setSelectedTarea] = useState(null);
-    const [nuevoComentario, setNuevoComentario] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('todas'); // todas, pendiente, en_progreso, completada
-
-    // Estados para nueva tarea
-    const [nuevaTarea, setNuevaTarea] = useState({
-      titulo: '',
-      descripcion: '',
-      asignadoA: '',
-      proyectoId: '',
-      entregableId: '',
-      prioridad: 'media', // baja, media, alta
-      fechaLimite: ''
-    });
+    // Fix C5: estado local espejado en tareasFormRef (sobrevive remontajes)
+    const [showNewTarea, setShowNewTareaLocal] = useState(tareasFormRef.current.showNewTarea);
+    const [selectedTarea, setSelectedTareaLocal] = useState(tareasFormRef.current.selectedTarea);
+    const [nuevoComentario, setNuevoComentarioLocal] = useState(tareasFormRef.current.nuevoComentario);
+    const [filtroEstado, setFiltroEstadoLocal] = useState(tareasFormRef.current.filtroEstado); // todas, pendiente, en_progreso, completada
+    const [nuevaTarea, setNuevaTareaLocal] = useState(tareasFormRef.current.nuevaTarea);
+    const setShowNewTarea = mkRefSetter(tareasFormRef, 'showNewTarea', setShowNewTareaLocal);
+    const setSelectedTarea = mkRefSetter(tareasFormRef, 'selectedTarea', setSelectedTareaLocal);
+    const setNuevoComentario = mkRefSetter(tareasFormRef, 'nuevoComentario', setNuevoComentarioLocal);
+    const setFiltroEstado = mkRefSetter(tareasFormRef, 'filtroEstado', setFiltroEstadoLocal);
+    const setNuevaTarea = mkRefSetter(tareasFormRef, 'nuevaTarea', setNuevaTareaLocal);
 
     // Filtrar tareas según rol
     const misTareas = isAdmin
@@ -3678,6 +3713,11 @@ export default function MatrizIntranet() {
                                     setCotRevAEnabled(cot.revAEnabled !== false); setCotRevBEnabled(cot.revBEnabled !== false); setCotRev0Enabled(cot.rev0Enabled !== false);
                                     setCotRevAPercent(cot.revAPercent ?? 70); setCotRevBPercent(cot.revBPercent ?? 20); setCotRev0Percent(cot.rev0Percent ?? 10);
                                     setCotSimplificado(cot.simplificado || false); setCotDescuento(cot.descuento || 0);
+                                    // Usar tarifas/recetas vigentes al momento de crear la COT (integridad histórica)
+                                    let snapT = null, snapR = null;
+                                    try { snapT = cot.tarifasSnapshot ? (typeof cot.tarifasSnapshot === 'string' ? JSON.parse(cot.tarifasSnapshot) : cot.tarifasSnapshot) : null; } catch (e) { snapT = null; }
+                                    try { snapR = cot.recetasSnapshot ? (typeof cot.recetasSnapshot === 'string' ? JSON.parse(cot.recetasSnapshot) : cot.recetasSnapshot) : null; } catch (e) { snapR = null; }
+                                    setCotSnapOverride((snapT || snapR) ? { tarifas: snapT, recetas: snapR } : null);
                                     setCotShowPreview(true);
                                     setCotViewingId(cot._docId);
                                   }}
@@ -4204,6 +4244,7 @@ export default function MatrizIntranet() {
                       showNotification('error', 'Completa todos los campos requeridos');
                       return;
                     }
+                    setCotSnapOverride(null);
                     setCotShowPreview(true);
                   }}
                   disabled={!cotCliente || !cotProyectoNombre || !cotExcelData}
@@ -4360,8 +4401,8 @@ ${cotHtml}
                         const cantidad = parseInt(row[4]) || 1;
                         const esVisita = tipo.includes('VIS');
                         const esCobroUnico = tipo.includes('REU INT') || tipo.includes('REU CTTAL');
-                        const receta = matchReceta(tipo, recetas);
-                        const precioUnit = esCobroUnico ? 1 : (receta ? calcPrecioVenta(receta, tarifas) : 20);
+                        const receta = matchReceta(tipo, (cotSnapOverride && cotSnapOverride.recetas) || recetas);
+                        const precioUnit = esCobroUnico ? 1 : (receta ? calcPrecioVenta(receta, (cotSnapOverride && cotSnapOverride.tarifas) || tarifas) : 20);
                         const precioTotal = precioUnit * cantidad;
                         const bg = idx % 2 === 0 ? '#fafaf7' : '#f2f0eb';
                         return (
@@ -4412,8 +4453,8 @@ ${cotHtml}
                           const cantidad = parseInt(row[4]) || 1;
                           const esVisita = tipo.includes('VIS');
                           const esCobroUnico = tipo.includes('REU INT') || tipo.includes('REU CTTAL');
-                          const receta = matchReceta(tipo, recetas);
-                          const precioUnit = esCobroUnico ? 1 : (receta ? calcPrecioVenta(receta, tarifas) : 20);
+                          const receta = matchReceta(tipo, (cotSnapOverride && cotSnapOverride.recetas) || recetas);
+                          const precioUnit = esCobroUnico ? 1 : (receta ? calcPrecioVenta(receta, (cotSnapOverride && cotSnapOverride.tarifas) || tarifas) : 20);
                           return sum + (precioUnit * cantidad * ((esCobroUnico || esVisita) ? 1 : revFactor));
                         }, 0) : 0;
                         const factorSimp = cotSimplificado ? 0.8 : 1.0;

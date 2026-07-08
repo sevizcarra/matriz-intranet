@@ -822,7 +822,8 @@ export default function MatrizIntranet() {
           rol: (base && base.rol) || 'profesional',
           profesionalId: base ? base.profesionalId : null
         };
-        await saveUsuarioPerfil(fbUser.uid, perfil);
+        // Sin await: si Firestore está sin cuota de escritura, el login NO debe bloquearse
+        saveUsuarioPerfil(fbUser.uid, perfil);
       }
       const user = { id: fbUser.uid, uid: fbUser.uid, ...perfil };
       setCurrentUser(user);

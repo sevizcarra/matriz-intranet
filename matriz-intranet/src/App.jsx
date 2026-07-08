@@ -533,6 +533,7 @@ const Badge = ({ children, variant = 'default' }) => {
     success: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400',
     warning: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400',
     danger: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400',
+    info: 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-400',
   };
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-medium ${variants[variant]}`}>
@@ -2095,6 +2096,21 @@ export default function MatrizIntranet() {
   // ============================================
   // PÁGINA: PROYECTOS
   // ============================================
+  // Avance real del proyecto según statusData (inicio=0%, RevA=70%, RevB=90%, Rev0/P=100%)
+  const calcAvanceProyecto = (proyecto) => {
+    const ents = (proyecto.entregables || []).filter(e => !e.frozen);
+    if (!ents.length) return Number(proyecto.avance) || 0;
+    const suma = ents.reduce((acc, ent) => acc + getDeliverableProgress(statusData[`${proyecto.id}_${ent.id}`]), 0);
+    return suma / ents.length;
+  };
+
+  const badgeVariantProyecto = (estado) => {
+    if (estado === 'Activo') return 'success';
+    if (estado === 'Congelado') return 'info';
+    if (estado === 'Pausado') return 'warning';
+    return 'default';
+  };
+
   const ProyectosPage = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -2119,7 +2135,9 @@ export default function MatrizIntranet() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {proyectosVisibles.map(proyecto => (
+          {proyectosVisibles.map(proyecto => {
+            const avanceCalc = calcAvanceProyecto(proyecto);
+            return (
             <Card
               key={proyecto.id}
               className="p-4"
@@ -2136,7 +2154,7 @@ export default function MatrizIntranet() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-orange-500 font-mono">{proyecto.id}</span>
-                      <Badge variant={proyecto.estado === 'Activo' ? 'success' : 'default'}>
+                      <Badge variant={badgeVariantProyecto(proyecto.estado)}>
                         {proyecto.estado}
                       </Badge>
                     </div>
@@ -2147,17 +2165,45 @@ export default function MatrizIntranet() {
 
                 <div className="flex items-center gap-4">
                   <div className="text-right hidden sm:block">
-                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{proyecto.avance.toFixed(1)}%</p>
+                    <p className="text-neutral-800 dark:text-neutral-100 font-medium">{avanceCalc.toFixed(1)}%</p>
                     <p className="text-neutral-500 dark:text-neutral-400 text-xs">Avance</p>
                   </div>
                   <div className="w-24 sm:w-32 h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden hidden sm:block">
                     <div
                       className="h-full bg-orange-500 rounded-full"
-                      style={{ width: `${proyecto.avance}%` }}
+                      style={{ width: `${Math.min(100, avanceCalc)}%` }}
                     />
                   </div>
                   {isAdmin && (
                     <>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const esCongelado = proyecto.estado === 'Congelado';
+                          const ok = await updateProyectoField(proyecto.id, { estado: esCongelado ? 'Activo' : 'Congelado' });
+                          if (ok) showNotification('success', esCongelado ? `Proyecto ${proyecto.id} descongelado` : `Proyecto ${proyecto.id} congelado`);
+                          else showNotification('error', 'No se pudo cambiar el estado del proyecto');
+                        }}
+                        className="p-2 hover:bg-sky-50 dark:hover:bg-sky-900/30 rounded-lg transition-colors group"
+                        title={proyecto.estado === 'Congelado' ? 'Descongelar proyecto (volver a Activo)' : 'Congelar proyecto'}
+                      >
+                        <Snowflake className={`w-4 h-4 ${proyecto.estado === 'Congelado' ? 'text-sky-500' : 'text-neutral-400 dark:text-neutral-500'} group-hover:text-sky-500`} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const esCerrado = proyecto.estado === 'Cerrado';
+                          const ok = await updateProyectoField(proyecto.id, { estado: esCerrado ? 'Activo' : 'Cerrado' });
+                          if (ok) showNotification('success', esCerrado ? `Proyecto ${proyecto.id} reabierto` : `Proyecto ${proyecto.id} cerrado`);
+                          else showNotification('error', 'No se pudo cambiar el estado del proyecto');
+                        }}
+                        className="p-2 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors group"
+                        title={proyecto.estado === 'Cerrado' ? 'Reabrir proyecto (volver a Activo)' : 'Cerrar proyecto'}
+                      >
+                        <CheckCircle className={`w-4 h-4 ${proyecto.estado === 'Cerrado' ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'} group-hover:text-green-600`} />
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -2187,7 +2233,8 @@ export default function MatrizIntranet() {
                 </div>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -7864,6 +7911,8 @@ tr { page-break-inside: avoid; }
                   className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="Activo">Activo</option>
+                  <option value="Congelado">Congelado</option>
+                  <option value="Cerrado">Cerrado</option>
                   <option value="Pausado">Pausado</option>
                   <option value="Terminado">Terminado</option>
                 </select>

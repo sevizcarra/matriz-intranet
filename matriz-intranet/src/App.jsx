@@ -649,12 +649,32 @@ const formatDateFull = (date) => {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };
 
+// Parsea fechas 'YYYY-MM-DD' (o 'YYYY-MM') como fecha LOCAL.
+// OJO: new Date('YYYY-MM-DD') interpreta la fecha como medianoche UTC,
+// y en Chile (UTC-3/-4) eso retrocede un día. Este helper evita ese corrimiento.
+const parseLocalDate = (value) => {
+  if (value instanceof Date) return new Date(value.getTime());
+  if (typeof value === 'string') {
+    let m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    m = value.match(/^(\d{4})-(\d{2})$/);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, 1);
+  }
+  return new Date(value);
+};
+
+// Fecha de hoy como 'YYYY-MM-DD' en hora LOCAL (no UTC)
+const hoyLocalStr = () => {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+};
+
 // calculateDeadlines: calcula plazos con duraciones por tipo
 // duracionRevADias: duración de REV_A en días hábiles (default 10 = 2 semanas)
 // duracionRevBDias: duración de REV_B en días hábiles (default 3)
 // duracionRev0Dias: duración de REV_0 en días hábiles (default 3)
 const calculateDeadlines = (projectStart, weekStart, duracionRevADias = 10, duracionRevBDias = 3, duracionRev0Dias = 3) => {
-  const start = new Date(projectStart);
+  const start = parseLocalDate(projectStart);
   // El entregable comienza en la semana weekStart (relativa al inicio del proyecto)
   const entregableStart = addWeeks(start, weekStart);
   // REV_A termina después de duracionRevADias días hábiles (salta fines de semana)
@@ -1134,7 +1154,7 @@ export default function MatrizIntranet() {
   const [nuevoEntregable, setNuevoEntregable] = useState({ codigo: '', nombre: '', tipo: 'PLA', secuencia: 1, weekStart: 1, valorRevA: 0, valorRevB: 0, valorRev0: 0, hshDirecto: 0 });
   const [freezeConfirm, setFreezeConfirm] = useState({ show: false, proyectoId: null, entregableId: null, nombre: '' });
   const [deleteEntregableConfirm, setDeleteEntregableConfirm] = useState({ show: false, proyectoId: null, entregableId: null, nombre: '' });
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(() => hoyLocalStr().slice(0, 7));
   const [selectedProyectoEDP, setSelectedProyectoEDP] = useState('all');
   const [edpObservaciones, setEdpObservaciones] = useState({});
   const [showPreview, setShowPreview] = useState(false);
@@ -1814,7 +1834,7 @@ export default function MatrizIntranet() {
                 <div className="flex items-center gap-3 sm:gap-4 text-xs text-neutral-500 dark:text-neutral-400">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {new Date(proyecto.inicio).toLocaleDateString('es-CL')}
+                    {parseLocalDate(proyecto.inicio).toLocaleDateString('es-CL')}
                   </span>
                   <span className="flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" />
@@ -3257,7 +3277,7 @@ export default function MatrizIntranet() {
         const tipo = getTipoDocumento(entregable.codigo, entregable.nombre);
 
         if (status.sentRevADate && entregable.valorRevA > 0) {
-          const fecha = new Date(status.sentRevADate);
+          const fecha = parseLocalDate(status.sentRevADate);
           if (fecha.getMonth() === month - 1 && fecha.getFullYear() === year) {
             const obsKey = `${proyecto.id}_${entregable.id}_A`;
             entregablesDelMes.push({
@@ -3276,7 +3296,7 @@ export default function MatrizIntranet() {
         }
 
         if (status.sentRevBDate && entregable.valorRevB > 0) {
-          const fecha = new Date(status.sentRevBDate);
+          const fecha = parseLocalDate(status.sentRevBDate);
           if (fecha.getMonth() === month - 1 && fecha.getFullYear() === year) {
             const obsKey = `${proyecto.id}_${entregable.id}_B`;
             entregablesDelMes.push({
@@ -3295,7 +3315,7 @@ export default function MatrizIntranet() {
         }
 
         if (status.sentRev0Date && entregable.valorRev0 > 0) {
-          const fecha = new Date(status.sentRev0Date);
+          const fecha = parseLocalDate(status.sentRev0Date);
           if (fecha.getMonth() === month - 1 && fecha.getFullYear() === year) {
             const obsKey = `${proyecto.id}_${entregable.id}_0`;
             entregablesDelMes.push({
@@ -3319,7 +3339,7 @@ export default function MatrizIntranet() {
       if (hora.tipo !== 'VIS' && hora.tipo !== 'REU') return;
       const esDeSebastian = hora.profesionalId === 3 || hora.profesionalId === 'admin';
       if (!esDeSebastian) return;
-      const fechaHora = new Date(hora.fecha);
+      const fechaHora = parseLocalDate(hora.fecha);
       if (fechaHora.getMonth() !== month - 1 || fechaHora.getFullYear() !== year) return;
       if (filterProyecto !== 'all' && hora.proyectoId !== filterProyecto) return;
 
@@ -3382,7 +3402,7 @@ export default function MatrizIntranet() {
     }
 
     const filterProyecto = overrideProyectoEDP !== undefined ? overrideProyectoEDP : selectedProyectoEDP;
-    const mesNombre = new Date(selectedMonth + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+    const mesNombre = parseLocalDate(selectedMonth).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
 
     let totalProyectoHsH = 0;
     let mesAnteriorHsH = 0;
@@ -5830,7 +5850,7 @@ ${cotHtml}
                             });
                             
                             // Calcular semanas del año (continuidad anual)
-                            const startDate = new Date(dashboardStartDate);
+                            const startDate = parseLocalDate(dashboardStartDate);
                             const today = new Date();
                             const startWeekOfYear = getWeekOfYear(startDate); // Semana del año en que inició el proyecto
                             const currentWeekOfYearValue = getCurrentWeekOfYear(); // Semana actual del año
@@ -5854,9 +5874,9 @@ ${cotHtml}
                                 if (!s) return;
                                 // Determinar el mayor hito alcanzado hasta esta semana
                                 let progress = 0;
-                                if (s.sentRev0 && s.sentRev0Date && new Date(s.sentRev0Date) <= weekDate) { progress = 100; }
-                                else if (s.sentRevB && s.sentRevBDate && new Date(s.sentRevBDate) <= weekDate) { progress = 90; }
-                                else if (s.sentRevA && s.sentRevADate && new Date(s.sentRevADate) <= weekDate) { progress = 70; }
+                                if (s.sentRev0 && s.sentRev0Date && parseLocalDate(s.sentRev0Date) <= weekDate) { progress = 100; }
+                                else if (s.sentRevB && s.sentRevBDate && parseLocalDate(s.sentRevBDate) <= weekDate) { progress = 90; }
+                                else if (s.sentRevA && s.sentRevADate && parseLocalDate(s.sentRevADate) <= weekDate) { progress = 70; }
                                 else if (s.sentRev0 && !s.sentRev0Date) { progress = 100; }
                                 else if (s.sentRevB && !s.sentRevBDate) { progress = 90; }
                                 else if (s.sentRevA && !s.sentRevADate) { progress = 70; }
@@ -6026,7 +6046,7 @@ ${cotHtml}
                                     {d.nombre || d.name}
                                     {d.frozen && <Snowflake className="w-3 h-3 inline ml-1 text-blue-400" />}
                                   </td>
-                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{getWeekOfYear(new Date(dashboardStartDate)) + (d.weekStart || d.secuencia) - 1}</td>
+                                  <td className="p-2 text-center text-neutral-500 dark:text-neutral-400">S{getWeekOfYear(parseLocalDate(dashboardStartDate)) + (d.weekStart || d.secuencia) - 1}</td>
                                   <td className="p-2 text-center text-neutral-500 dark:text-neutral-400 font-mono text-[10px]">{d.frozen ? '-' : `${obtenerDuracionRevA(d, duracionesPorTipo)}d`}</td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentIniciado} onChange={v => handleCheck(d.statusKey, 'sentIniciado', v)} disabled={d.frozen || !isAdmin} /></td>
                                   <td className="p-3 text-center"><DashboardCheckbox checked={d.status?.sentRevA} onChange={v => handleCheck(d.statusKey, 'sentRevA', v)} disabled={d.frozen || !isAdmin} /></td>
@@ -6129,7 +6149,7 @@ ${cotHtml}
                           <button
                             onClick={() => {
                               // Datos para la impresión
-                              const startDate = new Date(dashboardStartDate);
+                              const startDate = parseLocalDate(dashboardStartDate);
                               const startWOY = getWeekOfYear(startDate);
                               // Calcular semanas dinámicamente según último entregable
                               const maxEndWPrint = Math.max(...deliverables.filter(d => !d.frozen).map(d => {
@@ -6336,7 +6356,7 @@ tr { page-break-inside: avoid; }
                         </div>
                         <div className="p-3">
                           {(() => {
-                            const startDate = new Date(dashboardStartDate);
+                            const startDate = parseLocalDate(dashboardStartDate);
                             // Calcular semanas dinámicamente según último entregable
                             const maxEndWeekGantt = Math.max(...deliverables.filter(d => !d.frozen).map(d => {
                               const sw = d.weekStart || d.secuencia || 1;
@@ -6933,7 +6953,7 @@ tr { page-break-inside: avoid; }
 
                           <Card className="p-4">
                             <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-4">
-                              EDP - {new Date(selectedMonth + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
+                              EDP - {parseLocalDate(selectedMonth).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
                             </h2>
 
                             {edpData.length === 0 ? (
@@ -7049,7 +7069,7 @@ tr { page-break-inside: avoid; }
                                       tmp.innerHTML = area.innerHTML;
                                       tmp.querySelectorAll('.no-print').forEach(e => e.remove());
                                       const cssLinks = Array.from(document.styleSheets).map(sh => sh.href).filter(Boolean).map(h => `<link rel="stylesheet" href="${h}">`).join('');
-                                      const mesTitulo = new Date(selectedMonth + '-01T12:00:00').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+                                      const mesTitulo = parseLocalDate(selectedMonth).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
                                       const pw = window.open('', '_blank');
                                       if (!pw) { showNotification('error', 'Habilita las ventanas emergentes para poder imprimir'); return; }
                                       pw.document.write(`<html><head><title>EDP ${selectedProject} — ${mesTitulo}</title><base href="${window.location.origin}/">${cssLinks}<style>
@@ -7110,7 +7130,7 @@ tr { page-break-inside: avoid; }
                                     <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-orange-500">
                                       <div>
                                         <h1 className="text-xl font-bold text-neutral-800">ESTADO DE PAGO</h1>
-                                        <p className="text-sm text-neutral-600">{new Date(selectedMonth + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()}</p>
+                                        <p className="text-sm text-neutral-600">{parseLocalDate(selectedMonth).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()}</p>
                                         <p className="text-xs text-orange-600 font-medium mt-1">
                                           {`${selectedProject} - ${proyectoActual?.nombre || ''}`}
                                         </p>
@@ -7394,7 +7414,7 @@ tr { page-break-inside: avoid; }
                         fase: newProject.fase,
                         tarifaVenta: newProject.tarifaVenta,
                         estado: 'Activo',
-                        inicio: new Date().toISOString().split('T')[0],
+                        inicio: hoyLocalStr(),
                         avance: 0,
                         entregables: newProject.entregables.map(e => ({
                           ...e,
@@ -7514,7 +7534,7 @@ tr { page-break-inside: avoid; }
 
                   // Calcular datos para Curva S
                   const totalEntregables = entregablesImpr.filter(d => !d.frozen).length;
-                  const startDate = new Date(dashboardStartDate);
+                  const startDate = parseLocalDate(dashboardStartDate);
                   const startWeekOfYear = getWeekOfYear(startDate);
 
                   // Calcular duración real del proyecto desde entregables
@@ -7548,9 +7568,9 @@ tr { page-break-inside: avoid; }
                       const status = statusData[getStatusKey(d)];
                       if (!status) return;
                       let progress = 0;
-                      if (status.sentRev0 && status.sentRev0Date && new Date(status.sentRev0Date) <= weekDate) { progress = 100; }
-                      else if (status.sentRevB && status.sentRevBDate && new Date(status.sentRevBDate) <= weekDate) { progress = 90; }
-                      else if (status.sentRevA && status.sentRevADate && new Date(status.sentRevADate) <= weekDate) { progress = 70; }
+                      if (status.sentRev0 && status.sentRev0Date && parseLocalDate(status.sentRev0Date) <= weekDate) { progress = 100; }
+                      else if (status.sentRevB && status.sentRevBDate && parseLocalDate(status.sentRevBDate) <= weekDate) { progress = 90; }
+                      else if (status.sentRevA && status.sentRevADate && parseLocalDate(status.sentRevADate) <= weekDate) { progress = 70; }
                       else if (status.sentRev0 && !status.sentRev0Date) { progress = 100; }
                       else if (status.sentRevB && !status.sentRevBDate) { progress = 90; }
                       else if (status.sentRevA && !status.sentRevADate) { progress = 70; }

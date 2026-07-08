@@ -1137,6 +1137,7 @@ export default function MatrizIntranet() {
   const [selectedProyectoEDP, setSelectedProyectoEDP] = useState('all');
   const [edpObservaciones, setEdpObservaciones] = useState({});
   const [showPreview, setShowPreview] = useState(false);
+  const [edpCond, setEdpCond] = useState(null); // Condiciones comerciales del EDP (descuentos, IVA, firmas) por proyecto+mes
 
   // Estados COT a nivel de App para que persistan al re-montar (heartbeat cada 30s)
   const [cotLogo, setCotLogo] = useState(null);
@@ -1492,7 +1493,7 @@ export default function MatrizIntranet() {
         return;
       }
       // Actualizar estado local inmediatamente
-      setColaboradores(prev => prev.filter(c => String(c.id) !== String(id)));
+      setProfesionales(prev => prev.filter(c => String(c.id) !== String(id)));
       // También eliminar el usuario asociado
       setUsuarios(prev => prev.filter(u => u.profesionalId !== id));
       showNotification('success', 'Profesional y usuario eliminados');
@@ -6830,7 +6831,29 @@ tr { page-break-inside: avoid; }
                                   <FileDown className="w-4 h-4 mr-2" />
                                   Exportar XLSX
                                 </Button>
-                                <Button onClick={() => setShowPreview(true)}>
+                                <Button onClick={() => {
+                                  const firmasDefault = [
+                                    { cargo: `Jefe de Proyecto ${selectedProject}`, nombre: proyectoActual?.jefeProyecto || '' },
+                                    { cargo: 'Líder de Arquitectura', nombre: 'Sebastián A. Vizcarra' }
+                                  ];
+                                  const saved = proyectoActual?.edpCond?.[selectedMonth];
+                                  if (saved) {
+                                    setEdpCond({ ...saved, firmas: (saved.firmas && saved.firmas.length) ? saved.firmas : firmasDefault });
+                                  } else {
+                                    const digits = String(selectedProject || '').replace(/\D/g, '');
+                                    const cotMatch = cotizaciones.find(c => c.estado === 'aceptada' && String(c.codigo || '').replace(/\D/g, '') === digits) ||
+                                                     cotizaciones.find(c => String(c.codigo || '').replace(/\D/g, '') === digits);
+                                    setEdpCond({
+                                      aplicar: false,
+                                      simplificado: !!(cotMatch && cotMatch.simplificado),
+                                      descuento: (cotMatch && cotMatch.descuento) || 0,
+                                      iva: 19,
+                                      cotRef: (cotMatch && cotMatch.codigo) || '',
+                                      firmas: firmasDefault
+                                    });
+                                  }
+                                  setShowPreview(true);
+                                }}>
                                   <Printer className="w-4 h-4 mr-2" />
                                   Vista PDF
                                 </Button>
@@ -6948,15 +6971,50 @@ tr { page-break-inside: avoid; }
                                 <div className="p-4 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between no-print">
                                   <h2 className="text-neutral-800 dark:text-neutral-100 font-medium">Vista Previa EDP</h2>
                                   <div className="flex gap-2">
-                                    <Button variant="secondary" onClick={() => window.print()}>
+                                    <Button variant="secondary" onClick={() => { if (edpCond && selectedProject) updateProyectoField(selectedProject, { ['edpCond.' + selectedMonth]: edpCond }); window.print(); }}>
                                       <Printer className="w-4 h-4 mr-2" />
                                       Imprimir
                                     </Button>
-                                    <Button variant="ghost" onClick={() => setShowPreview(false)}>
+                                    <Button variant="ghost" onClick={() => { if (edpCond && selectedProject) updateProyectoField(selectedProject, { ['edpCond.' + selectedMonth]: edpCond }); setShowPreview(false); }}>
                                       <X className="w-4 h-4" />
                                     </Button>
                                   </div>
                                 </div>
+                                {edpCond && (
+                                  <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/40 no-print space-y-3">
+                                    <div className="flex flex-wrap items-center gap-4">
+                                      <label className="flex items-center gap-2 text-sm text-neutral-800 dark:text-neutral-100 font-medium cursor-pointer">
+                                        <input type="checkbox" checked={!!edpCond.aplicar} onChange={e => setEdpCond(prev => ({ ...prev, aplicar: e.target.checked }))} className="w-4 h-4 accent-orange-500" />
+                                        Aplicar descuentos e IVA{edpCond.cotRef ? ` (ref. ${edpCond.cotRef})` : ''}
+                                      </label>
+                                      {edpCond.aplicar && (
+                                        <>
+                                          <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300 cursor-pointer">
+                                            <input type="checkbox" checked={!!edpCond.simplificado} onChange={e => setEdpCond(prev => ({ ...prev, simplificado: e.target.checked }))} className="w-3.5 h-3.5 accent-orange-500" />
+                                            Versión simplificada (−20%)
+                                          </label>
+                                          <label className="flex items-center gap-1 text-xs text-neutral-600 dark:text-neutral-300">
+                                            Descuento
+                                            <input type="number" min="0" max="100" step="0.5" value={edpCond.descuento ?? 0} onChange={e => setEdpCond(prev => ({ ...prev, descuento: parseFloat(e.target.value) || 0 }))} className="w-16 px-1 py-0.5 border border-neutral-300 dark:border-neutral-600 rounded text-right bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100" />%
+                                          </label>
+                                          <label className="flex items-center gap-1 text-xs text-neutral-600 dark:text-neutral-300">
+                                            IVA
+                                            <input type="number" min="0" max="100" step="0.5" value={edpCond.iva ?? 19} onChange={e => setEdpCond(prev => ({ ...prev, iva: parseFloat(e.target.value) || 0 }))} className="w-16 px-1 py-0.5 border border-neutral-300 dark:border-neutral-600 rounded text-right bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100" />%
+                                          </label>
+                                        </>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {(edpCond.firmas || []).map((f, idx) => (
+                                        <div key={idx} className="flex gap-2">
+                                          <input type="text" value={f.cargo} placeholder="Cargo firmante" onChange={e => setEdpCond(prev => ({ ...prev, firmas: prev.firmas.map((x, i) => i === idx ? { ...x, cargo: e.target.value } : x) }))} className="flex-1 px-2 py-1 border border-neutral-300 dark:border-neutral-600 rounded text-xs bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100" />
+                                          <input type="text" value={f.nombre} placeholder="Nombre firmante" onChange={e => setEdpCond(prev => ({ ...prev, firmas: prev.firmas.map((x, i) => i === idx ? { ...x, nombre: e.target.value } : x) }))} className="flex-1 px-2 py-1 border border-neutral-300 dark:border-neutral-600 rounded text-xs bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100" />
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500">Estas opciones se guardan para este proyecto y mes al imprimir o cerrar la vista previa.</p>
+                                  </div>
+                                )}
                                 <div className="p-4 overflow-auto max-h-[calc(90vh-80px)] print-content">
                                   <div className="bg-white text-black">
                                     <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-orange-500">
@@ -6968,12 +7026,7 @@ tr { page-break-inside: avoid; }
                                         </p>
                                       </div>
                                       <div className="text-right">
-                                        <p className="text-lg font-light tracking-widest">
-                                          <span className="text-neutral-800">AF</span>
-                                          <span className="text-orange-500">O</span>
-                                          <span className="text-neutral-800">R</span>
-                                        </p>
-                                        <p className="text-[7px] text-neutral-400 tracking-wider">ASSETS FOR NON-PROCESS INFRASTRUCTURE</p>
+                                        <img src="/logo-afor.png" alt="AFOR" style={{ height: '38px', objectFit: 'contain' }} />
                                       </div>
                                     </div>
 
@@ -7001,10 +7054,54 @@ tr { page-break-inside: avoid; }
                                         ))}
                                       </tbody>
                                       <tfoot>
-                                        <tr className="bg-orange-100 font-bold">
-                                          <td colSpan={5} className="border border-neutral-300 px-1.5 py-1 text-right">TOTAL HsH:</td>
-                                          <td className="border border-neutral-300 px-1.5 py-1 text-right text-orange-600">{totalGeneral.toFixed(2)}</td>
-                                        </tr>
+                                        {(() => {
+                                          const ec = edpCond || {};
+                                          const aplicar = !!ec.aplicar;
+                                          const fSimp = ec.simplificado ? 0.8 : 1;
+                                          const dPct = Number(ec.descuento) || 0;
+                                          const ivaPct = (ec.iva === undefined || ec.iva === null) ? 19 : (Number(ec.iva) || 0);
+                                          const mSimp = totalGeneral * (1 - fSimp);
+                                          const mDesc = totalGeneral * fSimp * (dPct / 100);
+                                          const neto = totalGeneral * fSimp * (1 - dPct / 100);
+                                          const ivaMonto = neto * (ivaPct / 100);
+                                          const totalFinal = neto + ivaMonto;
+                                          return (
+                                            <>
+                                              <tr className={aplicar ? 'font-bold' : 'bg-orange-100 font-bold'}>
+                                                <td colSpan={5} className="border border-neutral-300 px-1.5 py-1 text-right">{aplicar ? 'SUBTOTAL (UF):' : 'TOTAL HsH:'}</td>
+                                                <td className="border border-neutral-300 px-1.5 py-1 text-right text-orange-600">{totalGeneral.toFixed(2)}</td>
+                                              </tr>
+                                              {aplicar && ec.simplificado && (
+                                                <tr>
+                                                  <td colSpan={5} className="border border-neutral-300 px-1.5 py-0.5 text-right text-red-700">Versión simplificada (−20%)</td>
+                                                  <td className="border border-neutral-300 px-1.5 py-0.5 text-right text-red-700">−{mSimp.toFixed(2)}</td>
+                                                </tr>
+                                              )}
+                                              {aplicar && dPct > 0 && (
+                                                <tr>
+                                                  <td colSpan={5} className="border border-neutral-300 px-1.5 py-0.5 text-right text-red-700">Descuento (−{dPct}%)</td>
+                                                  <td className="border border-neutral-300 px-1.5 py-0.5 text-right text-red-700">−{mDesc.toFixed(2)}</td>
+                                                </tr>
+                                              )}
+                                              {aplicar && (
+                                                <>
+                                                  <tr className="font-medium">
+                                                    <td colSpan={5} className="border border-neutral-300 px-1.5 py-0.5 text-right">Neto (UF)</td>
+                                                    <td className="border border-neutral-300 px-1.5 py-0.5 text-right">{neto.toFixed(2)}</td>
+                                                  </tr>
+                                                  <tr>
+                                                    <td colSpan={5} className="border border-neutral-300 px-1.5 py-0.5 text-right text-neutral-500">IVA ({ivaPct}%)</td>
+                                                    <td className="border border-neutral-300 px-1.5 py-0.5 text-right text-neutral-500">{ivaMonto.toFixed(2)}</td>
+                                                  </tr>
+                                                  <tr className="bg-orange-100 font-bold">
+                                                    <td colSpan={5} className="border border-neutral-300 px-1.5 py-1 text-right">TOTAL A FACTURAR (UF):</td>
+                                                    <td className="border border-neutral-300 px-1.5 py-1 text-right text-orange-600">{totalFinal.toFixed(2)}</td>
+                                                  </tr>
+                                                </>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
                                       </tfoot>
                                     </table>
 
@@ -7015,24 +7112,42 @@ tr { page-break-inside: avoid; }
                                           <p className="font-bold text-neutral-800 text-xs">{totalGeneral.toFixed(1)}</p>
                                         </div>
                                         <div className="text-center p-1.5 bg-orange-50 rounded border border-orange-200">
-                                          <p className="text-orange-600 text-[8px]">Facturación</p>
-                                          <p className="font-bold text-orange-600 text-sm">{totalGeneral.toFixed(1)} HsH</p>
+                                          {(() => {
+                                            const ec = edpCond || {};
+                                            if (!ec.aplicar) return (
+                                              <>
+                                                <p className="text-orange-600 text-[8px]">Facturación</p>
+                                                <p className="font-bold text-orange-600 text-sm">{totalGeneral.toFixed(1)} HsH</p>
+                                              </>
+                                            );
+                                            const fSimp = ec.simplificado ? 0.8 : 1;
+                                            const dPct = Number(ec.descuento) || 0;
+                                            const ivaPct = (ec.iva === undefined || ec.iva === null) ? 19 : (Number(ec.iva) || 0);
+                                            const neto = totalGeneral * fSimp * (1 - dPct / 100);
+                                            const totalFinal = neto * (1 + ivaPct / 100);
+                                            return (
+                                              <>
+                                                <p className="text-orange-600 text-[8px]">Facturación (c/IVA)</p>
+                                                <p className="font-bold text-orange-600 text-sm">{totalFinal.toFixed(1)} UF</p>
+                                              </>
+                                            );
+                                          })()}
                                         </div>
                                       </div>
                                     </div>
 
                                     <div className="mt-8 pt-4 border-t border-neutral-300">
                                       <div className="grid grid-cols-2 gap-8">
-                                        <div className="text-center">
-                                          <div className="border-b border-neutral-400 h-12 mb-2"></div>
-                                          <p className="text-[10px] font-bold text-neutral-700">Jefe de Proyecto {selectedProject}</p>
-                                          <p className="text-[9px] text-neutral-600">{proyectoActual?.jefeProyecto || ''}</p>
-                                        </div>
-                                        <div className="text-center">
-                                          <div className="border-b border-neutral-400 h-12 mb-2"></div>
-                                          <p className="text-[10px] font-bold text-neutral-700">Líder de Arquitectura</p>
-                                          <p className="text-[9px] text-neutral-600">Sebastián A. Vizcarra</p>
-                                        </div>
+                                        {((edpCond && edpCond.firmas && edpCond.firmas.length) ? edpCond.firmas : [
+                                          { cargo: `Jefe de Proyecto ${selectedProject}`, nombre: proyectoActual?.jefeProyecto || '' },
+                                          { cargo: 'Líder de Arquitectura', nombre: 'Sebastián A. Vizcarra' }
+                                        ]).map((f, idx) => (
+                                          <div key={idx} className="text-center">
+                                            <div className="border-b border-neutral-400 h-12 mb-2"></div>
+                                            <p className="text-[10px] font-bold text-neutral-700">{f.cargo}</p>
+                                            <p className="text-[9px] text-neutral-600">{f.nombre}</p>
+                                          </div>
+                                        ))}
                                       </div>
                                     </div>
 

@@ -58,8 +58,6 @@ import {
 // Perfiles base (SOLO datos de perfil — la autenticación la maneja Firebase Auth)
 const USUARIOS_INICIAL = [
   { id: 'admin', nombre: 'Sebastián Vizcarra', email: 'svizcarra@afor.cl', rol: 'admin', profesionalId: 3 },
-  { id: 'user1', nombre: 'Cristóbal Ríos', email: 'cristobal@matriz.cl', rol: 'profesional', profesionalId: 1 },
-  { id: 'user2', nombre: 'Dominique Thompson', email: 'dominique@matriz.cl', rol: 'profesional', profesionalId: 2 },
 ];
 
 // Estilos de impresión
@@ -201,8 +199,6 @@ const ROLES_PROFESIONAL = [
 ];
 
 const COLABORADORES_INICIAL = [
-  { id: 1, nombre: 'Cristóbal Ríos', cargo: 'Arquitecto', categoria: 'Ingeniero / Arquitecto', rolTarifa: 'ingeniero', tarifaInterna: 0.75, iniciales: 'CR', proyectosAsignados: [] },
-  { id: 2, nombre: 'Dominique Thompson', cargo: 'Arquitecta', categoria: 'Proyectista', rolTarifa: 'proyectista', tarifaInterna: 0.5, iniciales: 'DT', proyectosAsignados: [] },
   { id: 3, nombre: 'Sebastián Vizcarra', cargo: 'Arquitecto', categoria: 'Jefe de Proyectos', rolTarifa: 'jefe', tarifaInterna: 0.75, iniciales: 'SV', proyectosAsignados: [] },
 ];
 

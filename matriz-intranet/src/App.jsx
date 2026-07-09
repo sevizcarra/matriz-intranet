@@ -885,6 +885,12 @@ export default function MatrizIntranet() {
   // FIRESTORE SUBSCRIPTIONS
   // ============================================
   useEffect(() => {
+    // Con reglas cerradas, suscribirse solo cuando hay sesión activa.
+    // Si se suscribe sin auth, Firestore rechaza y el listener muere sin reintentar.
+    if (!currentUser) {
+      setIsLoading(false);
+      return;
+    }
     // Flag para saber si ya recibimos datos del servidor (no solo caché)
     let proyectosInitialized = false;
     let colaboradoresInitialized = false;
@@ -996,7 +1002,7 @@ export default function MatrizIntranet() {
       unsubTarifas();
       unsubRecetas();
     };
-  }, []);
+  }, [currentUser?.uid]);
 
   // ============================================
   // PRESENCIA - Heartbeat y tracking de página
@@ -1325,6 +1331,7 @@ export default function MatrizIntranet() {
   // FIRESTORE SUBSCRIPTION para statusData
   // ============================================
   useEffect(() => {
+    if (!currentUser) return; // suscribirse solo con sesión activa (reglas cerradas)
     const unsubStatusData = subscribeToStatusData((data) => {
       statusLoadedRef.current = true; // ya conocemos el estado real del servidor
       if (data && Object.keys(data).length > 0) {
@@ -1334,7 +1341,7 @@ export default function MatrizIntranet() {
     });
 
     return () => unsubStatusData();
-  }, []);
+  }, [currentUser?.uid]);
 
   // ============================================
   // PERSISTENCIA - Guardar datos en Firestore (debounced)

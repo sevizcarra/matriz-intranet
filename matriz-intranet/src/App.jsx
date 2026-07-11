@@ -2288,6 +2288,9 @@ export default function MatrizIntranet() {
     const horasMes = misHoras.filter(esDelMes);
     const totalMes = horasMes.reduce((sum, h) => sum + (parseFloat(h.horas) || 0), 0);
     const totalHistorico = misHoras.reduce((sum, h) => sum + (parseFloat(h.horas) || 0), 0);
+    const miTarifaPago = (miFicha && parseFloat(miFicha.tarifaInterna)) || 0;
+    const valorMes = totalMes * miTarifaPago;
+    const valorHistorico = totalHistorico * miTarifaPago;
     const porProyecto = {};
     horasMes.forEach(h => {
       const key = h.proyectoId || 'Sin proyecto';
@@ -2320,16 +2323,25 @@ export default function MatrizIntranet() {
 
         <Card className="p-4 sm:p-6">
           <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-4">Mis HsH — {nombreMes}</h2>
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 text-center">
-              <p className="text-orange-600 dark:text-orange-400 text-xs mb-1">HsH este mes</p>
+              <p className="text-orange-600 dark:text-orange-400 text-xs mb-1">Horas este mes</p>
               <p className="text-2xl font-bold text-orange-600">{totalMes.toFixed(1)}</p>
             </div>
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 text-center">
+              <p className="text-green-600 dark:text-green-400 text-xs mb-1">Valor mes (UF)</p>
+              <p className="text-2xl font-bold text-green-600">{valorMes.toFixed(2)}</p>
+            </div>
             <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-center">
-              <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-1">HsH histórico</p>
+              <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-1">Horas histórico</p>
               <p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{totalHistorico.toFixed(1)}</p>
             </div>
+            <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-center">
+              <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-1">Valor histórico (UF)</p>
+              <p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{valorHistorico.toFixed(2)}</p>
+            </div>
           </div>
+          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mb-3">Valores calculados a tu tarifa de pago ({miTarifaPago.toFixed(2)} UF/hora).</p>
           {Object.keys(porProyecto).length === 0 ? (
             <p className="text-neutral-500 dark:text-neutral-400 text-sm text-center py-4">Aún no registras horas este mes</p>
           ) : (
@@ -2654,6 +2666,8 @@ ${cuerpo}
     };
 
     const horasDelMes = horasRegistradas.filter(h => {
+      // Los no-admin solo ven sus propias horas
+      if (!isAdmin && String(h.profesionalId) !== String(currentUser?.profesionalId)) return false;
       const fecha = new Date(h.fecha);
       const [yearSel, monthSel] = mesHoras.split('-').map(Number);
       // Filtrar por el mes seleccionado
@@ -2883,7 +2897,7 @@ ${cuerpo}
         <Card className="p-3 sm:p-4">
           <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">Resumen por Profesional</h2>
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-            {profesionales.map(col => {
+            {profesionales.filter(col => isAdmin || String(col.id) === String(currentUser?.profesionalId)).map(col => {
               // Para Sebastián (SV), incluir también registros antiguos con profesionalId 'admin'
               // Usar == para comparar números/strings y manejar 'admin'
               const horasCol = horasDelMes.filter(h =>
@@ -6904,9 +6918,9 @@ tr { page-break-inside: avoid; }
                                     <th className="pb-2">Descripción</th>
                                     <th className="pb-2 text-center">Tipo</th>
                                     <th className="pb-2 text-center">Sem</th>
-                                    <th className="pb-2 text-right">REV_A (HsH)</th>
-                                    <th className="pb-2 text-right">REV_B (HsH)</th>
-                                    <th className="pb-2 text-right">{getRevFinalLabel(proyectoActual?.fase)} (HsH)</th>
+                                    {isAdmin && <th className="pb-2 text-right">REV_A (HsH)</th>}
+                                    {isAdmin && <th className="pb-2 text-right">REV_B (HsH)</th>}
+                                    {isAdmin && <th className="pb-2 text-right">{getRevFinalLabel(proyectoActual?.fase)} (HsH)</th>}
                                     <th className="pb-2 text-center">Estado</th>
                                     <th className="pb-2 text-center">Acciones</th>
                                   </tr>
@@ -6958,7 +6972,7 @@ tr { page-break-inside: avoid; }
                                           <span className="text-neutral-500">S{getWeekOfYear(new Date(proyectoActual?.inicio || dashboardStartDate)) + (ent.weekStart || ent.secuencia || 1) - 1}</span>
                                         )}
                                       </td>
-                                      <td className="py-2 text-right">
+                                      {isAdmin && <td className="py-2 text-right">
                                         {editingEntregable === ent.id ? (
                                           <input
                                             type="number"
@@ -6970,8 +6984,8 @@ tr { page-break-inside: avoid; }
                                         ) : (
                                           <span className="text-green-600">{ent.valorRevA?.toFixed(1) || '0'}</span>
                                         )}
-                                      </td>
-                                      <td className="py-2 text-right">
+                                      </td>}
+                                      {isAdmin && <td className="py-2 text-right">
                                         {ent.hshDirecto || ['REU', 'VIS'].includes(getTipoDocumento(ent.codigo, ent.nombre, ent.tipo)) ? (
                                           <span className="text-neutral-400">-</span>
                                         ) : editingEntregable === ent.id ? (
@@ -6985,8 +6999,8 @@ tr { page-break-inside: avoid; }
                                         ) : (
                                           <span className="text-blue-600">{ent.valorRevB?.toFixed(1) || '0'}</span>
                                         )}
-                                      </td>
-                                      <td className="py-2 text-right">
+                                      </td>}
+                                      {isAdmin && <td className="py-2 text-right">
                                         {ent.hshDirecto || ['REU', 'VIS'].includes(getTipoDocumento(ent.codigo, ent.nombre, ent.tipo)) ? (
                                           <span className="text-neutral-400">-</span>
                                         ) : editingEntregable === ent.id ? (
@@ -7000,7 +7014,7 @@ tr { page-break-inside: avoid; }
                                         ) : (
                                           <span className="text-purple-600">{ent.valorRev0?.toFixed(1) || '0'}</span>
                                         )}
-                                      </td>
+                                      </td>}
                                       <td className="py-2 text-center">
                                         {ent.frozen ? (
                                           <span className="px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded text-[10px] font-medium">
@@ -7045,7 +7059,7 @@ tr { page-break-inside: avoid; }
                           )}
 
                           {/* Totales */}
-                          {getEntregablesProyecto(selectedProject).length > 0 && (() => {
+                          {isAdmin && getEntregablesProyecto(selectedProject).length > 0 && (() => {
                             const ents = getEntregablesProyecto(selectedProject).filter(e => !e.frozen);
                             return (
                               <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-600">

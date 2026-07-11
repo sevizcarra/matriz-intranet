@@ -201,10 +201,13 @@ export const deleteHora = async (horaDocId) => {
   }
 };
 
-export const subscribeToHoras = (callback) => {
+export const subscribeToHoras = (callback, onError) => {
   return onSnapshot(collection(db, COLLECTIONS.HORAS), (snapshot) => {
     const horas = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
     callback(horas);
+  }, (error) => {
+    console.error('Error en suscripción horas:', error);
+    if (onError) onError(error);
   });
 };
 
@@ -247,13 +250,16 @@ export const updateStatusDataFields = async (fields) => {
   }
 };
 
-export const subscribeToStatusData = (callback) => {
+export const subscribeToStatusData = (callback, onError) => {
   return onSnapshot(doc(db, COLLECTIONS.CONFIG, 'statusData'), (docSnap) => {
     if (docSnap.exists()) {
       callback(docSnap.data().data || {});
     } else {
       callback({});
     }
+  }, (error) => {
+    console.error('Error en suscripción statusData:', error);
+    if (onError) onError(error);
   });
 };
 
@@ -296,10 +302,13 @@ export const deleteTarea = async (tareaDocId) => {
   }
 };
 
-export const subscribeToTareas = (callback) => {
+export const subscribeToTareas = (callback, onError) => {
   return onSnapshot(collection(db, COLLECTIONS.TAREAS), (snapshot) => {
     const tareas = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
     callback(tareas);
+  }, (error) => {
+    console.error('Error en suscripción tareas:', error);
+    if (onError) onError(error);
   });
 };
 
@@ -349,10 +358,13 @@ export const deleteCotizacion = async (cotDocId) => {
   }
 };
 
-export const subscribeToCotizaciones = (callback) => {
+export const subscribeToCotizaciones = (callback, onError) => {
   return onSnapshot(collection(db, COLLECTIONS.COTIZACIONES), (snapshot) => {
     const cotizaciones = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
     callback(cotizaciones);
+  }, (error) => {
+    console.error('Error en suscripción cotizaciones:', error);
+    if (onError) onError(error);
   });
 };
 
@@ -431,10 +443,13 @@ export const setOffline = async (profesionalId) => {
   }
 };
 
-export const subscribeToPresencia = (callback) => {
+export const subscribeToPresencia = (callback, onError) => {
   return onSnapshot(collection(db, COLLECTIONS.PRESENCIA), (snapshot) => {
     const presencia = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     callback(presencia);
+  }, (error) => {
+    console.error('Error en suscripción presencia:', error);
+    if (onError) onError(error);
   });
 };
 
@@ -712,11 +727,14 @@ export const saveDuraciones = async (duracionesPorTipo, duracionRevision) => {
 };
 
 // Suscribirse a cambios de duraciones
-export const subscribeToDuraciones = (callback) => {
+export const subscribeToDuraciones = (callback, onError) => {
   return onSnapshot(doc(db, COLLECTIONS.CONFIG, 'duraciones'), (docSnap) => {
     if (docSnap.exists()) {
       callback(docSnap.data());
     }
+  }, (error) => {
+    console.error('Error en suscripción duraciones:', error);
+    if (onError) onError(error);
   });
 };
 
@@ -747,22 +765,28 @@ export const saveRecetas = async (recetas) => {
   }
 };
 
-export const subscribeToTarifas = (callback) => {
+export const subscribeToTarifas = (callback, onError) => {
   return onSnapshot(doc(db, COLLECTIONS.CONFIG, 'tarifas'), (docSnap) => {
     if (docSnap.exists()) {
       try {
         callback(JSON.parse(docSnap.data().tarifas));
       } catch { callback(null); }
     }
+  }, (error) => {
+    console.error('Error en suscripción tarifas:', error);
+    if (onError) onError(error);
   });
 };
 
-export const subscribeToRecetas = (callback) => {
+export const subscribeToRecetas = (callback, onError) => {
   return onSnapshot(doc(db, COLLECTIONS.CONFIG, 'recetas'), (docSnap) => {
     if (docSnap.exists()) {
       try {
         callback(JSON.parse(docSnap.data().recetas));
       } catch { callback(null); }
     }
+  }, (error) => {
+    console.error('Error en suscripción recetas:', error);
+    if (onError) onError(error);
   });
 };

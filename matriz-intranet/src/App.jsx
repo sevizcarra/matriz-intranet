@@ -934,15 +934,15 @@ export default function MatrizIntranet() {
 
     const unsubHoras = subscribeToHoras((data) => {
       setHorasRegistradas(data);
-    });
+    }, (error) => { console.error('Suscripción horas caída:', error); setFirestoreError('Error de conexión con la base de datos'); });
 
     const unsubTareas = subscribeToTareas((data) => {
       setTareas(data);
-    });
+    }, (error) => { console.error('Suscripción tareas caída:', error); });
 
     const unsubPresencia = subscribeToPresencia((data) => {
       setPresenciaUsuarios(data);
-    });
+    }, (error) => { console.error('Suscripción presencia caída:', error); });
 
     const unsubCotizaciones = subscribeToCotizaciones((data) => {
       // Parsear excelDataJson → excelData (Firestore no acepta nested arrays)
@@ -955,13 +955,13 @@ export default function MatrizIntranet() {
         })()
       }));
       setCotizaciones(parsed);
-    });
+    }, (error) => { console.error('Suscripción cotizaciones caída:', error); setFirestoreError('Error de conexión con la base de datos'); });
 
     // Suscripción a duraciones por tipo de documento
     const unsubDuraciones = subscribeToDuraciones((data) => {
       if (data.duracionesPorTipo) setDuracionesPorTipo(data.duracionesPorTipo);
       if (data.duracionRevision) setDuracionRevision(data.duracionRevision);
-    });
+    }, (error) => { console.error('Suscripción duraciones caída:', error); });
 
     // Suscribir a tarifas y recetas (motor paramétrico COT)
     const unsubTarifas = subscribeToTarifas((data) => {
@@ -969,7 +969,7 @@ export default function MatrizIntranet() {
         tarifasSyncRef.current = JSON.stringify(data);
         setTarifas(data);
       }
-    });
+    }, (error) => { console.error('Suscripción tarifas caída:', error); });
     const unsubRecetas = subscribeToRecetas((data) => {
       if (data) {
         // Merge: asegurar que recetas nuevas de DEFAULT_RECETAS no se pierdan
@@ -980,7 +980,7 @@ export default function MatrizIntranet() {
         recetasSyncRef.current = JSON.stringify(merged);
         setRecetas(merged);
       }
-    });
+    }, (error) => { console.error('Suscripción recetas caída:', error); });
 
     // Marcar como listo después de un momento
     setTimeout(() => {
@@ -1383,7 +1383,7 @@ export default function MatrizIntranet() {
         lastSavedStatusRef.current = {};
         setStatusData({});
       }
-    });
+    }, (error) => { console.error('Suscripción statusData caída:', error); setFirestoreError('Error de conexión con la base de datos'); });
 
     return () => unsubStatusData();
   }, [currentUser?.uid]);

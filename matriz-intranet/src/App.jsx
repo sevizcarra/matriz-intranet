@@ -2375,10 +2375,67 @@ export default function MatrizIntranet() {
       Object.entries(mesesNeto).forEach(([mes, neto]) => { if (estados[mes] === 'pagado') cobrado += neto; });
       const margen = facturado - costo;
       const margenPct = facturado > 0 ? (margen / facturado) * 100 : null;
-      return { mesesNeto, facturado, costo, oc, saldoOC: oc > 0 ? oc - facturado : null, margen, margenPct, cobrado, porCobrar: facturado - cobrado, estados, ocNumero: fin.ocNumero || '' };
+      return { mesesNeto, facturado, costo, oc, saldoOC: oc > 0 ? oc - facturado : null, margen, margenPct, cobrado, porCobrar: facturado - cobrado, estados, fechas: fin.fechasEDP || {}, ocNumero: fin.ocNumero || '' };
+    };
+
+    // Costo ESTIMADO según la COT vinculada (con sus snapshots históricos)
+    const costoEstimadoCOT = (p) => {
+      const digits = String(p.id || '').replace(/\D/g, '');
+      const cot = cotizaciones.find(c => c.estado === 'aceptada' && String(c.codigo || '').replace(/\D/g, '') === digits) ||
+                  cotizaciones.find(c => String(c.codigo || '').replace(/\D/g, '') === digits);
+      if (!cot || !cot.excelData) return null;
+      let tarifasCot = tarifas, recetasCot = recetas;
+      try { if (cot.tarifasSnapshot) tarifasCot = typeof cot.tarifasSnapshot === 'string' ? JSON.parse(cot.tarifasSnapshot) : cot.tarifasSnapshot; } catch (e) { /* usar actuales */ }
+      try { if (cot.recetasSnapshot) recetasCot = typeof cot.recetasSnapshot === 'string' ? JSON.parse(cot.recetasSnapshot) : cot.recetasSnapshot; } catch (e) { /* usar actuales */ }
+      let costo = 0;
+      cot.excelData.slice(1).filter(r => r[0] && r[3]).forEach(r => {
+        const tipo = (r[1] || 'PLA GEN').toUpperCase();
+        const cant = parseInt(r[4]) || 1;
+        const receta = matchReceta(tipo, recetasCot);
+        if (receta) costo += calcCostoInterno(receta, tarifasCot) * cant;
+      });
+      return { costo, cotCodigo: cot.codigo };
+    };
+
+    // Desglose de costo real por profesional
+    const costoPorProfesional = (p) => {
+      const map = {};
+      horasRegistradas.forEach(h => {
+        if (h.proyectoId !== p.id) return;
+        const col = profesionales.find(c => String(c.id) === String(h.profesionalId));
+        const key = col ? col.nombre : 'Profesional ' + h.profesionalId;
+        const hrs = parseFloat(h.horas) || 0;
+        if (!map[key]) map[key] = { horas: 0, costo: 0 };
+        map[key].horas += hrs;
+        map[key].costo += hrs * ((col && parseFloat(col.tarifaInterna)) || 0);
+      });
+      return map;
+    };
+
+    // Aging: días desde que la factura del mes quedó facturada/enviada
+    const agingMes = (finP, mes) => {
+      const estado = finP.estados[mes];
+      if (estado !== 'enviado' && estado !== 'facturado') return null;
+      const f = (finP.fechas[mes] || {});
+      const ref = f.facturado || f.enviado;
+      if (!ref) return null;
+      return Math.max(0, Math.floor((new Date() - parseLocalDate(ref)) / (24 * 60 * 60 * 1000)));
     };
 
     const filas = proyectos.map(p => ({ p, fin: calcularFinanzas(p) }));
+
+    // Flujo mensual global: facturación vs costo (últimos 12 meses con movimiento)
+    const flujo = {};
+    filas.forEach(({ fin }) => Object.entries(fin.mesesNeto).forEach(([m, v]) => {
+      (flujo[m] = flujo[m] || { fact: 0, costo: 0 }).fact += v;
+    }));
+    horasRegistradas.forEach(h => {
+      const mes = h.mesRegistro || (() => { const f = parseLocalDate(h.fecha); return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}`; })();
+      const col = profesionales.find(c => String(c.id) === String(h.profesionalId));
+      (flujo[mes] = flujo[mes] || { fact: 0, costo: 0 }).costo += (parseFloat(h.horas) || 0) * ((col && parseFloat(col.tarifaInterna)) || 0);
+    });
+    const mesesChart = Object.keys(flujo).sort().slice(-12);
+    const maxFlujo = Math.max(1, ...mesesChart.map(m => Math.max(flujo[m].fact, flujo[m].costo)));
     const tot = filas.reduce((acc, { fin }) => ({
       oc: acc.oc + fin.oc,
       facturado: acc.facturado + fin.facturado,
@@ -2410,12 +2467,52 @@ export default function MatrizIntranet() {
             <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Finanzas</h1>
             <p className="text-neutral-500 dark:text-neutral-400 text-sm">OC, facturación, costos y márgenes por proyecto</p>
           </div>
-          {ufHoy && (
-            <div className="text-right">
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">UF hoy</p>
-              <p className="text-sm font-bold text-neutral-800 dark:text-neutral-100">${ufHoy.toLocaleString('es-CL')}</p>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {ufHoy && (
+              <div className="text-right">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">UF hoy</p>
+                <p className="text-sm font-bold text-neutral-800 dark:text-neutral-100">${ufHoy.toLocaleString('es-CL')}</p>
+              </div>
+            )}
+            <Button variant="secondary" onClick={() => {
+              const fmt = (uf) => uf.toFixed(1) + ' UF' + (ufHoy ? ` (≈$${Math.round(uf * ufHoy).toLocaleString('es-CL')})` : '');
+              const filasHtml = filas.map(({ p, fin }) => `<tr><td>${p.id}</td><td>${p.nombre}</td><td style="text-align:right">${fin.oc ? fin.oc.toFixed(1) : '—'}</td><td style="text-align:right">${fin.facturado.toFixed(1)}</td><td style="text-align:right">${fin.cobrado.toFixed(1)}</td><td style="text-align:right">${fin.porCobrar.toFixed(1)}</td><td style="text-align:right">${fin.costo.toFixed(1)}</td><td style="text-align:right;font-weight:bold;color:${fin.margen < 0 ? '#dc2626' : '#16a34a'}">${fin.margen.toFixed(1)}</td></tr>`).join('');
+              const pendientes = [];
+              filas.forEach(({ p, fin }) => Object.entries(fin.mesesNeto).forEach(([mes, neto]) => {
+                const est = fin.estados[mes] || 'borrador';
+                if (est === 'pagado' || neto <= 0) return;
+                const dias = agingMes(fin, mes);
+                pendientes.push(`<tr><td>${p.id}</td><td style="text-transform:capitalize">${parseLocalDate(mes).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}</td><td style="text-transform:capitalize">${est}</td><td style="text-align:right">${neto.toFixed(1)}</td><td style="text-align:right;${dias !== null && dias > 30 ? 'color:#dc2626;font-weight:bold' : ''}">${dias === null ? '—' : dias + ' días'}</td></tr>`);
+              }));
+              const pw = window.open('', '_blank');
+              if (!pw) { showNotification('error', 'Habilita las ventanas emergentes para poder imprimir'); return; }
+              pw.document.write(`<html><head><title>Informe Financiero — AFOR</title><style>
+@page { size: letter portrait; margin: 14mm; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color: #171717; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f97316; padding-bottom: 8px; margin-bottom: 14px; }
+h1 { font-size: 17px; margin: 0; } .sub { color: #666; font-size: 10px; margin: 2px 0 0; }
+h3 { font-size: 12px; margin: 16px 0 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 9px; }
+th { background: #262626; color: white; padding: 3px 6px; text-align: left; }
+td { border: 1px solid #d4d4d4; padding: 3px 6px; }
+tr { page-break-inside: avoid; }
+.total { margin-top: 14px; padding: 8px 12px; background: #ffedd5; border: 1px solid #fdba74; border-radius: 6px; font-size: 11px; }
+.nota { color: #999; font-size: 8px; margin-top: 18px; border-top: 1px solid #e5e5e5; padding-top: 6px; display: flex; justify-content: space-between; }
+</style></head><body>
+<div class="header"><div><h1>INFORME FINANCIERO</h1><p class="sub">USO INTERNO · ${new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()}${ufHoy ? ' · UF $' + ufHoy.toLocaleString('es-CL') : ''}</p></div><img src="${window.location.origin}/logo-afor.png" style="height:34px"/></div>
+<h3>Resumen por proyecto (UF neto)</h3>
+<table><thead><tr><th>Código</th><th>Proyecto</th><th style="text-align:right">OC</th><th style="text-align:right">Facturado</th><th style="text-align:right">Cobrado</th><th style="text-align:right">Por cobrar</th><th style="text-align:right">Costo HsH</th><th style="text-align:right">Margen</th></tr></thead><tbody>${filasHtml}</tbody></table>
+<div class="total">OC: <b>${fmt(tot.oc)}</b> · Facturado: <b>${fmt(tot.facturado)}</b> · Cobrado: <b>${fmt(tot.cobrado)}</b> · Por cobrar: <b>${fmt(tot.facturado - tot.cobrado)}</b> · Costo: <b>${fmt(tot.costo)}</b> · Margen: <b>${fmt(totMargen)}</b></div>
+${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr><th>Proyecto</th><th>Mes</th><th>Estado</th><th style="text-align:right">Neto UF</th><th style="text-align:right">Antigüedad</th></tr></thead><tbody>${pendientes.join('')}</tbody></table>` : ''}
+<div class="nota"><span>Generado: ${new Date().toLocaleString('es-CL')}</span><span>AFOR Intranet</span></div>
+</body></html>`);
+              pw.document.close();
+              setTimeout(() => pw.print(), 500);
+            }}>
+              <Printer className="w-4 h-4 mr-2" />
+              Informe
+            </Button>
+          </div>
         </div>
 
         {/* Resumen global */}
@@ -2429,6 +2526,37 @@ export default function MatrizIntranet() {
             <CardCifra label="Por cobrar" uf={tot.facturado - tot.cobrado} color="text-amber-600" />
             <CardCifra label="Costo HsH" uf={tot.costo} />
           </div>
+          {mesesChart.length > 0 && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Flujo mensual — facturación vs costo (UF neto)</p>
+                <div className="flex items-center gap-3 text-[10px] text-neutral-500 dark:text-neutral-400">
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-500 inline-block"></span>Facturado</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-neutral-400 inline-block"></span>Costo HsH</span>
+                </div>
+              </div>
+              <svg viewBox={`0 0 ${mesesChart.length * 60} 150`} className="w-full" style={{ maxHeight: '170px' }}>
+                {mesesChart.map((m, i) => {
+                  const d = flujo[m];
+                  const hF = (d.fact / maxFlujo) * 100;
+                  const hC = (d.costo / maxFlujo) * 100;
+                  const x = i * 60;
+                  return (
+                    <g key={m}>
+                      <rect x={x + 10} y={120 - hF} width="16" height={hF} rx="2" className="fill-orange-500" />
+                      <rect x={x + 30} y={120 - hC} width="16" height={hC} rx="2" className="fill-neutral-400" />
+                      {d.fact > 0 && <text x={x + 18} y={114 - hF} textAnchor="middle" fontSize="8" className="fill-orange-600">{d.fact.toFixed(0)}</text>}
+                      {d.costo > 0 && <text x={x + 38} y={114 - hC} textAnchor="middle" fontSize="8" className="fill-neutral-500">{d.costo.toFixed(0)}</text>}
+                      <text x={x + 28} y="135" textAnchor="middle" fontSize="8" className="fill-neutral-400 capitalize">
+                        {parseLocalDate(m).toLocaleDateString('es-CL', { month: 'short' })} {m.slice(2, 4)}
+                      </text>
+                    </g>
+                  );
+                })}
+                <line x1="0" y1="120" x2={mesesChart.length * 60} y2="120" className="stroke-neutral-300 dark:stroke-neutral-600" strokeWidth="1" />
+              </svg>
+            </div>
+          )}
           <div className="mt-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg flex items-center justify-between">
             <span className="text-sm text-neutral-600 dark:text-neutral-300">Margen global (facturado − costo)</span>
             <span className={`text-lg font-bold ${semaforo(tot.facturado > 0 ? (totMargen / tot.facturado) * 100 : null, totMargen)}`}>
@@ -2521,6 +2649,50 @@ export default function MatrizIntranet() {
                     </div>
                   </div>
 
+                  {/* Cotizado vs real + desglose por profesional */}
+                  {(() => {
+                    const est = costoEstimadoCOT(p);
+                    const desglose = costoPorProfesional(p);
+                    const pctConsumo = est && est.costo > 0 ? (fin.costo / est.costo) * 100 : null;
+                    const colorConsumo = pctConsumo === null ? '' : pctConsumo > 100 ? 'bg-red-500' : pctConsumo > 80 ? 'bg-amber-500' : 'bg-green-500';
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg">
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-2">Costo: cotizado vs real{est ? ` (ref. ${est.cotCodigo})` : ''}</p>
+                          {est ? (
+                            <>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="text-neutral-600 dark:text-neutral-300">Cotizado: <b>{est.costo.toFixed(1)} UF</b></span>
+                                <span className={pctConsumo > 100 ? 'text-red-600 font-bold' : 'text-neutral-600 dark:text-neutral-300'}>Real: <b>{fin.costo.toFixed(1)} UF</b> ({pctConsumo.toFixed(0)}%)</span>
+                              </div>
+                              <div className="w-full h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${colorConsumo}`} style={{ width: `${Math.min(100, pctConsumo)}%` }} />
+                              </div>
+                              {pctConsumo > 100 && <p className="text-[11px] text-red-600 mt-1">⚠ El costo real superó lo cotizado en {(fin.costo - est.costo).toFixed(1)} UF</p>}
+                            </>
+                          ) : (
+                            <p className="text-sm text-neutral-400">Sin COT vinculada — se compara solo el costo real: {fin.costo.toFixed(1)} UF</p>
+                          )}
+                        </div>
+                        <div className="p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg">
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-2">Costo por profesional</p>
+                          {Object.keys(desglose).length === 0 ? (
+                            <p className="text-sm text-neutral-400">Sin horas cargadas</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {Object.entries(desglose).sort((a, b) => b[1].costo - a[1].costo).map(([nombre, d]) => (
+                                <div key={nombre} className="flex justify-between text-sm">
+                                  <span className="text-neutral-600 dark:text-neutral-300 truncate">{nombre}</span>
+                                  <span className="text-neutral-800 dark:text-neutral-100 shrink-0 ml-2">{d.horas.toFixed(1)} h · <b>{d.costo.toFixed(2)} UF</b></span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Detalle mensual */}
                   {Object.keys(fin.mesesNeto).length === 0 ? (
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center py-3">Sin avance facturable aún</p>
@@ -2533,6 +2705,7 @@ export default function MatrizIntranet() {
                             <th className="pb-2 text-right">Neto UF</th>
                             <th className="pb-2 text-right">c/IVA CLP</th>
                             <th className="pb-2 text-center">Estado</th>
+                            <th className="pb-2 text-right">Antigüedad</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2550,13 +2723,29 @@ export default function MatrizIntranet() {
                                   <select
                                     value={estadoMes}
                                     onChange={async e => {
-                                      const ok = await updateProyectoField(p.id, { ['finanzas.estadosEDP.' + mes]: e.target.value });
-                                      showNotification(ok ? 'success' : 'error', ok ? `EDP ${mes} → ${e.target.value}` : 'No se pudo guardar');
+                                      const nuevoEstado = e.target.value;
+                                      const ok = await updateProyectoField(p.id, {
+                                        ['finanzas.estadosEDP.' + mes]: nuevoEstado,
+                                        ['finanzas.fechasEDP.' + mes + '.' + nuevoEstado]: hoyLocalStr()
+                                      });
+                                      showNotification(ok ? 'success' : 'error', ok ? `EDP ${mes} → ${nuevoEstado}` : 'No se pudo guardar');
                                     }}
                                     className={`${info.color} text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer`}
                                   >
                                     {ESTADOS_EDP_FIN.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
                                   </select>
+                                </td>
+                                <td className="py-2 text-right">
+                                  {(() => {
+                                    const dias = agingMes(fin, mes);
+                                    if (estadoMes === 'pagado') {
+                                      const fp = (fin.fechas[mes] || {}).pagado;
+                                      return <span className="text-green-600 text-xs">{fp ? `pagado ${parseLocalDate(fp).toLocaleDateString('es-CL')}` : '✓'}</span>;
+                                    }
+                                    if (dias === null) return <span className="text-neutral-400 text-xs">—</span>;
+                                    const color = dias > 60 ? 'text-red-600 font-bold' : dias > 30 ? 'text-amber-600 font-medium' : 'text-neutral-500';
+                                    return <span className={`text-xs ${color}`}>{dias} días</span>;
+                                  })()}
                                 </td>
                               </tr>
                             );

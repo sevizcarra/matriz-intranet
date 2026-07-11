@@ -30,8 +30,6 @@ import {
   deleteTarea as deleteTareaFS,
   updatePresencia,
   setOffline,
-  saveAllProyectos,
-  saveAllColaboradores,
   getColaborador,
   exportFullBackup,
   restoreFromBackup,
@@ -49,8 +47,6 @@ import {
   saveRecetas,
   subscribeToTarifas,
   subscribeToRecetas,
-  uploadCotArchivo,
-  deleteCotArchivo
 } from './firestoreService';
 
 // ============================================
@@ -838,12 +834,6 @@ export default function MatrizIntranet() {
       }
       const user = { id: fbUser.uid, uid: fbUser.uid, ...perfil };
       setCurrentUser(user);
-      if (user.profesionalId !== null && user.profesionalId !== undefined) {
-        updatePresencia(user.profesionalId, {
-          pagina: 'home',
-          navegador: navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Desktop'
-        });
-      }
       // Auto-backup diario al restaurar sesión de admin
       if (user.rol === 'admin') {
         const lastBackup = localStorage.getItem('afor_last_auto_backup');
@@ -1028,6 +1018,9 @@ export default function MatrizIntranet() {
       'facturacion': 'COTs',
       'config': 'Configuración'
     };
+
+    // Sin ficha de profesional no hay presencia que registrar (evita docs presencia/null)
+    if (currentUser.profesionalId === null || currentUser.profesionalId === undefined) return;
 
     updatePresencia(currentUser.profesionalId, {
       pagina: paginaLabel[currentPage] || currentPage,
@@ -1385,6 +1378,10 @@ export default function MatrizIntranet() {
       if (data && Object.keys(data).length > 0) {
         lastSavedStatusRef.current = data;
         setStatusData(data);
+      } else {
+        // Servidor vacío: respetarlo (no escribir la semilla demo automáticamente)
+        lastSavedStatusRef.current = {};
+        setStatusData({});
       }
     });
 

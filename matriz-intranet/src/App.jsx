@@ -859,6 +859,8 @@ export default function MatrizIntranet() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [firestoreReady, setFirestoreReady] = useState(false);
+  const colaboradoresLoadedRef = React.useRef(false); // primer snapshot de colaboradores recibido
+  const fichaAutoCreadaRef = React.useRef(false);
   // Fix C6: no guardar statusData hasta recibir el primer snapshot del servidor,
   // y guardar solo las claves que cambiaron (merge) en vez del documento completo.
   const statusLoadedRef = React.useRef(false);
@@ -925,6 +927,7 @@ export default function MatrizIntranet() {
     });
 
     const unsubProfesionales = subscribeToColaboradores((data, fromCache) => {
+      if (!fromCache) colaboradoresLoadedRef.current = true;
       if (data.length > 0) {
         setProfesionales(data);
         colaboradoresInitialized = true;
@@ -1041,6 +1044,30 @@ export default function MatrizIntranet() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [currentUser, currentPage]);
+
+  // Si el usuario logueado no tiene ficha de profesional, crearla automáticamente
+  // (necesaria para cargar HsH y aparecer en los selectores)
+  useEffect(() => {
+    if (!currentUser || fichaAutoCreadaRef.current || !colaboradoresLoadedRef.current) return;
+    const pid = currentUser.profesionalId;
+    if (pid === null || pid === undefined) return;
+    if (profesionales.find(c => String(c.id) === String(pid))) return;
+    fichaAutoCreadaRef.current = true;
+    const esAdmin = currentUser.rol === 'admin';
+    const ficha = {
+      id: pid,
+      nombre: currentUser.nombre || currentUser.email || 'Usuario',
+      cargo: esAdmin ? 'Arquitecto' : '',
+      categoria: esAdmin ? 'Jefe de Proyectos' : 'Proyectista',
+      rolTarifa: esAdmin ? 'jefe' : 'proyectista',
+      tarifaInterna: esAdmin ? 0.75 : 0.5,
+      iniciales: getIniciales(currentUser.nombre || 'U'),
+      proyectosAsignados: []
+    };
+    saveColaborador(ficha).then(ok => {
+      if (ok) showNotification('success', 'Se creó tu ficha de profesional');
+    });
+  }, [currentUser, profesionales]);
 
   // Helper para determinar si un usuario está "online" (activo en los últimos 2 minutos)
   const isUsuarioOnline = (profesionalId) => {
@@ -1180,6 +1207,7 @@ export default function MatrizIntranet() {
   // Fix C5: refs espejo para que los formularios de Horas y Tareas sobrevivan remontajes
   const horasFormRef = React.useRef({ profesional: '', proyecto: '', semana: '', entregable: '', horas: '', revision: 'REV_A', tipoCarga: 'PLA', descripcionCarga: '' });
   const tareasFormRef = React.useRef({ showNewTarea: false, selectedTarea: null, nuevoComentario: '', filtroEstado: 'todas', nuevaTarea: { titulo: '', descripcion: '', asignadoA: '', proyectoId: '', entregableId: '', prioridad: 'media', fechaLimite: '' } });
+  const perfilFormRef = React.useRef({ inicializado: false, nombre: '', cargo: '' });
   
   // Función para mostrar notificación
   const showNotification = (type, message) => {
@@ -1652,6 +1680,7 @@ export default function MatrizIntranet() {
     { id: 'proyectos', label: 'Proyectos', icon: FolderKanban, adminOnly: false },
     { id: 'horas', label: 'Carga HsH', icon: Clock, adminOnly: false },
     { id: 'tareas', label: 'Tareas', icon: ClipboardList, adminOnly: false },
+    { id: 'perfil', label: 'Mi Perfil', icon: User, adminOnly: false },
     { id: 'config', label: 'Config', icon: Settings, adminOnly: true },
   ];
   const navItems = isAdmin ? allNavItems : allNavItems.filter(item => !item.adminOnly);
@@ -2208,6 +2237,112 @@ export default function MatrizIntranet() {
   );
 
   // ============================================
+  // PÁGINA: MI PERFIL
+  // ============================================
+  const PerfilPage = () => {
+    const pid = currentUser?.profesionalId;
+    const miFicha = profesionales.find(c => String(c.id) === String(pid));
+
+    if (!perfilFormRef.current.inicializado) {
+      perfilFormRef.current = {
+        inicializado: true,
+        nombre: (miFicha && miFicha.nombre) || currentUser?.nombre || '',
+        cargo: (miFicha && miFicha.cargo) || ''
+      };
+    }
+    const [pNombre, setPNombreLocal] = useState(perfilFormRef.current.nombre);
+    const [pCargo, setPCargoLocal] = useState(perfilFormRef.current.cargo);
+    const setPNombre = mkRefSetter(perfilFormRef, 'nombre', setPNombreLocal);
+    const setPCargo = mkRefSetter(perfilFormRef, 'cargo', setPCargoLocal);
+    const [guardando, setGuardando] = useState(false);
+
+    const guardarPerfil = async () => {
+      if (!pNombre.trim()) { showNotification('error', 'El nombre no puede quedar vacío'); return; }
+      if (pid === null || pid === undefined) { showNotification('error', 'Tu usuario no tiene ficha de profesional asociada'); return; }
+      setGuardando(true);
+      const base = miFicha || { id: pid, categoria: 'Proyectista', rolTarifa: 'proyectista', tarifaInterna: 0.5, proyectosAsignados: [] };
+      const ficha = { ...base, nombre: pNombre.trim(), cargo: pCargo.trim(), iniciales: getIniciales(pNombre.trim()) };
+      const ok = await saveColaborador(ficha);
+      if (ok) {
+        await saveUsuarioPerfil(currentUser.uid, { nombre: pNombre.trim() });
+        setCurrentUser(prev => ({ ...prev, nombre: pNombre.trim() }));
+        showNotification('success', 'Perfil actualizado');
+      } else {
+        showNotification('error', 'No se pudo guardar el perfil');
+      }
+      setGuardando(false);
+    };
+
+    // Resumen de HsH propias
+    const misHoras = horasRegistradas.filter(h => String(h.profesionalId) === String(pid));
+    const mesActual = hoyLocalStr().slice(0, 7);
+    const esDelMes = (h) => {
+      const f = parseLocalDate(h.fecha);
+      return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}` === mesActual;
+    };
+    const horasMes = misHoras.filter(esDelMes);
+    const totalMes = horasMes.reduce((sum, h) => sum + (parseFloat(h.horas) || 0), 0);
+    const totalHistorico = misHoras.reduce((sum, h) => sum + (parseFloat(h.horas) || 0), 0);
+    const porProyecto = {};
+    horasMes.forEach(h => {
+      const key = h.proyectoId || 'Sin proyecto';
+      porProyecto[key] = (porProyecto[key] || 0) + (parseFloat(h.horas) || 0);
+    });
+    const nombreMes = parseLocalDate(mesActual).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+
+    return (
+      <div className="space-y-6 max-w-3xl mx-auto">
+        <div>
+          <h1 className="text-xl text-neutral-800 dark:text-neutral-100 font-light">Mi Perfil</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm">{currentUser?.email} · {isAdmin ? 'Administrador' : 'Profesional'}</p>
+        </div>
+
+        <Card className="p-4 sm:p-6">
+          <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-4">Datos Personales</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="Nombre" value={pNombre} onChange={e => setPNombre(e.target.value)} />
+            <Input label="Cargo" value={pCargo} onChange={e => setPCargo(e.target.value)} placeholder="Ej: Arquitecto" />
+            <Input label="Email de acceso" value={currentUser?.email || ''} disabled />
+            <Input label="Iniciales" value={getIniciales(pNombre || '')} disabled />
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button onClick={guardarPerfil} disabled={guardando}>
+              {guardando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Guardar Cambios
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-4 sm:p-6">
+          <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-4">Mis HsH — {nombreMes}</h2>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 text-center">
+              <p className="text-orange-600 dark:text-orange-400 text-xs mb-1">HsH este mes</p>
+              <p className="text-2xl font-bold text-orange-600">{totalMes.toFixed(1)}</p>
+            </div>
+            <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-center">
+              <p className="text-neutral-500 dark:text-neutral-400 text-xs mb-1">HsH histórico</p>
+              <p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{totalHistorico.toFixed(1)}</p>
+            </div>
+          </div>
+          {Object.keys(porProyecto).length === 0 ? (
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm text-center py-4">Aún no registras horas este mes</p>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(porProyecto).sort((a, b) => b[1] - a[1]).map(([proy, hrs]) => (
+                <div key={proy} className="flex items-center justify-between p-2 bg-neutral-100 dark:bg-neutral-700 rounded">
+                  <span className="text-orange-500 font-mono text-sm">{proy}</span>
+                  <span className="text-neutral-800 dark:text-neutral-100 text-sm font-medium">{hrs.toFixed(1)} HsH</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  };
+
+  // ============================================
   // PÁGINA: PROYECTOS
   // ============================================
   // Avance real del proyecto según statusData (inicio=0%, RevA=70%, RevB=90%, Rev0/P=100%)
@@ -2384,6 +2519,13 @@ export default function MatrizIntranet() {
 
     const esReunionOVisita = ['REU', 'VIS'].includes(tipoCarga);
 
+    // Fix permisos: los no-admin solo cargan sus propias horas
+    useEffect(() => {
+      if (!isAdmin && currentUser?.profesionalId != null && profesional !== String(currentUser.profesionalId)) {
+        setProfesional(String(currentUser.profesionalId));
+      }
+    }, []);
+
     const registrarHoras = async () => {
       // Validación diferente para REU/VIS vs otros tipos
       if (esReunionOVisita) {
@@ -2426,7 +2568,7 @@ export default function MatrizIntranet() {
 
       const nuevoRegistro = {
         id: Date.now(),
-        profesionalId: parseInt(profesional),
+        profesionalId: isAdmin ? parseInt(profesional) : currentUser?.profesionalId,
         proyectoId: proyecto,
         semana: parseInt(semana),
         tipo: tipoCarga,
@@ -2493,12 +2635,16 @@ export default function MatrizIntranet() {
           <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm p-3 sm:p-4 lg:col-span-1">
             <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3 sm:mb-4">Registrar Horas</h2>
             <div className="space-y-3 sm:space-y-4">
-              <Select label="Profesional" value={profesional} onChange={e => setProfesional(e.target.value)}>
-                <option value="">Seleccionar...</option>
-                {profesionales.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </Select>
+              {isAdmin ? (
+                <Select label="Profesional" value={profesional} onChange={e => setProfesional(e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  {profesionales.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </Select>
+              ) : (
+                <Input label="Profesional" value={profesionales.find(c => String(c.id) === String(currentUser?.profesionalId))?.nombre || currentUser?.nombre || ''} disabled />
+              )}
               
               <Select label="Proyecto" value={proyecto} onChange={e => { setProyecto(e.target.value); setEntregable(''); }}>
                 <option value="">{proyectosActivosVisibles.length === 0 ? 'Sin proyectos asignados' : 'Seleccionar...'}</option>
@@ -4894,6 +5040,7 @@ ${cotHtml}
         {currentPage === 'proyectos' && <ProyectosPage />}
         {currentPage === 'horas' && <HorasPage />}
         {currentPage === 'tareas' && <TareasPage />}
+        {currentPage === 'perfil' && <PerfilPage />}
         {currentPage === 'facturacion' && <FacturacionPage />}
         {currentPage === 'config' && (
           <div className="p-4 sm:p-6 max-w-4xl mx-auto">
@@ -5766,6 +5913,7 @@ ${cotHtml}
                   </div>
                   
                   <button 
+                    style={!isAdmin ? { display: 'none' } : undefined}
                     onClick={() => { setTempDate(dashboardStartDate); setEditDateOpen(true); }} 
                     className="flex items-center gap-1 px-2 py-2 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 active:bg-neutral-300 dark:active:bg-neutral-500 rounded text-xs text-neutral-600 dark:text-neutral-300 transition-colors shrink-0"
                   >
@@ -5825,6 +5973,7 @@ ${cotHtml}
                   <span>Entregables</span>
                 </button>
                 <button
+                  style={!isAdmin ? { display: 'none' } : undefined}
                   onClick={() => setDashboardTab('edp')}
                   className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:py-2 rounded text-[10px] sm:text-xs transition-all ${
                     dashboardTab === 'edp' ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-700'
@@ -6653,10 +6802,12 @@ tr { page-break-inside: avoid; }
                                 {getEntregablesProyecto(selectedProject).filter(e => !e.frozen).length} activos / {getEntregablesProyecto(selectedProject).length} total
                               </p>
                             </div>
-                            <Button onClick={() => setShowAddEntregable(true)} variant="secondary">
-                              <Plus className="w-4 h-4 mr-2" />
-                              Agregar Entregable
-                            </Button>
+                            {isAdmin && (
+                              <Button onClick={() => setShowAddEntregable(true)} variant="secondary">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Agregar Entregable
+                              </Button>
+                            )}
                           </div>
                         </Card>
 
@@ -6786,7 +6937,7 @@ tr { page-break-inside: avoid; }
                                         )}
                                       </td>
                                       <td className="py-2 text-center">
-                                        <div className="flex items-center justify-center gap-1">
+                                        <div className="flex items-center justify-center gap-1" style={!isAdmin ? { display: 'none' } : undefined}>
                                           <button
                                             onClick={() => setEditingEntregable(editingEntregable === ent.id ? null : ent.id)}
                                             className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 ${editingEntregable === ent.id ? 'text-orange-500' : 'text-neutral-500'}`}
@@ -7001,7 +7152,7 @@ tr { page-break-inside: avoid; }
                     )}
 
                     {/* ==================== PESTAÑA EDP ==================== */}
-                    {dashboardTab === 'edp' && (() => {
+                    {dashboardTab === 'edp' && isAdmin && (() => {
                       const edpData = calcularEDPEntregables(selectedProject);
                       const porProyecto = agruparPorProyecto(edpData);
                       const totalGeneral = edpData.reduce((s, e) => s + e.valor, 0);

@@ -14,7 +14,8 @@ import {
   deleteDoc,
   onSnapshot,
   query,
-  orderBy
+  orderBy,
+  arrayUnion
 } from 'firebase/firestore';
 
 // Nombres de las colecciones
@@ -322,9 +323,15 @@ export const saveCotizacion = async (cotizacion) => {
   }
 };
 
-export const updateCotEstado = async (cotDocId, estado, historial, firmada) => {
+// entradaLog: objeto único que se AGREGA al historial con arrayUnion —
+// dos usuarios cambiando estados a la vez ya no se pisan el historial (M6)
+export const updateCotEstado = async (cotDocId, estado, entradaLog, firmada) => {
   try {
-    await updateDoc(doc(db, COLLECTIONS.COTIZACIONES, cotDocId), { estado, historial, firmada });
+    await updateDoc(doc(db, COLLECTIONS.COTIZACIONES, cotDocId), {
+      estado,
+      historial: arrayUnion(entradaLog),
+      firmada
+    });
     return true;
   } catch (error) {
     console.error('Error updating cotizacion estado:', error);
@@ -481,28 +488,42 @@ export const saveAllHoras = async (horas) => {
 // Exportar TODOS los datos como un objeto JSON completo
 export const exportFullBackup = async () => {
   try {
-    const [proyectos, colaboradores, horas, tareas, statusData] = await Promise.all([
+    const [proyectos, colaboradores, horas, tareas, statusData, cotizaciones, tarifasDoc, recetasDoc, duracionesDoc, usuarios] = await Promise.all([
       getDocs(collection(db, COLLECTIONS.PROYECTOS)),
       getDocs(collection(db, COLLECTIONS.COLABORADORES)),
       getDocs(collection(db, COLLECTIONS.HORAS)),
       getDocs(collection(db, COLLECTIONS.TAREAS)),
-      getDoc(doc(db, COLLECTIONS.CONFIG, 'statusData'))
+      getDoc(doc(db, COLLECTIONS.CONFIG, 'statusData')),
+      getDocs(collection(db, COLLECTIONS.COTIZACIONES)),
+      getDoc(doc(db, COLLECTIONS.CONFIG, 'tarifas')),
+      getDoc(doc(db, COLLECTIONS.CONFIG, 'recetas')),
+      getDoc(doc(db, COLLECTIONS.CONFIG, 'duraciones')),
+      getDocs(collection(db, COLLECTIONS.USUARIOS))
     ]);
 
     const backup = {
       _meta: {
-        version: '1.0',
+        version: '2.0',
         fecha: new Date().toISOString(),
         totalProyectos: proyectos.docs.length,
         totalColaboradores: colaboradores.docs.length,
         totalHoras: horas.docs.length,
         totalTareas: tareas.docs.length,
+        totalCotizaciones: cotizaciones.docs.length,
+        totalUsuarios: usuarios.docs.length,
       },
       proyectos: proyectos.docs.map(d => ({ _docId: d.id, ...d.data() })),
       colaboradores: colaboradores.docs.map(d => ({ _docId: d.id, ...d.data() })),
       horas: horas.docs.map(d => ({ _docId: d.id, ...d.data() })),
       tareas: tareas.docs.map(d => ({ _docId: d.id, ...d.data() })),
       statusData: statusData.exists() ? statusData.data().data || {} : {},
+      cotizaciones: cotizaciones.docs.map(d => ({ _docId: d.id, ...d.data() })),
+      config: {
+        tarifas: tarifasDoc.exists() ? tarifasDoc.data() : null,
+        recetas: recetasDoc.exists() ? recetasDoc.data() : null,
+        duraciones: duracionesDoc.exists() ? duracionesDoc.data() : null,
+      },
+      usuarios: usuarios.docs.map(d => ({ _docId: d.id, ...d.data() })),
     };
 
     return backup;
@@ -515,7 +536,41 @@ export const exportFullBackup = async () => {
 // Restaurar datos desde un backup JSON
 export const restoreFromBackup = async (backup) => {
   try {
-    let restored = { proyectos: 0, colaboradores: 0, horas: 0, tareas: 0, statusData: false };
+    let restored = { proyectos: 0, colaboradores: 0, horas: 0, tareas: 0, statusData: false, cotizaciones: 0, config: 0, usuarios: 0 };
+
+    // Restaurar cotizaciones
+    if (backup.cotizaciones && backup.cotizaciones.length > 0) {
+      for (const c of backup.cotizaciones) {
+        const { _docId, ...data } = c;
+        if (_docId) {
+          await setDoc(doc(db, COLLECTIONS.COTIZACIONES, _docId), data);
+        } else {
+          await addDoc(collection(db, COLLECTIONS.COTIZACIONES), data);
+        }
+        restored.cotizaciones++;
+      }
+    }
+
+    // Restaurar configuración (tarifas, recetas, duraciones)
+    if (backup.config) {
+      for (const key of ['tarifas', 'recetas', 'duraciones']) {
+        if (backup.config[key]) {
+          await setDoc(doc(db, COLLECTIONS.CONFIG, key), backup.config[key]);
+          restored.config++;
+        }
+      }
+    }
+
+    // Restaurar perfiles de usuario
+    if (backup.usuarios && backup.usuarios.length > 0) {
+      for (const u of backup.usuarios) {
+        const { _docId, ...data } = u;
+        if (_docId) {
+          await setDoc(doc(db, COLLECTIONS.USUARIOS, _docId), data);
+          restored.usuarios++;
+        }
+      }
+    }
 
     // Restaurar proyectos
     if (backup.proyectos && backup.proyectos.length > 0) {
@@ -582,17 +637,28 @@ export const restoreFromBackup = async (backup) => {
 
 // Guardar auto-backup en Firestore (colección backups)
 export const saveAutoBackup = async (backup) => {
+  const fecha = new Date();
+  const backupId = `backup_${fecha.toISOString().split('T')[0]}`;
   try {
-    const fecha = new Date();
-    const backupId = `backup_${fecha.toISOString().split('T')[0]}`;
     await setDoc(doc(db, 'backups', backupId), {
       ...backup,
       _meta: { ...backup._meta, tipo: 'auto', fecha: fecha.toISOString() }
     });
     return true;
   } catch (error) {
-    console.error('Error guardando auto-backup:', error);
-    return false;
+    // Si el documento supera el límite de Firestore (1MB), reintentar sin cotizaciones
+    console.warn('Auto-backup completo falló, reintentando sin cotizaciones:', error);
+    try {
+      const { cotizaciones, ...resto } = backup;
+      await setDoc(doc(db, 'backups', backupId), {
+        ...resto,
+        _meta: { ...backup._meta, tipo: 'auto', fecha: fecha.toISOString(), cotizacionesOmitidas: true }
+      });
+      return true;
+    } catch (error2) {
+      console.error('Error guardando auto-backup:', error2);
+      return false;
+    }
   }
 };
 

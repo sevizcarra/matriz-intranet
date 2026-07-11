@@ -702,8 +702,9 @@ const hoyLocalStr = () => {
 // duracionRev0Dias: duración de REV_0 en días hábiles (default 3)
 const calculateDeadlines = (projectStart, weekStart, duracionRevADias = 10, duracionRevBDias = 3, duracionRev0Dias = 3) => {
   const start = parseLocalDate(projectStart);
-  // El entregable comienza en la semana weekStart (relativa al inicio del proyecto)
-  const entregableStart = addWeeks(start, weekStart);
+  // El entregable comienza en la semana weekStart (1 = semana del inicio del proyecto,
+  // misma convención que la carta Gantt — fix M9 off-by-one)
+  const entregableStart = addWeeks(start, Math.max(0, (weekStart || 1) - 1));
   // REV_A termina después de duracionRevADias días hábiles (salta fines de semana)
   const deadlineRevA = addBusinessDays(entregableStart, duracionRevADias);
   // REV_B termina después de duracionRevBDias días hábiles desde fin REV_A
@@ -910,25 +911,11 @@ export default function MatrizIntranet() {
     // Subscribe to Firestore collections
     const unsubProyectos = subscribeToProyectos((data, fromCache) => {
       if (data.length > 0) {
-        // Hay datos en Firestore — usarlos siempre
-        const proyectosMerged = data.map(p => {
-          if (!p.entregables || p.entregables.length === 0) {
-            const inicial = PROYECTOS_INICIALES.find(pi => pi.id === p.id);
-            if (inicial && inicial.entregables) {
-              return { ...p, entregables: inicial.entregables };
-            }
-          }
-          return p;
-        });
-        setProyectos(proyectosMerged);
+        // Hay datos en Firestore — usarlos siempre, SIN re-inyectar datos demo.
+        // (La re-siembra anterior escribía dentro del callback: bucle write→snapshot→write
+        //  que quemaba la cuota de escrituras — fix M13)
+        setProyectos(data);
         proyectosInitialized = true;
-        // Guardar los proyectos actualizados con entregables si faltaban
-        proyectosMerged.forEach(p => {
-          const original = data.find(d => d.id === p.id);
-          if (original && (!original.entregables || original.entregables.length === 0) && p.entregables) {
-            saveProyecto(p);
-          }
-        });
       } else if (!fromCache) {
         // Firestore confirmó vacío — respetar el estado vacío (el usuario los eliminó)
         setProyectos([]);
@@ -971,7 +958,11 @@ export default function MatrizIntranet() {
       // Parsear excelDataJson → excelData (Firestore no acepta nested arrays)
       const parsed = data.map(cot => ({
         ...cot,
-        excelData: cot.excelDataJson ? JSON.parse(cot.excelDataJson) : (cot.excelData || null)
+        excelData: (() => {
+          if (!cot.excelDataJson) return cot.excelData || null;
+          try { return JSON.parse(cot.excelDataJson); }
+          catch (e) { console.error('excelDataJson corrupto en COT', cot.codigo || cot._docId); return null; }
+        })()
       }));
       setCotizaciones(parsed);
     });
@@ -1039,13 +1030,13 @@ export default function MatrizIntranet() {
       navegador: navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Desktop'
     });
 
-    // Heartbeat cada 30 segundos
+    // Heartbeat cada 2 minutos (reduce escrituras de presencia en Firestore)
     const heartbeatInterval = setInterval(() => {
       updatePresencia(currentUser.profesionalId, {
         pagina: paginaLabel[currentPage] || currentPage,
         navegador: navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Desktop'
       });
-    }, 30000);
+    }, 120000);
 
     // Detectar cuando el usuario cierra la pestaña/navegador
     const handleBeforeUnload = () => {
@@ -1094,7 +1085,7 @@ export default function MatrizIntranet() {
     const ultimaActividad = new Date(presencia.ultimaActividad);
     const ahora = new Date();
     const diffMinutos = (ahora - ultimaActividad) / (1000 * 60);
-    return diffMinutos < 2; // Considera online si la última actividad fue hace menos de 2 minutos
+    return diffMinutos < 5; // Considera online si la última actividad fue hace menos de 5 minutos (heartbeat cada 2)
   };
 
   // Obtener usuarios online
@@ -3885,9 +3876,9 @@ ${cuerpo}
                                       onChange={async (e) => {
                                         const nuevoEstado = e.target.value;
                                         const ahora = new Date().toISOString();
-                                        const nuevoLog = [...historial, { estado: nuevoEstado, fecha: ahora, usuario: currentUser?.nombre || 'Admin' }];
+                                        const nuevaEntrada = { estado: nuevoEstado, fecha: ahora, usuario: currentUser?.nombre || 'Admin' };
                                         const esFirmada = ['firmada','enviada','comentada','reenviada','aceptada'].includes(nuevoEstado);
-                                        const ok = await updateCotEstado(cot._docId, nuevoEstado, nuevoLog, esFirmada);
+                                        const ok = await updateCotEstado(cot._docId, nuevoEstado, nuevaEntrada, esFirmada);
                                         if (ok) showNotification('success', `Estado cambiado a "${COT_ESTADOS.find(x => x.id === nuevoEstado)?.label}"`);
                                         else showNotification('error', 'Error al cambiar estado');
                                       }}
@@ -4335,15 +4326,21 @@ ${cuerpo}
                     <Lock className="w-4 h-4" /> Estimación interna (no visible en COT)
                   </h4>
                   {(() => {
+                    // Misma lógica que el cálculo del cliente (fix M3): REU INT/CTTAL = 1 UF fijo,
+                    // VIS sin factor de revisiones, resto con revFactor
+                    const revFactorEst = ((cotRevAEnabled ? cotRevAPercent : 0) + (cotRevBEnabled ? cotRevBPercent : 0) + (cotRev0Enabled ? cotRev0Percent : 0)) / 100;
                     let totalVenta = 0, totalCosto = 0, totalHH = 0, hhPorRol = {};
                     tarifas.forEach(t => { hhPorRol[t.id] = 0; });
                     const rows = cotExcelData.slice(1).filter(row => row[0] && row[3]);
                     rows.forEach(row => {
-                      const tipo = (row[1] || 'PLA').toUpperCase();
+                      const tipo = (row[1] || 'PLA GEN').toUpperCase();
                       const cantidad = parseInt(row[4]) || 1;
+                      const esVisita = tipo.includes('VIS');
+                      const esCobroUnico = tipo.includes('REU INT') || tipo.includes('REU CTTAL');
                       const receta = matchReceta(tipo, recetas);
+                      const precioUnit = esCobroUnico ? 1 : (receta ? calcPrecioVenta(receta, tarifas) : 20);
+                      totalVenta += precioUnit * cantidad * ((esCobroUnico || esVisita) ? 1 : revFactorEst);
                       if (receta) {
-                        totalVenta += calcPrecioVenta(receta, tarifas) * cantidad;
                         totalCosto += calcCostoInterno(receta, tarifas) * cantidad;
                         totalHH += calcTotalHH(receta) * cantidad;
                         Object.entries(receta.hh).forEach(([rolId, horas]) => {
@@ -4508,6 +4505,7 @@ ${cuerpo}
                       tmp.querySelectorAll('.no-print').forEach(e => e.remove());
                       cotHtml = tmp.innerHTML;
                       const pw = window.open('','_blank');
+                      if (!pw) { showNotification('error', 'Habilita las ventanas emergentes para poder imprimir'); return; }
                       pw.document.write(`<html><head><title>AFOR — Propuesta ${cotCliente}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
@@ -6552,6 +6550,7 @@ ${cotHtml}
                               </span>`).join('');
 
                               const pw = window.open('', '_blank');
+                              if (!pw) { showNotification('error', 'Habilita las ventanas emergentes para poder imprimir'); return; }
                               pw.document.write(`<html><head><title>AFOR — Carta Gantt ${proyecto.nombre}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
@@ -7851,8 +7850,10 @@ tr { page-break-inside: avoid; }
                   });
 
                   // Curva real ponderada: inicio=0%, RevA=70%, RevB=90%, Rev0/P=100%
+                  // Se corta en la semana actual (igual que en pantalla) — fix M2
+                  const semanaActualImpr = Math.min(Math.max(Math.round((new Date() - startDate) / (7 * 24 * 60 * 60 * 1000)), 0), weeksToShow);
                   const realPct = [];
-                  for (let w = 0; w <= weeksToShow; w++) {
+                  for (let w = 0; w <= semanaActualImpr; w++) {
                     const weekDate = addWeeks(startDate, w);
                     let sumProgress = 0;
                     entregablesImpr.forEach(d => {

@@ -142,6 +142,16 @@ export const deleteColaborador = async (colaboradorId) => {
   }
 };
 
+export const getColaborador = async (id) => {
+  try {
+    const snap = await getDoc(doc(db, COLLECTIONS.COLABORADORES, String(id)));
+    return snap.exists() ? { ...snap.data(), _docId: snap.id } : null;
+  } catch (error) {
+    console.error('Error getting colaborador:', error);
+    return null;
+  }
+};
+
 export const subscribeToColaboradores = (callback, onError) => {
   return onSnapshot(collection(db, COLLECTIONS.COLABORADORES), (snapshot) => {
     const colaboradores = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));

@@ -32,6 +32,7 @@ import {
   setOffline,
   saveAllProyectos,
   saveAllColaboradores,
+  getColaborador,
   exportFullBackup,
   restoreFromBackup,
   saveAutoBackup,
@@ -1046,28 +1047,32 @@ export default function MatrizIntranet() {
   }, [currentUser, currentPage]);
 
   // Si el usuario logueado no tiene ficha de profesional, crearla automáticamente
-  // (necesaria para cargar HsH y aparecer en los selectores)
+  // (necesaria para cargar HsH y aparecer en los selectores).
+  // OJO: se consulta el documento directo al servidor — la suscripción no sirve aquí
+  // porque con la colección vacía el snapshot llega solo desde caché.
   useEffect(() => {
-    if (!currentUser || fichaAutoCreadaRef.current || !colaboradoresLoadedRef.current) return;
+    if (!currentUser || fichaAutoCreadaRef.current) return;
     const pid = currentUser.profesionalId;
     if (pid === null || pid === undefined) return;
-    if (profesionales.find(c => String(c.id) === String(pid))) return;
     fichaAutoCreadaRef.current = true;
-    const esAdmin = currentUser.rol === 'admin';
-    const ficha = {
-      id: pid,
-      nombre: currentUser.nombre || currentUser.email || 'Usuario',
-      cargo: esAdmin ? 'Arquitecto' : '',
-      categoria: esAdmin ? 'Jefe de Proyectos' : 'Proyectista',
-      rolTarifa: esAdmin ? 'jefe' : 'proyectista',
-      tarifaInterna: esAdmin ? 0.75 : 0.5,
-      iniciales: getIniciales(currentUser.nombre || 'U'),
-      proyectosAsignados: []
-    };
-    saveColaborador(ficha).then(ok => {
+    (async () => {
+      const existente = await getColaborador(pid);
+      if (existente) return;
+      const esAdmin = currentUser.rol === 'admin';
+      const ficha = {
+        id: pid,
+        nombre: currentUser.nombre || currentUser.email || 'Usuario',
+        cargo: esAdmin ? 'Arquitecto' : '',
+        categoria: esAdmin ? 'Jefe de Proyectos' : 'Proyectista',
+        rolTarifa: esAdmin ? 'jefe' : 'proyectista',
+        tarifaInterna: esAdmin ? 0.75 : 0.5,
+        iniciales: getIniciales(currentUser.nombre || 'U'),
+        proyectosAsignados: []
+      };
+      const ok = await saveColaborador(ficha);
       if (ok) showNotification('success', 'Se creó tu ficha de profesional');
-    });
-  }, [currentUser, profesionales]);
+    })();
+  }, [currentUser]);
 
   // Helper para determinar si un usuario está "online" (activo en los últimos 2 minutos)
   const isUsuarioOnline = (profesionalId) => {

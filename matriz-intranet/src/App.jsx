@@ -344,12 +344,21 @@ const construirCurvaS = ({ entregables, getStatus, duracionesPorTipo, duracionRe
     else realLimpia.push({ ...p });
   });
 
-  // Proyectado interpolado en la posición de HOY
-  const proyectadoHoy = semanaActual >= weeksToShow
-    ? 100
-    : proyectada.reduce((v, p) => (p.week <= semanaActual ? p.value : v), 0);
+  // Proyectado en la posición de HOY: interpolación LINEAL entre puntos vecinos
+  const proyectadoHoy = (() => {
+    if (semanaActual >= fin) return 100;
+    let antes = proyectada[0] || { week: 0, value: 0 };
+    let despues = proyectada[proyectada.length - 1] || antes;
+    for (const p of proyectada) {
+      if (p.week <= semanaActual) antes = p;
+      else { despues = p; break; }
+    }
+    if (despues.week === antes.week) return antes.value;
+    const f = (semanaActual - antes.week) / (despues.week - antes.week);
+    return antes.value + f * (despues.value - antes.value);
+  })();
 
-  return { proyectada, real: realLimpia, weeksToShow, semanaActual, avanceReal, proyectadoHoy };
+  return { proyectada, real: realLimpia, weeksToShow, semanaActual, avanceReal, proyectadoHoy, finProyecto: fin };
 };
 
 // Generar path SVG suave con spline monotono cúbico (Fritsch-Carlson)
@@ -6863,6 +6872,16 @@ ${cotHtml}
                                     </>
                                   )}
 
+                                  {/* Línea vertical de CIERRE proyectado del proyecto */}
+                                  {curva.finProyecto <= weeksToShow && (
+                                    <>
+                                      <line x1={xScale(curva.finProyecto)} y1={padding.top} x2={xScale(curva.finProyecto)} y2={chartHeight - padding.bottom} stroke="#6b7280" strokeWidth="1.2" strokeDasharray="5,4" />
+                                      <text x={xScale(curva.finProyecto)} y={padding.top - 5} textAnchor="middle" fontSize="7" fill="#6b7280" fontWeight="500">
+                                        Cierre {new Date(startDate.getTime() + curva.finProyecto * 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })}
+                                      </text>
+                                    </>
+                                  )}
+
                                   {/* Curva proyectada */}
                                   <path d={projectedPath} fill="none" stroke="#f97316" strokeWidth="2.5" />
 
@@ -8594,6 +8613,12 @@ tr { page-break-inside: avoid; }
                         <>
                           <line x1={xScale(currentWeekIdx)} y1={padT} x2={xScale(currentWeekIdx)} y2={padT + chartH} stroke="#f97316" strokeWidth="1" strokeDasharray="3,2" />
                           <text x={xScale(currentWeekIdx)} y={padT - 3} textAnchor="middle" fill="#f97316" fontSize="6" fontWeight="bold">HOY</text>
+                        </>
+                      )}
+                      {curvaImpr.finProyecto <= weeksToShow && (
+                        <>
+                          <line x1={xScale(curvaImpr.finProyecto)} y1={padT} x2={xScale(curvaImpr.finProyecto)} y2={padT + chartH} stroke="#6b7280" strokeWidth="1" strokeDasharray="4,3" />
+                          <text x={xScale(curvaImpr.finProyecto)} y={padT - 3} textAnchor="middle" fill="#6b7280" fontSize="6" fontWeight="bold">CIERRE {new Date(startDate.getTime() + curvaImpr.finProyecto * 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })}</text>
                         </>
                       )}
                       {/* Curva programada */}

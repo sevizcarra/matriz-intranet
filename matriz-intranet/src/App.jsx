@@ -2432,7 +2432,16 @@ export default function MatrizIntranet() {
         const tar = tarifas.find(t => t.id === ((col && col.rolTarifa) || 'proyectista'));
         meses[mes] = (meses[mes] || 0) + (parseFloat(h.horas) || 0) * ((tar && tar.tarifaVenta) || 0);
       });
-      // condiciones comerciales guardadas por mes (descuentos del EDP)
+      // Condiciones comerciales por mes: usa las guardadas en el EDP del mes;
+      // si el mes no tiene, HEREDA los descuentos de la COT vinculada
+      // (lo que el cliente efectivamente paga). Un EDP guardado con
+      // "aplicar" desactivado se respeta como excepción explícita.
+      const digitsP = String(p.id || '').replace(/\D/g, '');
+      const cotP = cotizaciones.find(c => c.estado === 'aceptada' && String(c.codigo || '').replace(/\D/g, '') === digitsP) ||
+                   cotizaciones.find(c => String(c.codigo || '').replace(/\D/g, '') === digitsP);
+      const condCOT = cotP && (cotP.simplificado || (cotP.descuento || 0) > 0)
+        ? { simplificado: !!cotP.simplificado, descuento: cotP.descuento || 0 }
+        : null;
       const mesesNeto = {};
       let facturado = 0;
       Object.entries(meses).sort((a, b) => a[0].localeCompare(b[0])).forEach(([mes, subtotal]) => {
@@ -2442,6 +2451,9 @@ export default function MatrizIntranet() {
           const fSimp = ec.simplificado ? 0.8 : 1;
           const dPct = Number(ec.descuento) || 0;
           neto = subtotal * fSimp * (1 - dPct / 100);
+        } else if (!ec && condCOT) {
+          const fSimp = condCOT.simplificado ? 0.8 : 1;
+          neto = subtotal * fSimp * (1 - condCOT.descuento / 100);
         }
         mesesNeto[mes] = neto;
         facturado += neto;
@@ -7941,8 +7953,10 @@ tr { page-break-inside: avoid; }
                                     const digits = String(selectedProject || '').replace(/\D/g, '');
                                     const cotMatch = cotizaciones.find(c => c.estado === 'aceptada' && String(c.codigo || '').replace(/\D/g, '') === digits) ||
                                                      cotizaciones.find(c => String(c.codigo || '').replace(/\D/g, '') === digits);
+                                    // Si la COT vinculada tiene descuentos, aplicarlos por defecto
+                                    const tieneDescuentos = !!(cotMatch && (cotMatch.simplificado || (cotMatch.descuento || 0) > 0));
                                     setEdpCond({
-                                      aplicar: false,
+                                      aplicar: tieneDescuentos,
                                       simplificado: !!(cotMatch && cotMatch.simplificado),
                                       descuento: (cotMatch && cotMatch.descuento) || 0,
                                       iva: 19,

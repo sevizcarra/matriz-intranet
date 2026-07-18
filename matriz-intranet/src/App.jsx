@@ -2416,6 +2416,8 @@ export default function MatrizIntranet() {
     const [movIva, setMovIva] = useState('');
     const [movDist, setMovDist] = useState([]);
     const [movGuardando, setMovGuardando] = useState(false);
+    const [movDrafts, setMovDrafts] = useState([]); // documentos importados pendientes de OK
+    const [movImportando, setMovImportando] = useState(false);
 
     // Valor UF del día (Banco Central vía mindicador.cl)
     useEffect(() => {
@@ -2643,6 +2645,86 @@ export default function MatrizIntranet() {
         setMovTercero(''); setMovFolio(''); setMovDesc(''); setMovMonto(''); setMovIva(''); setMovDist([]);
       } else {
         showNotification('error', 'No se pudo registrar el movimiento');
+      }
+    };
+
+    // Importar documentos PDF: extrae los datos y descarta el archivo
+    const importarArchivos = async (e) => {
+      const files = Array.from(e.target.files || []);
+      e.target.value = '';
+      if (!files.length) return;
+      setMovImportando(true);
+      const nuevos = [];
+      for (const file of files) {
+        try {
+          const { extraerLineasPDF, parsearDocumentoTributario } = await import('./pdfImport');
+          const lineas = await extraerLineasPDF(file);
+          const d = parsearDocumentoTributario(lineas, finanzasConfig.rutEmpresa || '');
+          nuevos.push({
+            id: Date.now() + Math.random(),
+            archivo: file.name,
+            tipo: d.tipo,
+            fecha: d.fecha || hoyLocalStr(),
+            tercero: d.tercero || '',
+            folio: d.folio || '',
+            monto: d.tipo === 'bh' ? (d.bruto ?? '') : (d.neto ?? ''),
+            iva: d.tipo === 'bh' ? '' : (d.iva ?? ''),
+            dist: [],
+            avisos: d.avisos || []
+          });
+        } catch (err) {
+          console.error('Error leyendo PDF:', err);
+          nuevos.push({
+            id: Date.now() + Math.random(),
+            archivo: file.name, tipo: movTipo, fecha: hoyLocalStr(),
+            tercero: '', folio: '', monto: '', iva: '', dist: [],
+            avisos: ['No se pudo leer el PDF (¿está escaneado como imagen?) — completa a mano']
+          });
+        }
+      }
+      setMovDrafts(prev => [...prev, ...nuevos]);
+      setMovImportando(false);
+      showNotification('success', `${files.length} documento(s) leído(s) — revisa y confirma`);
+    };
+
+    const actualizarDraft = (id, campos) => setMovDrafts(prev => prev.map(d => d.id === id ? { ...d, ...campos } : d));
+
+    const confirmarDraft = async (d) => {
+      const monto = parseFloat(d.monto);
+      if (!String(d.tercero).trim() || !monto || monto <= 0) {
+        showNotification('error', 'Revisa tercero y monto antes de confirmar');
+        return;
+      }
+      const dist = (d.dist || []).filter(x => x.proyectoId && parseFloat(x.monto) > 0)
+        .map(x => ({ proyectoId: x.proyectoId, monto: parseFloat(x.monto) }));
+      if (dist.reduce((sum, x) => sum + x.monto, 0) > monto + 0.01) {
+        showNotification('error', 'La distribución supera el monto del documento');
+        return;
+      }
+      const mov = {
+        tipo: d.tipo,
+        fecha: d.fecha,
+        mes: String(d.fecha).slice(0, 7),
+        tercero: String(d.tercero).trim(),
+        folio: String(d.folio || '').trim(),
+        descripcion: `Importado de ${d.archivo}`,
+        proyectos: dist,
+        fechaCreacion: new Date().toISOString(),
+        creadoPor: currentUser?.nombre || ''
+      };
+      if (d.tipo === 'bh') {
+        mov.bruto = monto;
+      } else {
+        mov.neto = monto;
+        mov.iva = d.iva !== '' ? (parseFloat(d.iva) || 0) : Math.round(monto * 0.19);
+        mov.total = mov.neto + mov.iva;
+      }
+      const ok = await saveMovimiento(mov);
+      if (ok) {
+        showNotification('success', `${d.tercero} registrado`);
+        setMovDrafts(prev => prev.filter(x => x.id !== d.id));
+      } else {
+        showNotification('error', 'No se pudo registrar');
       }
     };
 
@@ -3134,6 +3216,34 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
               <Card className="p-4 lg:col-span-1">
                 <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3">Registrar Movimiento</h2>
                 <div className="space-y-3">
+                  <div className="p-3 border-2 border-dashed border-orange-300 dark:border-orange-700 rounded-lg bg-orange-50/50 dark:bg-orange-900/10">
+                    <label className="text-xs font-medium text-orange-700 dark:text-orange-300 block mb-1.5">⚡ Importar PDF del SII (BHE / facturas)</label>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      multiple
+                      onChange={importarArchivos}
+                      disabled={movImportando}
+                      className="w-full text-xs text-neutral-600 dark:text-neutral-300 file:mr-2 file:px-3 file:py-1.5 file:rounded file:border-0 file:bg-orange-600 file:text-white file:text-xs file:cursor-pointer"
+                    />
+                    <p className="text-[10px] text-neutral-400 mt-1">Se leen los datos y el archivo se descarta — no se guarda copia.</p>
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400">RUT AFOR:</span>
+                      <input
+                        type="text"
+                        defaultValue={finanzasConfig.rutEmpresa || ''}
+                        placeholder="77.123.456-7"
+                        onBlur={async e => {
+                          const v = e.target.value.trim();
+                          if (v !== (finanzasConfig.rutEmpresa || '')) {
+                            const ok = await saveFinanzasConfig({ rutEmpresa: v });
+                            showNotification(ok ? 'success' : 'error', ok ? 'RUT guardado — se usará para clasificar compra/venta' : 'No se pudo guardar');
+                          }
+                        }}
+                        className="w-32 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-0.5 text-[11px] text-neutral-800 dark:text-neutral-100"
+                      />
+                    </div>
+                  </div>
                   <div className="flex gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
                     {[['bh', 'Boleta Hon.'], ['compra', 'Compra'], ['venta', 'Venta']].map(([id, label]) => (
                       <button key={id} onClick={() => setMovTipo(id)}
@@ -3192,6 +3302,74 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                     <button onClick={() => moverMes(1)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full"><ChevronRight className="w-4 h-4 text-neutral-500" /></button>
                   </div>
                 </div>
+                {movDrafts.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    <h3 className="text-xs font-medium text-orange-600 uppercase tracking-wide">⚡ Pendientes de confirmación ({movDrafts.length})</h3>
+                    {movDrafts.map(d => (
+                      <div key={d.id} className="p-3 border border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-900/10 rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono text-neutral-400 truncate">{d.archivo}</span>
+                          <select value={d.tipo} onChange={e => actualizarDraft(d.id, { tipo: e.target.value })}
+                            className="bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-1.5 py-0.5 text-[11px] text-neutral-800 dark:text-neutral-100">
+                            <option value="bh">Boleta Honorarios</option>
+                            <option value="compra">Factura Compra</option>
+                            <option value="venta">Factura Venta</option>
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <input type="text" value={d.tercero} placeholder={d.tipo === 'bh' ? 'Emisor' : d.tipo === 'venta' ? 'Cliente' : 'Proveedor'}
+                            onChange={e => actualizarDraft(d.id, { tercero: e.target.value })}
+                            className="col-span-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-xs text-neutral-800 dark:text-neutral-100" />
+                          <input type="date" value={d.fecha} onChange={e => actualizarDraft(d.id, { fecha: e.target.value })}
+                            className="bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-xs text-neutral-800 dark:text-neutral-100" />
+                          <input type="text" value={d.folio} placeholder="Folio"
+                            onChange={e => actualizarDraft(d.id, { folio: e.target.value })}
+                            className="bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-xs text-neutral-800 dark:text-neutral-100" />
+                          <input type="number" value={d.monto} placeholder={d.tipo === 'bh' ? 'Bruto $' : 'Neto $'}
+                            onChange={e => actualizarDraft(d.id, { monto: e.target.value })}
+                            className="bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-xs text-right text-neutral-800 dark:text-neutral-100" />
+                          {d.tipo !== 'bh' && (
+                            <input type="number" value={d.iva} placeholder="IVA $"
+                              onChange={e => actualizarDraft(d.id, { iva: e.target.value })}
+                              className="bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-xs text-right text-neutral-800 dark:text-neutral-100" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-neutral-500 dark:text-neutral-400">Distribución a proyectos (opcional)</span>
+                            <button onClick={() => actualizarDraft(d.id, { dist: [...(d.dist || []), { proyectoId: '', monto: '' }] })} className="text-[10px] text-orange-600">+ proyecto</button>
+                          </div>
+                          {(d.dist || []).map((x, idx) => (
+                            <div key={idx} className="flex gap-1 mt-1">
+                              <select value={x.proyectoId} onChange={e => actualizarDraft(d.id, { dist: d.dist.map((y, i) => i === idx ? { ...y, proyectoId: e.target.value } : y) })}
+                                className="flex-1 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-1.5 py-0.5 text-[11px] text-neutral-800 dark:text-neutral-100">
+                                <option value="">Proyecto...</option>
+                                {proyectos.map(p => <option key={p.id} value={p.id}>{p.id}</option>)}
+                              </select>
+                              <input type="number" placeholder="$" value={x.monto}
+                                onChange={e => actualizarDraft(d.id, { dist: d.dist.map((y, i) => i === idx ? { ...y, monto: e.target.value } : y) })}
+                                className="w-20 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-1.5 py-0.5 text-[11px] text-right text-neutral-800 dark:text-neutral-100" />
+                              <button onClick={() => actualizarDraft(d.id, { dist: d.dist.filter((_, i) => i !== idx) })} className="text-neutral-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+                            </div>
+                          ))}
+                        </div>
+                        {d.avisos.length > 0 && (
+                          <div className="text-[10px] text-amber-600 space-y-0.5">
+                            {d.avisos.map((a, i) => <p key={i}>⚠ {a}</p>)}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <Button onClick={() => confirmarDraft(d)} className="flex-1 !py-1.5 text-xs">
+                            <Check className="w-3.5 h-3.5 mr-1" /> OK, registrar
+                          </Button>
+                          <Button variant="ghost" onClick={() => setMovDrafts(prev => prev.filter(x => x.id !== d.id))} className="!py-1.5 text-xs">
+                            Descartar
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {seccion('Boletas de honorarios', bhsMes, true)}
                 {seccion('Compras', comprasMes, false)}
                 {seccion('Ventas manuales', ventasMes, false)}

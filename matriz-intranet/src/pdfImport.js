@@ -89,11 +89,32 @@ export const parsearDocumentoTributario = (lineas, rutEmpresa = '') => {
     let neto = null, iva = null, total = null;
     m = texto.match(/(?:MONTO\s+)?NETO\s*:?\s*\$?\s*([\d.,]+)/i);
     if (m) neto = parseMonto(m[1]);
-    m = texto.match(/I\.?\s?V\.?\s?A\.?[^0-9$]{0,15}\$?\s*([\d.,]+)/i);
-    if (m) iva = parseMonto(m[1]);
+    // IVA: saltarse el "19%" de la etiqueta y capturar el MONTO
+    m = texto.match(/I\.?\s?V\.?\s?A\.?\s*\(?\s*19\s*%?\s*\)?\s*:?\s*\$?\s*([\d.,]+)/i) ||
+        texto.match(/I\.?\s?V\.?\s?A\.?[^0-9$%]{0,15}\$?\s*([\d.,]+)/i);
+    if (m) {
+      const cand = parseMonto(m[1]);
+      if (cand !== 19) iva = cand; // "19" solo es el porcentaje de la etiqueta
+    }
     const totales = [...texto.matchAll(/TOTAL\s*:?\s*\$?\s*([\d.,]+)/gi)].map(x => parseMonto(x[1])).filter(Boolean);
     if (totales.length) total = Math.max(...totales);
+
+    // Cierres aritméticos entre neto/iva/total
     if (neto === null && total !== null && iva !== null) neto = total - iva;
+    if (iva === null && total !== null && neto !== null) iva = total - neto;
+
+    // Sanidad: el IVA debe ser ~19% del neto; si no, reconstruir desde el total
+    const ivaEsperado = neto !== null ? neto * 0.19 : null;
+    const ivaSospechoso = iva !== null && ivaEsperado !== null && Math.abs(iva - ivaEsperado) > Math.max(50, ivaEsperado * 0.05);
+    if ((ivaSospechoso || iva === null || neto === null) && total !== null) {
+      const netoCalc = Math.round(total / 1.19);
+      const ivaCalc = total - netoCalc;
+      if (neto === null || ivaSospechoso) {
+        neto = netoCalc;
+        iva = ivaCalc;
+        avisos.push('Montos recalculados desde el total (neto = total ÷ 1,19) — verifícalos');
+      }
+    }
     if (neto !== null && iva === null) { iva = Math.round(neto * 0.19); avisos.push('IVA estimado al 19% — verifícalo'); }
     if (neto === null) avisos.push('No se detectó el monto neto');
 

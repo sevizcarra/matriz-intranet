@@ -2503,7 +2503,7 @@ export default function MatrizIntranet() {
       Object.entries(mesesNeto).forEach(([mes, neto]) => { if (estados[mes] === 'pagado') cobrado += neto; });
       const margen = facturado - costo;
       const margenPct = facturado > 0 ? (margen / facturado) * 100 : null;
-      return { mesesNeto, facturado, costo, oc, saldoOC: oc > 0 ? oc - facturado : null, margen, margenPct, cobrado, porCobrar: facturado - cobrado, estados, fechas: fin.fechasEDP || {}, ocNumero: fin.ocNumero || '' };
+      return { mesesNeto, facturado, costo, oc, saldoOC: oc > 0 ? oc - facturado : null, margen, margenPct, cobrado, porCobrar: facturado - cobrado, estados, fechas: fin.fechasEDP || {}, ocNumero: fin.ocNumero || '', f29Excluir: fin.f29Excluir || {} };
     };
 
     // Costo ESTIMADO según la COT vinculada (con sus snapshots históricos)
@@ -2599,7 +2599,7 @@ export default function MatrizIntranet() {
           const fechasM = fin.fechas[mesEDP] || {};
           const fEmision = fechasM.facturado || fechasM.pagado || (mesEDP + '-15');
           if (String(fEmision).slice(0, 7) !== mesStr) return;
-          out.push({ proyectoId: p.id, mesEDP, netoUF: neto, netoCLP: ufHoy ? neto * ufHoy : 0, fEmision });
+          out.push({ proyectoId: p.id, mesEDP, netoUF: neto, netoCLP: ufHoy ? neto * ufHoy : 0, fEmision, excluida: !!(fin.f29Excluir || {})[mesEDP] });
         });
       });
       return out;
@@ -2730,7 +2730,9 @@ export default function MatrizIntranet() {
 
     // F29 simulado del mes seleccionado
     const calcularF29 = (mesStr) => {
-      const ventasEDP = ventasEDPDelMes(mesStr);
+      const todasEDP = ventasEDPDelMes(mesStr);
+      const ventasEDP = todasEDP.filter(v => !v.excluida);
+      const ventasEDPExcluidas = todasEDP.filter(v => v.excluida);
       const ventasMan = movsDelMes('venta', mesStr);
       const compras = movsDelMes('compra', mesStr);
       const bhs = movsDelMes('bh', mesStr);
@@ -2742,7 +2744,7 @@ export default function MatrizIntranet() {
       const ivaDeterminado = debito - credito;
       const ppm = Math.round(ventasNetas * ((parseFloat(finanzasConfig.ppmTasa) || 0) / 100));
       const totalPagar = Math.max(0, ivaDeterminado) + ppm;
-      return { ventasEDP, ventasMan, compras, bhs, ventasNetas, debito, credito, ivaDeterminado, ppm, totalPagar };
+      return { ventasEDP, ventasEDPExcluidas, ventasMan, compras, bhs, ventasNetas, debito, credito, ivaDeterminado, ppm, totalPagar };
     };
 
     // Resumen anual (tributario + gestión)
@@ -3420,9 +3422,21 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                   ) : (
                     <div className="space-y-1 text-sm">
                       {f29.ventasEDP.map((v, i) => (
-                        <div key={'e' + i} className="flex justify-between">
+                        <div key={'e' + i} className="flex justify-between items-center gap-2">
                           <span className="text-neutral-600 dark:text-neutral-300">EDP {v.proyectoId} ({v.mesEDP}) · emitida {v.fEmision}</span>
-                          <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(v.netoCLP)}</span>
+                          <span className="flex items-center gap-1">
+                            <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(v.netoCLP)}</span>
+                            <button
+                              onClick={async () => {
+                                const ok = await updateProyectoField(v.proyectoId, { ['finanzas.f29Excluir.' + v.mesEDP]: true });
+                                showNotification(ok ? 'success' : 'error', ok ? `EDP ${v.proyectoId} ${v.mesEDP} excluido del F29` : 'No se pudo excluir');
+                              }}
+                              className="p-0.5 text-neutral-300 hover:text-red-500"
+                              title="Quitar del F29 (p. ej. si ya la registraste como venta manual)"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
                         </div>
                       ))}
                       {f29.ventasMan.map((v, i) => (
@@ -3438,6 +3452,29 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                       <div className="flex justify-between text-orange-600 font-medium">
                         <span>IVA débito fiscal</span><span>{fmtCLP(f29.debito)}</span>
                       </div>
+                    </div>
+                  )}
+                  {f29.ventasEDPExcluidas.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-dashed border-neutral-200 dark:border-neutral-700">
+                      <p className="text-[10px] text-neutral-400 uppercase mb-1">Excluidas del F29</p>
+                      {f29.ventasEDPExcluidas.map((v, i) => (
+                        <div key={'x' + i} className="flex justify-between items-center text-xs text-neutral-400 line-through">
+                          <span>EDP {v.proyectoId} ({v.mesEDP})</span>
+                          <span className="flex items-center gap-1">
+                            {fmtCLP(v.netoCLP)}
+                            <button
+                              onClick={async () => {
+                                const ok = await updateProyectoField(v.proyectoId, { ['finanzas.f29Excluir.' + v.mesEDP]: false });
+                                showNotification(ok ? 'success' : 'error', ok ? 'Restaurada al F29' : 'No se pudo restaurar');
+                              }}
+                              className="no-underline text-orange-500 hover:text-orange-600 ml-1"
+                              title="Volver a incluir en el F29"
+                            >
+                              restaurar
+                            </button>
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </Card>

@@ -2472,7 +2472,7 @@ export default function MatrizIntranet() {
       const cotP = cotizaciones.find(c => c.estado === 'aceptada' && String(c.codigo || '').replace(/\D/g, '') === digitsP) ||
                    cotizaciones.find(c => String(c.codigo || '').replace(/\D/g, '') === digitsP);
       const condCOT = cotP && (cotP.simplificado || (cotP.descuento || 0) > 0)
-        ? { simplificado: !!cotP.simplificado, descuento: cotP.descuento || 0 }
+        ? { simplificado: !!cotP.simplificado, descuento: cotP.descuento || 0, cotRef: cotP.codigo || '' }
         : null;
       const mesesNeto = {};
       let facturado = 0;
@@ -2504,7 +2504,7 @@ export default function MatrizIntranet() {
       Object.entries(mesesNeto).forEach(([mes, neto]) => { if (estados[mes] === 'pagado') cobrado += neto; });
       const margen = facturado - costo;
       const margenPct = facturado > 0 ? (margen / facturado) * 100 : null;
-      return { mesesNeto, facturado, costo, oc, saldoOC: oc > 0 ? oc - facturado : null, margen, margenPct, cobrado, porCobrar: facturado - cobrado, estados, fechas: fin.fechasEDP || {}, ocNumero: fin.ocNumero || '', f29Excluir: fin.f29Excluir || {} };
+      return { mesesNeto, facturado, costo, oc, saldoOC: oc > 0 ? oc - facturado : null, margen, margenPct, cobrado, porCobrar: facturado - cobrado, estados, fechas: fin.fechasEDP || {}, ocNumero: fin.ocNumero || '', condCOT };
     };
 
     // Costo ESTIMADO según la COT vinculada (con sus snapshots históricos)
@@ -2600,7 +2600,7 @@ export default function MatrizIntranet() {
           const fechasM = fin.fechas[mesEDP] || {};
           const fEmision = fechasM.facturado || fechasM.pagado || (mesEDP + '-15');
           if (String(fEmision).slice(0, 7) !== mesStr) return;
-          out.push({ proyectoId: p.id, mesEDP, netoUF: neto, netoCLP: ufHoy ? neto * ufHoy : 0, fEmision, excluida: !!(fin.f29Excluir || {})[mesEDP] });
+          out.push({ proyectoId: p.id, mesEDP, netoUF: neto, netoCLP: ufHoy ? neto * ufHoy : 0, fEmision });
         });
       });
       return out;
@@ -2739,7 +2739,7 @@ export default function MatrizIntranet() {
     // F29 simulado del mes seleccionado
     // El F29 y el balance se construyen SOLO desde documentos cargados (facturas/BH).
     // Los EDP son trazabilidad de procesos: se muestran como referencia cruzada, sin sumar.
-    const calcularF29 = (mesStr) => {
+    const f29BaseDelMes = (mesStr) => {
       const ventas = movsDelMes('venta', mesStr);
       const compras = movsDelMes('compra', mesStr);
       const bhs = movsDelMes('bh', mesStr);
@@ -2749,13 +2749,38 @@ export default function MatrizIntranet() {
       const ventasNetas = ventas.reduce((sum, v) => sum + (v.neto || 0), 0) - ncVentas.reduce((sum, n) => sum + (n.neto || 0), 0);
       const debito = ventas.reduce((sum, v) => sum + (v.iva || 0), 0) - ncVentas.reduce((sum, n) => sum + (n.iva || 0), 0);
       const credito = compras.reduce((sum, c) => sum + (c.iva || 0), 0) - ncCompras.reduce((sum, n) => sum + (n.iva || 0), 0);
-      const ivaDeterminado = debito - credito;
-      const ppm = Math.max(0, Math.round(ventasNetas * ((parseFloat(finanzasConfig.ppmTasa) || 0) / 100)));
+      return { ventas, compras, bhs, ncVentas, ncCompras, ventasNetas, debito, credito };
+    };
+    const mesSiguienteDe = (m) => {
+      const [y, mm] = m.split('-').map(Number);
+      const d = new Date(y, mm, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+    const calcularF29 = (mesStr) => {
+      const base = f29BaseDelMes(mesStr);
+      // Remanente de crédito fiscal ARRASTRADO desde el primer mes con documentos
+      // (espejo de la mecánica del F29; sin reajuste UTM — ver nota en pantalla)
+      let remanenteEntrante = 0;
+      const mesesPrevios = [...new Set(movimientos.map(mv => mv.mes))].filter(x => x && x < mesStr).sort();
+      if (mesesPrevios.length) {
+        let m = mesesPrevios[0];
+        let guard = 0;
+        while (m < mesStr && guard < 240) {
+          const b = f29BaseDelMes(m);
+          const det = b.debito - b.credito - remanenteEntrante;
+          remanenteEntrante = det < 0 ? -det : 0;
+          m = mesSiguienteDe(m);
+          guard++;
+        }
+      }
+      const ivaDeterminado = base.debito - base.credito - remanenteEntrante;
+      const remanenteSaliente = ivaDeterminado < 0 ? -ivaDeterminado : 0;
+      const ppm = Math.max(0, Math.round(base.ventasNetas * ((parseFloat(finanzasConfig.ppmTasa) || 0) / 100)));
       const totalPagar = Math.max(0, ivaDeterminado) + ppm;
       // Referencia de trazabilidad: EDPs marcados facturados/pagados este mes
       const referenciaEDP = ventasEDPDelMes(mesStr);
       const referenciaEDPNeto = referenciaEDP.reduce((sum, v) => sum + v.netoCLP, 0);
-      return { ventas, compras, bhs, ncVentas, ncCompras, ventasNetas, debito, credito, ivaDeterminado, ppm, totalPagar, referenciaEDP, referenciaEDPNeto };
+      return { ...base, remanenteEntrante, remanenteSaliente, ivaDeterminado, ppm, totalPagar, referenciaEDP, referenciaEDPNeto };
     };
 
     // Resumen anual (tributario + gestión)
@@ -3063,6 +3088,42 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                     );
                   })()}
 
+                  {/* Documentos SII asociados al proyecto (informativo) */}
+                  {(() => {
+                    const docsProy = movimientos
+                      .map(mv => {
+                        const asig = (mv.proyectos || []).find(dd => dd.proyectoId === p.id);
+                        return asig ? { mv, monto: asig.monto } : null;
+                      })
+                      .filter(Boolean)
+                      .sort((a, b) => String(b.mv.fecha).localeCompare(String(a.mv.fecha)));
+                    if (!docsProy.length) return null;
+                    const totalAsignado = docsProy.reduce((sum, d) => sum + (d.monto || 0), 0);
+                    const rolTipo = { bh: 'BH', compra: 'Compra', venta: 'Venta', nc: 'NC' };
+                    return (
+                      <div className="p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-2">
+                          Documentos SII asignados al proyecto <span className="font-normal">(informativo — la contabilidad vive en Movimientos/F29; no altera el margen de gestión)</span>
+                        </p>
+                        <div className="space-y-1">
+                          {docsProy.map(({ mv, monto }, i) => (
+                            <div key={i} className="flex justify-between text-sm">
+                              <span className="text-neutral-600 dark:text-neutral-300 truncate">
+                                <span className="text-[10px] px-1 py-0.5 bg-neutral-200 dark:bg-neutral-600 rounded mr-1">{rolTipo[mv.tipo] || mv.tipo}</span>
+                                {mv.tercero}{mv.folio ? ` N°${mv.folio}` : ''} · {mv.fecha}
+                              </span>
+                              <span className="text-neutral-800 dark:text-neutral-100 shrink-0 ml-2">{fmtCLP(monto)}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between text-sm font-medium pt-1 border-t border-neutral-200 dark:border-neutral-700">
+                            <span className="text-neutral-800 dark:text-neutral-100">Total asignado</span>
+                            <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(totalAsignado)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Detalle mensual */}
                   {Object.keys(fin.mesesNeto).length === 0 ? (
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center py-3">Sin avance facturable aún</p>
@@ -3104,10 +3165,18 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                                     value={estadoMes}
                                     onChange={async e => {
                                       const nuevoEstado = e.target.value;
-                                      const ok = await updateProyectoField(p.id, {
+                                      const updates = {
                                         ['finanzas.estadosEDP.' + mes]: nuevoEstado,
                                         ['finanzas.fechasEDP.' + mes + '.' + nuevoEstado]: hoyLocalStr()
-                                      });
+                                      };
+                                      // Congelar condiciones comerciales del mes al primer cambio de estado:
+                                      // ediciones futuras de la COT ya no alteran meses facturados/pagados
+                                      if (!ecMes) {
+                                        updates['edpCond.' + mes] = fin.condCOT
+                                          ? { aplicar: true, simplificado: fin.condCOT.simplificado, descuento: fin.condCOT.descuento, iva: 19, cotRef: fin.condCOT.cotRef, congeladoAuto: true }
+                                          : { aplicar: false, iva: 19, congeladoAuto: true };
+                                      }
+                                      const ok = await updateProyectoField(p.id, updates);
                                       showNotification(ok ? 'success' : 'error', ok ? `EDP ${mes} → ${nuevoEstado}` : 'No se pudo guardar');
                                     }}
                                     className={`${info.color} text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer`}
@@ -3317,7 +3386,7 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                   <Input label="Descripción (opcional)" value={movDesc} onChange={e => setMovDesc(e.target.value)} placeholder="Ej: servicios de dibujo julio" />
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs text-neutral-600 dark:text-neutral-300 font-medium">Distribución a proyectos (opcional)</label>
+                      <label className="text-xs text-neutral-600 dark:text-neutral-300 font-medium">Distribución a proyectos (informativa — se lista en la ficha del proyecto)</label>
                       <button onClick={() => setMovDist(prev => [...prev, { proyectoId: '', monto: '' }])} className="text-xs text-orange-600 hover:text-orange-700">+ proyecto</button>
                     </div>
                     {movDist.map((d, idx) => (
@@ -3561,10 +3630,16 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                 <div className="space-y-1.5 text-sm max-w-md">
                   <div className="flex justify-between"><span className="text-neutral-600 dark:text-neutral-300">IVA débito fiscal (ventas)</span><b className="text-neutral-800 dark:text-neutral-100">{fmtCLP(f29.debito)}</b></div>
                   <div className="flex justify-between"><span className="text-neutral-600 dark:text-neutral-300">IVA crédito fiscal (compras)</span><b className="text-green-600">−{fmtCLP(f29.credito)}</b></div>
+                  {f29.remanenteEntrante > 0 && (
+                    <div className="flex justify-between"><span className="text-neutral-600 dark:text-neutral-300">Remanente crédito mes anterior</span><b className="text-green-600">−{fmtCLP(f29.remanenteEntrante)}</b></div>
+                  )}
                   <div className="flex justify-between border-t border-neutral-200 dark:border-neutral-700 pt-1">
-                    <span className="text-neutral-600 dark:text-neutral-300">{f29.ivaDeterminado >= 0 ? 'IVA determinado a pagar' : 'Remanente de crédito fiscal'}</span>
+                    <span className="text-neutral-600 dark:text-neutral-300">{f29.ivaDeterminado >= 0 ? 'IVA determinado a pagar' : 'Remanente para el mes siguiente'}</span>
                     <b className={f29.ivaDeterminado >= 0 ? 'text-neutral-800 dark:text-neutral-100' : 'text-green-600'}>{fmtCLP(Math.abs(f29.ivaDeterminado))}</b>
                   </div>
+                  {f29.remanenteSaliente > 0 && (
+                    <p className="text-[10px] text-neutral-400">El remanente se arrastra automáticamente al mes siguiente (simulación sin reajuste UTM).</p>
+                  )}
                   <div className="flex justify-between"><span className="text-neutral-600 dark:text-neutral-300">PPM ({finanzasConfig.ppmTasa}% de ventas netas)</span><b className="text-neutral-800 dark:text-neutral-100">{fmtCLP(f29.ppm)}</b></div>
                   <div className="flex justify-between bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2 mt-2">
                     <span className="font-medium text-neutral-800 dark:text-neutral-100">TOTAL A PAGAR AL SII</span>
@@ -3656,7 +3731,7 @@ tfoot td { font-weight: bold; background: #f5f5f5; } .nota { color: #999; font-s
                     </tr>
                   </tfoot>
                 </table>
-                <p className="text-[11px] text-neutral-400 mt-2">Resultado tributario = ventas − compras − BH. Las columnas grises son de gestión interna (HsH a tarifa de pago) y no van al contador.</p>
+                <p className="text-[11px] text-neutral-400 mt-2">Resultado tributario = ventas − compras − BH (solo documentos SII). Las columnas grises son de gestión interna (HsH a tarifa de pago) y no van al contador. Ojo: si un profesional emite BH y además registra horas, su costo aparece en ambas columnas — son miradas distintas, no se suman entre sí.</p>
               </Card>
             </div>
           );

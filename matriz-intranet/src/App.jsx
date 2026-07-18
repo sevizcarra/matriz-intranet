@@ -2750,7 +2750,7 @@ export default function MatrizIntranet() {
       const debito = ventas.reduce((sum, v) => sum + (v.iva || 0), 0) - ncVentas.reduce((sum, n) => sum + (n.iva || 0), 0);
       const credito = compras.reduce((sum, c) => sum + (c.iva || 0), 0) - ncCompras.reduce((sum, n) => sum + (n.iva || 0), 0);
       const ivaDeterminado = debito - credito;
-      const ppm = Math.round(ventasNetas * ((parseFloat(finanzasConfig.ppmTasa) || 0) / 100));
+      const ppm = Math.max(0, Math.round(ventasNetas * ((parseFloat(finanzasConfig.ppmTasa) || 0) / 100)));
       const totalPagar = Math.max(0, ivaDeterminado) + ppm;
       // Referencia de trazabilidad: EDPs marcados facturados/pagados este mes
       const referenciaEDP = ventasEDPDelMes(mesStr);
@@ -2875,7 +2875,7 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <CardCifra label="OC comprometidas" uf={tot.oc} />
             <CardCifra label="Facturado (neto)" uf={tot.facturado} destaque />
-            <CardCifra label="Por facturar" uf={Math.max(0, tot.oc - tot.facturado)} />
+            <CardCifra label="Por facturar" uf={filas.reduce((sum, { fin }) => sum + (fin.saldoOC !== null ? Math.max(0, fin.saldoOC) : 0), 0)} />
             <CardCifra label="Cobrado" uf={tot.cobrado} color="text-green-600" />
             <CardCifra label="Por cobrar" uf={tot.facturado - tot.cobrado} color="text-amber-600" />
             <CardCifra label="Costo HsH" uf={tot.costo} />
@@ -3026,7 +3026,7 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-neutral-600 dark:text-neutral-300">Costo real a la fecha</span>
-                                  <b className={pctConsumo > 100 ? 'text-red-600' : 'text-neutral-800 dark:text-neutral-100'}>{fin.costo.toFixed(1)} UF ({pctConsumo.toFixed(0)}%)</b>
+                                  <b className={pctConsumo !== null && pctConsumo > 100 ? 'text-red-600' : 'text-neutral-800 dark:text-neutral-100'}>{fin.costo.toFixed(1)} UF{pctConsumo !== null ? ` (${pctConsumo.toFixed(0)}%)` : ''}</b>
                                 </div>
                               </div>
                               <div className="w-full h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
@@ -3132,8 +3132,13 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                           })}
                         </tbody>
                         {ufHoy && (() => {
+                          const ivaPctDe = (mes) => {
+                            const ec = (p.edpCond || {})[mes];
+                            return ec && ec.aplicar && ec.iva !== null && ec.iva !== undefined ? (Number(ec.iva) || 19) : 19;
+                          };
                           const totNetoUF = Object.values(fin.mesesNeto).reduce((sum, v) => sum + v, 0);
-                          const totIva = totNetoUF * 0.19;
+                          const totIva = Object.entries(fin.mesesNeto).reduce((sum, [mes, v]) => sum + v * ivaPctDe(mes) / 100, 0);
+                          const totTotalUF = totNetoUF + totIva;
                           const totDisponible = Object.entries(fin.mesesNeto).reduce((sum, [mes, v]) => sum + ((fin.estados[mes] === 'pagado') ? v : 0), 0);
                           return (
                             <tfoot>
@@ -3142,7 +3147,7 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                                 <td className="py-2 text-right text-neutral-800 dark:text-neutral-100">{totNetoUF.toFixed(1)}</td>
                                 <td className="py-2 text-right text-neutral-800 dark:text-neutral-100">${clp(totNetoUF)}</td>
                                 <td className="py-2 text-right text-amber-600" title="IVA a reservar para el SII">${clp(totIva)}</td>
-                                <td className="py-2 text-right font-bold text-neutral-800 dark:text-neutral-100" title="Total a depositar por el cliente">${clp(totNetoUF * 1.19)}</td>
+                                <td className="py-2 text-right font-bold text-neutral-800 dark:text-neutral-100" title="Total a depositar por el cliente">${clp(totTotalUF)}</td>
                                 <td className="py-2 text-right text-green-600" title="Cobrado y libre de IVA">${clp(totDisponible)}</td>
                                 <td colSpan={2}></td>
                               </tr>
@@ -3471,7 +3476,7 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <Card className="p-4">
                   <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">Ventas del mes — facturas cargadas (débito fiscal)</h3>
-                  {f29.ventas.length === 0 ? (
+                  {f29.ventas.length + f29.ncVentas.length === 0 ? (
                     <p className="text-sm text-neutral-400">Sin facturas de venta cargadas este mes — impórtalas en Movimientos</p>
                   ) : (
                     <div className="space-y-1 text-sm">
@@ -3524,7 +3529,7 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                 </Card>
                 <Card className="p-4">
                   <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">Compras del mes (crédito fiscal)</h3>
-                  {f29.compras.length === 0 ? (
+                  {f29.compras.length + f29.ncCompras.length === 0 ? (
                     <p className="text-sm text-neutral-400">Sin compras registradas este mes</p>
                   ) : (
                     <div className="space-y-1 text-sm">

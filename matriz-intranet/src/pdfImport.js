@@ -77,6 +77,7 @@ export const parsearDocumentoTributario = (lineas, rutEmpresa = '') => {
   const lineaEmisor = lineas.find(l => /[A-ZÁÉÍÓÚÑ]{3,}/.test(l) && !/BOLETA|HONORARIOS|FACTURA|NOTA\s+DE|ELECTRONIC|SII|R\.?U\.?T|FECHA|N°|Nº|GIRO|CASA\s+MATRIZ/i.test(l));
   const emisor = lineaEmisor ? lineaEmisor.slice(0, 60).trim() : null;
   const rutEmisor = ruts[0] || null;
+  if (ruts.length < 2) avisos.push('Solo se detectó un RUT en el documento — verifica el tipo y la contraparte');
   // Receptor: línea "SEÑOR(ES)" (facturas/NC); su RUT suele ser el segundo
   let receptor = null;
   m = texto.match(/SE[NÑ]OR(?:\(ES\)|ES)?\s*:?\s*([^\n]{3,60})/i) ||
@@ -84,7 +85,8 @@ export const parsearDocumentoTributario = (lineas, rutEmpresa = '') => {
       texto.match(/\bCLIENTE\s*:?\s*([^\n]{3,60})/i) ||
       texto.match(/\bSRES?\.?\s*:?\s*([^\n]{3,60})/i);
   if (m) receptor = m[1].replace(/R\.?U\.?T.*$/i, '').replace(/GIRO.*$/i, '').trim();
-  const rutReceptor = ruts[1] || null;
+  // Receptor: primer RUT distinto del emisor (el RUT del emisor suele repetirse en el cuerpo)
+  const rutReceptor = ruts.find(r => r.replace(/[.\s]/g, '') !== String(rutEmisor || '').replace(/[.\s]/g, '')) || null;
 
   if (esBHE) {
     if (!emisor) avisos.push('No se detectó el profesional emisor — complétalo');
@@ -132,8 +134,15 @@ export const parsearDocumentoTributario = (lineas, rutEmpresa = '') => {
 
     // Clasificación según quién emite (RUT del emisor vs RUT de AFOR)
     const propio = norm(rutEmpresa);
+    const rutsNorm = ruts.map(norm);
     const emiteAfor = !!(propio && rutEmisor && norm(rutEmisor) === propio);
     if (!propio) avisos.push('Configura el RUT de AFOR para clasificar automáticamente');
+    if (propio && !emiteAfor && rutsNorm.includes(propio)) {
+      avisos.push('El RUT de AFOR aparece en el documento pero no como emisor — verifica si es compra o venta');
+    }
+    if (propio && !rutsNorm.includes(propio)) {
+      avisos.push('El RUT de AFOR no aparece en el documento — verifica que te corresponda');
+    }
 
     let tipo, afecta = null, tercero;
     if (esNC) {

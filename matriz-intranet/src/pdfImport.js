@@ -79,8 +79,11 @@ export const parsearDocumentoTributario = (lineas, rutEmpresa = '') => {
   const rutEmisor = ruts[0] || null;
   // Receptor: línea "SEÑOR(ES)" (facturas/NC); su RUT suele ser el segundo
   let receptor = null;
-  m = texto.match(/SE[NÑ]OR(?:\(ES\)|ES)?\s*:?\s*([^\n]{3,60})/i);
-  if (m) receptor = m[1].replace(/R\.?U\.?T.*$/i, '').trim();
+  m = texto.match(/SE[NÑ]OR(?:\(ES\)|ES)?\s*:?\s*([^\n]{3,60})/i) ||
+      texto.match(/RAZ[OÓ]N\s+SOCIAL\s*:?\s*([^\n]{3,60})/i) ||
+      texto.match(/\bCLIENTE\s*:?\s*([^\n]{3,60})/i) ||
+      texto.match(/\bSRES?\.?\s*:?\s*([^\n]{3,60})/i);
+  if (m) receptor = m[1].replace(/R\.?U\.?T.*$/i, '').replace(/GIRO.*$/i, '').trim();
   const rutReceptor = ruts[1] || null;
 
   if (esBHE) {

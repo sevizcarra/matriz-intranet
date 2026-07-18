@@ -3213,18 +3213,33 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                           </>
                         )}
                       </div>
-                      <button
-                        onClick={async () => {
-                          if (window.confirm(`¿Eliminar este movimiento de ${m.tercero}?`)) {
-                            const ok = await deleteMovimiento(m._docId);
-                            showNotification(ok ? 'success' : 'error', ok ? 'Movimiento eliminado' : 'No se pudo eliminar');
-                          }
-                        }}
-                        className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-neutral-400 hover:text-red-500 shrink-0"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          onClick={async () => {
+                            const nuevo = window.prompt('Nombre de la contraparte:', m.tercero || '');
+                            if (nuevo !== null && nuevo.trim() && nuevo.trim() !== m.tercero) {
+                              const ok = await saveMovimiento({ ...m, tercero: nuevo.trim() });
+                              showNotification(ok ? 'success' : 'error', ok ? 'Contraparte corregida' : 'No se pudo actualizar');
+                            }
+                          }}
+                          className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-neutral-400 hover:text-blue-500"
+                          title="Corregir nombre de la contraparte"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`¿Eliminar este movimiento de ${m.tercero}?`)) {
+                              const ok = await deleteMovimiento(m._docId);
+                              showNotification(ok ? 'success' : 'error', ok ? 'Movimiento eliminado' : 'No se pudo eliminar');
+                            }
+                          }}
+                          className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-neutral-400 hover:text-red-500"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -3461,9 +3476,12 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                   ) : (
                     <div className="space-y-1 text-sm">
                       {f29.ventas.map((v, i) => (
-                        <div key={'m' + i} className="flex justify-between">
-                          <span className="text-neutral-600 dark:text-neutral-300">{v.tercero}{v.folio ? ` N°${v.folio}` : ''}</span>
-                          <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(v.neto)}</span>
+                        <div key={'m' + i} className="flex justify-between items-baseline gap-2">
+                          <span className="text-neutral-600 dark:text-neutral-300 truncate">{v.tercero}{v.folio ? ` N°${v.folio}` : ''}</span>
+                          <span className="text-right shrink-0">
+                            <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(v.neto)}</span>
+                            <span className="text-[10px] text-neutral-400 ml-1">c/IVA {fmtCLP(v.total || (v.neto || 0) + (v.iva || 0))}</span>
+                          </span>
                         </div>
                       ))}
                       {f29.ncVentas.map((n, i) => (
@@ -3478,6 +3496,9 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                       </div>
                       <div className="flex justify-between text-orange-600 font-medium">
                         <span>IVA débito fiscal</span><span>{fmtCLP(f29.debito)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-neutral-800 dark:text-neutral-100">
+                        <span>Total facturado (c/IVA)</span><span>{fmtCLP(f29.ventasNetas + f29.debito)}</span>
                       </div>
                     </div>
                   )}
@@ -3521,6 +3542,9 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
                       ))}
                       <div className="flex justify-between pt-1 border-t border-neutral-200 dark:border-neutral-700 text-green-600 font-medium">
                         <span>IVA crédito fiscal</span><span>{fmtCLP(f29.credito)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-neutral-800 dark:text-neutral-100">
+                        <span>Total compras (c/IVA)</span><span>{fmtCLP(f29.compras.reduce((sum, c) => sum + (c.total || (c.neto || 0) + (c.iva || 0)), 0) - f29.ncCompras.reduce((sum, n) => sum + (n.total || (n.neto || 0) + (n.iva || 0)), 0))}</span>
                       </div>
                     </div>
                   )}

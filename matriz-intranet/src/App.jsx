@@ -36,6 +36,11 @@ import {
   saveAutoBackup,
   getUsuarioPerfil,
   saveUsuarioPerfil,
+  saveMovimiento,
+  deleteMovimiento,
+  subscribeToMovimientos,
+  saveFinanzasConfig,
+  subscribeToFinanzasConfig,
   saveCotizacion,
   updateCotEstado,
   updateProyectoField,
@@ -948,6 +953,8 @@ export default function MatrizIntranet() {
   const [profesionales, setProfesionales] = useState([]);
   const [horasRegistradas, setHorasRegistradas] = useState([]);
   const [tareas, setTareas] = useState([]);
+  const [movimientos, setMovimientos] = useState([]);
+  const [finanzasConfig, setFinanzasConfig] = useState({ retencionBH: 15.25, ppmTasa: 0.125 });
   const [presenciaUsuarios, setPresenciaUsuarios] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1032,6 +1039,13 @@ export default function MatrizIntranet() {
       setPresenciaUsuarios(data);
     }, (error) => { console.error('Suscripción presencia caída:', error); });
 
+    const unsubMovimientos = subscribeToMovimientos((data) => {
+      setMovimientos(data);
+    }, (error) => { console.error('Suscripción movimientos caída:', error); });
+    const unsubFinConfig = subscribeToFinanzasConfig((data) => {
+      if (data) setFinanzasConfig(prev => ({ ...prev, ...data }));
+    }, (error) => { console.error('Suscripción finanzas config caída:', error); });
+
     const unsubCotizaciones = subscribeToCotizaciones((data) => {
       // Parsear excelDataJson → excelData (Firestore no acepta nested arrays)
       const parsed = data.map(cot => ({
@@ -1087,6 +1101,8 @@ export default function MatrizIntranet() {
       unsubDuraciones();
       unsubTarifas();
       unsubRecetas();
+      unsubMovimientos();
+      unsubFinConfig();
     };
   }, [currentUser?.uid]);
 
@@ -2387,6 +2403,19 @@ export default function MatrizIntranet() {
   const FinanzasPage = () => {
     const [ufHoy, setUfHoy] = useState(null);
     const [expandido, setExpandido] = useState(null);
+    const [finTab, setFinTab] = useState('proyectos'); // proyectos | movimientos | f29 | anual
+    const [finMes, setFinMes] = useState(() => hoyLocalStr().slice(0, 7));
+    const [finAnio, setFinAnio] = useState(() => new Date().getFullYear());
+    // Formulario de movimientos (BH / compras / ventas)
+    const [movTipo, setMovTipo] = useState('bh');
+    const [movFecha, setMovFecha] = useState(() => hoyLocalStr());
+    const [movTercero, setMovTercero] = useState('');
+    const [movFolio, setMovFolio] = useState('');
+    const [movDesc, setMovDesc] = useState('');
+    const [movMonto, setMovMonto] = useState('');
+    const [movIva, setMovIva] = useState('');
+    const [movDist, setMovDist] = useState([]);
+    const [movGuardando, setMovGuardando] = useState(false);
 
     // Valor UF del día (Banco Central vía mindicador.cl)
     useEffect(() => {
@@ -2549,6 +2578,115 @@ export default function MatrizIntranet() {
     }), { oc: 0, facturado: 0, costo: 0, cobrado: 0 });
     const totMargen = tot.facturado - tot.costo;
 
+    // ---------- Helpers del módulo contable ----------
+    const fmtCLP = (n) => '$' + Math.round(n || 0).toLocaleString('es-CL');
+    const moverMes = (delta) => {
+      const [y, m] = finMes.split('-').map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      setFinMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    };
+    const nombreMesFin = parseLocalDate(finMes).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+
+    // Ventas EDP EMITIDAS en un mes (por fecha en que se marcó 'facturado')
+    const ventasEDPDelMes = (mesStr) => {
+      const out = [];
+      filas.forEach(({ p, fin }) => {
+        Object.entries(fin.mesesNeto).forEach(([mesEDP, neto]) => {
+          const est = fin.estados[mesEDP];
+          if (est !== 'facturado' && est !== 'pagado') return;
+          const fechasM = fin.fechas[mesEDP] || {};
+          const fEmision = fechasM.facturado || fechasM.pagado || (mesEDP + '-15');
+          if (String(fEmision).slice(0, 7) !== mesStr) return;
+          out.push({ proyectoId: p.id, mesEDP, netoUF: neto, netoCLP: ufHoy ? neto * ufHoy : 0, fEmision });
+        });
+      });
+      return out;
+    };
+    const movsDelMes = (tipo, mesStr) => movimientos.filter(m => m.tipo === tipo && m.mes === mesStr);
+
+    const guardarMovimiento = async () => {
+      const monto = parseFloat(movMonto);
+      if (!movTercero.trim() || !monto || monto <= 0) {
+        showNotification('error', movTipo === 'bh' ? 'Emisor y monto bruto son obligatorios' : 'Tercero y monto neto son obligatorios');
+        return;
+      }
+      const dist = movDist.filter(d => d.proyectoId && parseFloat(d.monto) > 0)
+        .map(d => ({ proyectoId: d.proyectoId, monto: parseFloat(d.monto) }));
+      const sumaDist = dist.reduce((sum, d) => sum + d.monto, 0);
+      if (sumaDist > monto + 0.01) {
+        showNotification('error', 'La distribución a proyectos supera el monto del documento');
+        return;
+      }
+      setMovGuardando(true);
+      const mov = {
+        tipo: movTipo,
+        fecha: movFecha,
+        mes: movFecha.slice(0, 7),
+        tercero: movTercero.trim(),
+        folio: movFolio.trim(),
+        descripcion: movDesc.trim(),
+        proyectos: dist,
+        fechaCreacion: new Date().toISOString(),
+        creadoPor: currentUser?.nombre || ''
+      };
+      if (movTipo === 'bh') {
+        mov.bruto = monto; // el emisor paga su propia retención: gasto al bruto
+      } else {
+        mov.neto = monto;
+        mov.iva = movIva !== '' ? (parseFloat(movIva) || 0) : Math.round(monto * 0.19);
+        mov.total = mov.neto + mov.iva;
+      }
+      const ok = await saveMovimiento(mov);
+      setMovGuardando(false);
+      if (ok) {
+        showNotification('success', 'Movimiento registrado');
+        setMovTercero(''); setMovFolio(''); setMovDesc(''); setMovMonto(''); setMovIva(''); setMovDist([]);
+      } else {
+        showNotification('error', 'No se pudo registrar el movimiento');
+      }
+    };
+
+    // F29 simulado del mes seleccionado
+    const calcularF29 = (mesStr) => {
+      const ventasEDP = ventasEDPDelMes(mesStr);
+      const ventasMan = movsDelMes('venta', mesStr);
+      const compras = movsDelMes('compra', mesStr);
+      const bhs = movsDelMes('bh', mesStr);
+      const ventasEDPNeto = ventasEDP.reduce((sum, v) => sum + v.netoCLP, 0);
+      const ventasManNeto = ventasMan.reduce((sum, v) => sum + (v.neto || 0), 0);
+      const ventasNetas = ventasEDPNeto + ventasManNeto;
+      const debito = Math.round(ventasEDPNeto * 0.19) + ventasMan.reduce((sum, v) => sum + (v.iva || 0), 0);
+      const credito = compras.reduce((sum, c) => sum + (c.iva || 0), 0);
+      const ivaDeterminado = debito - credito;
+      const ppm = Math.round(ventasNetas * ((parseFloat(finanzasConfig.ppmTasa) || 0) / 100));
+      const totalPagar = Math.max(0, ivaDeterminado) + ppm;
+      return { ventasEDP, ventasMan, compras, bhs, ventasNetas, debito, credito, ivaDeterminado, ppm, totalPagar };
+    };
+
+    // Resumen anual (tributario + gestión)
+    const calcularAnual = (anio) => {
+      const meses = Array.from({ length: 12 }, (_, i) => `${anio}-${String(i + 1).padStart(2, '0')}`);
+      const filasAnual = meses.map(mesStr => {
+        const ventas = ventasEDPDelMes(mesStr).reduce((sum, v) => sum + v.netoCLP, 0) +
+          movsDelMes('venta', mesStr).reduce((sum, v) => sum + (v.neto || 0), 0);
+        const compras = movsDelMes('compra', mesStr).reduce((sum, c) => sum + (c.neto || 0), 0);
+        const bh = movsDelMes('bh', mesStr).reduce((sum, b) => sum + (b.bruto || 0), 0);
+        const costoHsH = horasRegistradas.filter(h => {
+          const mh = h.mesRegistro || (() => { const fx = parseLocalDate(h.fecha); return `${fx.getFullYear()}-${String(fx.getMonth() + 1).padStart(2, '0')}`; })();
+          return mh === mesStr;
+        }).reduce((sum, h) => {
+          const col = profesionales.find(c => String(c.id) === String(h.profesionalId));
+          return sum + (parseFloat(h.horas) || 0) * ((col && parseFloat(col.tarifaInterna)) || 0);
+        }, 0) * (ufHoy || 0);
+        return { mesStr, ventas, compras, bh, resultado: ventas - compras - bh, costoHsH };
+      });
+      const totales = filasAnual.reduce((acc, f) => ({
+        ventas: acc.ventas + f.ventas, compras: acc.compras + f.compras,
+        bh: acc.bh + f.bh, resultado: acc.resultado + f.resultado, costoHsH: acc.costoHsH + f.costoHsH
+      }), { ventas: 0, compras: 0, bh: 0, resultado: 0, costoHsH: 0 });
+      return { filasAnual, totales };
+    };
+
     const semaforo = (pct, margen) => {
       if (pct === null) return 'text-neutral-400';
       if (margen < 0) return 'text-red-600';
@@ -2620,6 +2758,20 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
           </div>
         </div>
 
+        {/* Pestañas del módulo */}
+        <div className="flex gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1 w-fit flex-wrap">
+          {[['proyectos', 'Proyectos'], ['movimientos', 'Movimientos'], ['f29', 'F29'], ['anual', 'Anual']].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setFinTab(id)}
+              className={`px-4 py-1.5 rounded-md text-sm transition-colors ${finTab === id ? 'bg-orange-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {finTab === 'proyectos' && (<>
         {/* Resumen global */}
         <Card className="p-4">
           <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-4">Resumen Global</h2>
@@ -2914,6 +3066,328 @@ ${pendientes.length ? `<h3>Facturación pendiente de pago</h3><table><thead><tr>
             </Card>
           )}
         </div>
+        </>)}
+
+        {/* ==================== PESTAÑA MOVIMIENTOS ==================== */}
+        {finTab === 'movimientos' && (() => {
+          const bhsMes = movsDelMes('bh', finMes);
+          const comprasMes = movsDelMes('compra', finMes);
+          const ventasMes = movsDelMes('venta', finMes);
+          const montoBase = parseFloat(movMonto) || 0;
+          const sumaDist = movDist.reduce((sum, d) => sum + (parseFloat(d.monto) || 0), 0);
+          const seccion = (titulo, lista, esBH) => (
+            <div className="mb-4">
+              <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">{titulo} ({lista.length})</h3>
+              {lista.length === 0 ? (
+                <p className="text-sm text-neutral-400 py-1">Sin registros este mes</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {lista.map(m => (
+                    <div key={m._docId} className="flex items-center justify-between gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg text-sm">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-neutral-800 dark:text-neutral-100 font-medium truncate">{m.tercero}</span>
+                          {m.folio && <span className="text-[10px] font-mono text-neutral-400">N°{m.folio}</span>}
+                          <span className="text-[10px] text-neutral-400">{m.fecha}</span>
+                        </div>
+                        {m.descripcion && <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{m.descripcion}</p>}
+                        {(m.proyectos || []).length > 0 && (
+                          <div className="flex gap-1 flex-wrap mt-0.5">
+                            {m.proyectos.map((d, i) => (
+                              <span key={i} className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded font-mono">
+                                {d.proyectoId} · {fmtCLP(d.monto)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {esBH ? (
+                          <p className="font-medium text-neutral-800 dark:text-neutral-100">{fmtCLP(m.bruto)}</p>
+                        ) : (
+                          <>
+                            <p className="font-medium text-neutral-800 dark:text-neutral-100">{fmtCLP(m.total)}</p>
+                            <p className="text-[10px] text-neutral-400">neto {fmtCLP(m.neto)} · IVA {fmtCLP(m.iva)}</p>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`¿Eliminar este movimiento de ${m.tercero}?`)) {
+                            const ok = await deleteMovimiento(m._docId);
+                            showNotification(ok ? 'success' : 'error', ok ? 'Movimiento eliminado' : 'No se pudo eliminar');
+                          }
+                        }}
+                        className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-neutral-400 hover:text-red-500 shrink-0"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card className="p-4 lg:col-span-1">
+                <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium mb-3">Registrar Movimiento</h2>
+                <div className="space-y-3">
+                  <div className="flex gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
+                    {[['bh', 'Boleta Hon.'], ['compra', 'Compra'], ['venta', 'Venta']].map(([id, label]) => (
+                      <button key={id} onClick={() => setMovTipo(id)}
+                        className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${movTipo === id ? 'bg-orange-600 text-white' : 'text-neutral-500 dark:text-neutral-400'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <Input label="Fecha del documento" type="date" value={movFecha} onChange={e => setMovFecha(e.target.value)} />
+                  <Input label={movTipo === 'bh' ? 'Emisor de la boleta' : movTipo === 'compra' ? 'Proveedor' : 'Cliente'} value={movTercero} onChange={e => setMovTercero(e.target.value)} placeholder="Nombre o razón social" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input label="N° documento" value={movFolio} onChange={e => setMovFolio(e.target.value)} placeholder="Folio" />
+                    <Input label={movTipo === 'bh' ? 'Monto bruto $' : 'Monto neto $'} type="number" value={movMonto} onChange={e => setMovMonto(e.target.value)} placeholder="0" />
+                  </div>
+                  {movTipo !== 'bh' && (
+                    <Input label="IVA $ (auto 19% si lo dejas vacío)" type="number" value={movIva} onChange={e => setMovIva(e.target.value)} placeholder={montoBase ? String(Math.round(montoBase * 0.19)) : '19%'} />
+                  )}
+                  {movTipo === 'bh' && (
+                    <p className="text-[11px] text-neutral-400">La retención la paga el emisor — se registra el gasto por el monto bruto.</p>
+                  )}
+                  <Input label="Descripción (opcional)" value={movDesc} onChange={e => setMovDesc(e.target.value)} placeholder="Ej: servicios de dibujo julio" />
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-neutral-600 dark:text-neutral-300 font-medium">Distribución a proyectos (opcional)</label>
+                      <button onClick={() => setMovDist(prev => [...prev, { proyectoId: '', monto: '' }])} className="text-xs text-orange-600 hover:text-orange-700">+ proyecto</button>
+                    </div>
+                    {movDist.map((d, idx) => (
+                      <div key={idx} className="flex gap-1.5 mb-1.5">
+                        <select value={d.proyectoId} onChange={e => setMovDist(prev => prev.map((x, i) => i === idx ? { ...x, proyectoId: e.target.value } : x))}
+                          className="flex-1 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1.5 text-xs text-neutral-800 dark:text-neutral-100">
+                          <option value="">Proyecto...</option>
+                          {proyectos.map(p => <option key={p.id} value={p.id}>{p.id}</option>)}
+                        </select>
+                        <input type="number" placeholder="$" value={d.monto} onChange={e => setMovDist(prev => prev.map((x, i) => i === idx ? { ...x, monto: e.target.value } : x))}
+                          className="w-24 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1.5 text-xs text-right text-neutral-800 dark:text-neutral-100" />
+                        <button onClick={() => setMovDist(prev => prev.filter((_, i) => i !== idx))} className="p-1 text-neutral-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ))}
+                    {movDist.length > 0 && montoBase > 0 && (
+                      <p className={`text-[10px] ${sumaDist > montoBase ? 'text-red-600' : 'text-neutral-400'}`}>
+                        Distribuido: {fmtCLP(sumaDist)} de {fmtCLP(montoBase)}{sumaDist < montoBase ? ` · ${fmtCLP(montoBase - sumaDist)} queda como gasto general` : sumaDist > montoBase ? ' — supera el documento' : ''}
+                      </p>
+                    )}
+                  </div>
+                  <Button onClick={guardarMovimiento} disabled={movGuardando} className="w-full">
+                    {movGuardando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                    Registrar
+                  </Button>
+                </div>
+              </Card>
+              <Card className="p-4 lg:col-span-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium capitalize">Movimientos — {nombreMesFin}</h2>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => moverMes(-1)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full"><ChevronLeft className="w-4 h-4 text-neutral-500" /></button>
+                    <button onClick={() => moverMes(1)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full"><ChevronRight className="w-4 h-4 text-neutral-500" /></button>
+                  </div>
+                </div>
+                {seccion('Boletas de honorarios', bhsMes, true)}
+                {seccion('Compras', comprasMes, false)}
+                {seccion('Ventas manuales', ventasMes, false)}
+                <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700 grid grid-cols-3 gap-2 text-center text-sm">
+                  <div><p className="text-[10px] text-neutral-400 uppercase">BH brutas</p><p className="font-bold text-neutral-800 dark:text-neutral-100">{fmtCLP(bhsMes.reduce((sum, m) => sum + (m.bruto || 0), 0))}</p></div>
+                  <div><p className="text-[10px] text-neutral-400 uppercase">Compras netas</p><p className="font-bold text-neutral-800 dark:text-neutral-100">{fmtCLP(comprasMes.reduce((sum, m) => sum + (m.neto || 0), 0))}</p></div>
+                  <div><p className="text-[10px] text-neutral-400 uppercase">Ventas man. netas</p><p className="font-bold text-neutral-800 dark:text-neutral-100">{fmtCLP(ventasMes.reduce((sum, m) => sum + (m.neto || 0), 0))}</p></div>
+                </div>
+              </Card>
+            </div>
+          );
+        })()}
+
+        {/* ==================== PESTAÑA F29 ==================== */}
+        {finTab === 'f29' && (() => {
+          const f29 = calcularF29(finMes);
+          return (
+            <div className="space-y-4">
+              <Card className="p-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => moverMes(-1)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full"><ChevronLeft className="w-4 h-4 text-neutral-500" /></button>
+                    <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium capitalize min-w-[140px] text-center">F29 — {nombreMesFin}</h2>
+                    <button onClick={() => moverMes(1)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full"><ChevronRight className="w-4 h-4 text-neutral-500" /></button>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                    PPM
+                    <input type="number" step="0.005" defaultValue={finanzasConfig.ppmTasa}
+                      onBlur={async e => {
+                        const v = parseFloat(e.target.value);
+                        if (v >= 0 && v !== finanzasConfig.ppmTasa) {
+                          const ok = await saveFinanzasConfig({ ppmTasa: v });
+                          showNotification(ok ? 'success' : 'error', ok ? `Tasa PPM: ${v}%` : 'No se pudo guardar');
+                        }
+                      }}
+                      className="w-16 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded px-1.5 py-1 text-right text-neutral-800 dark:text-neutral-100" />%
+                    <span className="text-[10px]">(Ley 21.755: 0,125% hasta ene-2028)</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-neutral-400 mt-1">Simulación referencial para cotejar contra el SII — los EDP en UF se convierten con la UF de hoy{ufHoy ? ` ($${ufHoy.toLocaleString('es-CL')})` : ''}.</p>
+              </Card>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card className="p-4">
+                  <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">Ventas del mes (débito fiscal)</h3>
+                  {f29.ventasEDP.length === 0 && f29.ventasMan.length === 0 ? (
+                    <p className="text-sm text-neutral-400">Sin facturas emitidas este mes</p>
+                  ) : (
+                    <div className="space-y-1 text-sm">
+                      {f29.ventasEDP.map((v, i) => (
+                        <div key={'e' + i} className="flex justify-between">
+                          <span className="text-neutral-600 dark:text-neutral-300">EDP {v.proyectoId} ({v.mesEDP}) · emitida {v.fEmision}</span>
+                          <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(v.netoCLP)}</span>
+                        </div>
+                      ))}
+                      {f29.ventasMan.map((v, i) => (
+                        <div key={'m' + i} className="flex justify-between">
+                          <span className="text-neutral-600 dark:text-neutral-300">{v.tercero}{v.folio ? ` N°${v.folio}` : ''}</span>
+                          <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(v.neto)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between pt-1 border-t border-neutral-200 dark:border-neutral-700 font-medium">
+                        <span className="text-neutral-800 dark:text-neutral-100">Ventas netas</span>
+                        <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(f29.ventasNetas)}</span>
+                      </div>
+                      <div className="flex justify-between text-orange-600 font-medium">
+                        <span>IVA débito fiscal</span><span>{fmtCLP(f29.debito)}</span>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+                <Card className="p-4">
+                  <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">Compras del mes (crédito fiscal)</h3>
+                  {f29.compras.length === 0 ? (
+                    <p className="text-sm text-neutral-400">Sin compras registradas este mes</p>
+                  ) : (
+                    <div className="space-y-1 text-sm">
+                      {f29.compras.map((c, i) => (
+                        <div key={i} className="flex justify-between">
+                          <span className="text-neutral-600 dark:text-neutral-300">{c.tercero}{c.folio ? ` N°${c.folio}` : ''}</span>
+                          <span className="text-neutral-800 dark:text-neutral-100">{fmtCLP(c.neto)} <span className="text-[10px] text-neutral-400">+IVA {fmtCLP(c.iva)}</span></span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between pt-1 border-t border-neutral-200 dark:border-neutral-700 text-green-600 font-medium">
+                        <span>IVA crédito fiscal</span><span>{fmtCLP(f29.credito)}</span>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </div>
+
+              <Card className="p-4">
+                <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-3">Resumen F29 simulado</h3>
+                <div className="space-y-1.5 text-sm max-w-md">
+                  <div className="flex justify-between"><span className="text-neutral-600 dark:text-neutral-300">IVA débito fiscal (ventas)</span><b className="text-neutral-800 dark:text-neutral-100">{fmtCLP(f29.debito)}</b></div>
+                  <div className="flex justify-between"><span className="text-neutral-600 dark:text-neutral-300">IVA crédito fiscal (compras)</span><b className="text-green-600">−{fmtCLP(f29.credito)}</b></div>
+                  <div className="flex justify-between border-t border-neutral-200 dark:border-neutral-700 pt-1">
+                    <span className="text-neutral-600 dark:text-neutral-300">{f29.ivaDeterminado >= 0 ? 'IVA determinado a pagar' : 'Remanente de crédito fiscal'}</span>
+                    <b className={f29.ivaDeterminado >= 0 ? 'text-neutral-800 dark:text-neutral-100' : 'text-green-600'}>{fmtCLP(Math.abs(f29.ivaDeterminado))}</b>
+                  </div>
+                  <div className="flex justify-between"><span className="text-neutral-600 dark:text-neutral-300">PPM ({finanzasConfig.ppmTasa}% de ventas netas)</span><b className="text-neutral-800 dark:text-neutral-100">{fmtCLP(f29.ppm)}</b></div>
+                  <div className="flex justify-between bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2 mt-2">
+                    <span className="font-medium text-neutral-800 dark:text-neutral-100">TOTAL A PAGAR AL SII</span>
+                    <span className="font-bold text-orange-600 text-base">{fmtCLP(f29.totalPagar)}</span>
+                  </div>
+                  {f29.bhs.length > 0 && (
+                    <p className="text-[11px] text-neutral-400 pt-1">Nota: {f29.bhs.length} BH del mes por {fmtCLP(f29.bhs.reduce((sum, b) => sum + (b.bruto || 0), 0))} brutos — sin retención en tu F29 (cada emisor paga la suya).</p>
+                  )}
+                </div>
+              </Card>
+            </div>
+          );
+        })()}
+
+        {/* ==================== PESTAÑA ANUAL ==================== */}
+        {finTab === 'anual' && (() => {
+          const anual = calcularAnual(finAnio);
+          return (
+            <div className="space-y-4">
+              <Card className="p-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setFinAnio(a => a - 1)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full"><ChevronLeft className="w-4 h-4 text-neutral-500" /></button>
+                    <h2 className="text-neutral-800 dark:text-neutral-100 text-sm font-medium min-w-[120px] text-center">Balance {finAnio}</h2>
+                    <button onClick={() => setFinAnio(a => a + 1)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full"><ChevronRight className="w-4 h-4 text-neutral-500" /></button>
+                  </div>
+                  <Button variant="secondary" onClick={() => {
+                    const filasHtml = anual.filasAnual.map(f => `<tr><td style="text-transform:capitalize">${parseLocalDate(f.mesStr).toLocaleDateString('es-CL', { month: 'long' })}</td><td style="text-align:right">${fmtCLP(f.ventas)}</td><td style="text-align:right">${fmtCLP(f.compras)}</td><td style="text-align:right">${fmtCLP(f.bh)}</td><td style="text-align:right;font-weight:bold;color:${f.resultado < 0 ? '#dc2626' : '#16a34a'}">${fmtCLP(f.resultado)}</td><td style="text-align:right;color:#888">${fmtCLP(f.costoHsH)}</td></tr>`).join('');
+                    const t = anual.totales;
+                    const pw = window.open('', '_blank');
+                    if (!pw) { showNotification('error', 'Habilita las ventanas emergentes para poder imprimir'); return; }
+                    pw.document.write(`<html><head><title>Balance ${finAnio} — AFOR</title><style>
+@page { size: letter portrait; margin: 14mm; } body { font-family: 'Segoe UI', system-ui, sans-serif; color: #171717; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f97316; padding-bottom: 8px; margin-bottom: 14px; }
+h1 { font-size: 17px; margin: 0; } .sub { color: #666; font-size: 10px; margin: 2px 0 0; }
+table { width: 100%; border-collapse: collapse; font-size: 9px; } th { background: #262626; color: white; padding: 3px 6px; text-align: left; } td { border: 1px solid #d4d4d4; padding: 3px 6px; }
+tfoot td { font-weight: bold; background: #f5f5f5; } .nota { color: #999; font-size: 8px; margin-top: 14px; border-top: 1px solid #e5e5e5; padding-top: 6px; }
+</style></head><body>
+<div class="header"><div><h1>BALANCE ANUAL ${finAnio}</h1><p class="sub">RESUMEN TRIBUTARIO MENSUAL · PARA REVISIÓN DEL CONTADOR</p></div><img src="${window.location.origin}/logo-afor.png" style="height:34px"/></div>
+<table><thead><tr><th>Mes</th><th style="text-align:right">Ventas netas</th><th style="text-align:right">Compras netas</th><th style="text-align:right">BH brutas</th><th style="text-align:right">Resultado</th><th style="text-align:right">Costo HsH (gestión)</th></tr></thead>
+<tbody>${filasHtml}</tbody>
+<tfoot><tr><td>TOTAL ${finAnio}</td><td style="text-align:right">${fmtCLP(t.ventas)}</td><td style="text-align:right">${fmtCLP(t.compras)}</td><td style="text-align:right">${fmtCLP(t.bh)}</td><td style="text-align:right">${fmtCLP(t.resultado)}</td><td style="text-align:right">${fmtCLP(t.costoHsH)}</td></tr></tfoot></table>
+<p class="nota">Resultado tributario = ventas netas − compras netas − BH brutas. La columna "Costo HsH" es interna (valorización de horas a tarifa de pago) y NO es un gasto tributario. Montos de EDP en UF convertidos a la UF del día de generación. Documento referencial — no reemplaza la contabilidad oficial.</p>
+<div class="nota" style="display:flex;justify-content:space-between"><span>Generado: ${new Date().toLocaleString('es-CL')}</span><span>AFOR Intranet</span></div>
+</body></html>`);
+                    pw.document.close();
+                    setTimeout(() => pw.print(), 500);
+                  }}>
+                    <Printer className="w-4 h-4 mr-2" />
+                    Imprimir para contador
+                  </Button>
+                </div>
+              </Card>
+              <Card className="p-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-neutral-500 dark:text-neutral-400 text-xs border-b border-neutral-200 dark:border-neutral-600">
+                      <th className="pb-2">Mes</th>
+                      <th className="pb-2 text-right">Ventas netas</th>
+                      <th className="pb-2 text-right">Compras netas</th>
+                      <th className="pb-2 text-right">BH brutas</th>
+                      <th className="pb-2 text-right">Resultado tributario</th>
+                      <th className="pb-2 text-right text-neutral-400">Costo HsH (gestión)</th>
+                      <th className="pb-2 text-right text-neutral-400">Resultado gestión</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {anual.filasAnual.map(fila => (
+                      <tr key={fila.mesStr} className={`border-b border-neutral-100 dark:border-neutral-700 ${fila.ventas === 0 && fila.compras === 0 && fila.bh === 0 && fila.costoHsH === 0 ? 'opacity-40' : ''}`}>
+                        <td className="py-1.5 capitalize text-neutral-800 dark:text-neutral-100">{parseLocalDate(fila.mesStr).toLocaleDateString('es-CL', { month: 'long' })}</td>
+                        <td className="py-1.5 text-right text-neutral-800 dark:text-neutral-100">{fmtCLP(fila.ventas)}</td>
+                        <td className="py-1.5 text-right text-neutral-600 dark:text-neutral-300">{fmtCLP(fila.compras)}</td>
+                        <td className="py-1.5 text-right text-neutral-600 dark:text-neutral-300">{fmtCLP(fila.bh)}</td>
+                        <td className={`py-1.5 text-right font-medium ${fila.resultado < 0 ? 'text-red-600' : 'text-green-600'}`}>{fmtCLP(fila.resultado)}</td>
+                        <td className="py-1.5 text-right text-neutral-400">{fmtCLP(fila.costoHsH)}</td>
+                        <td className={`py-1.5 text-right ${fila.resultado - fila.costoHsH < 0 ? 'text-red-500' : 'text-neutral-500'}`}>{fmtCLP(fila.resultado - fila.costoHsH)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-neutral-300 dark:border-neutral-600 font-bold">
+                      <td className="py-2 text-neutral-800 dark:text-neutral-100">TOTAL {finAnio}</td>
+                      <td className="py-2 text-right text-neutral-800 dark:text-neutral-100">{fmtCLP(anual.totales.ventas)}</td>
+                      <td className="py-2 text-right text-neutral-800 dark:text-neutral-100">{fmtCLP(anual.totales.compras)}</td>
+                      <td className="py-2 text-right text-neutral-800 dark:text-neutral-100">{fmtCLP(anual.totales.bh)}</td>
+                      <td className={`py-2 text-right ${anual.totales.resultado < 0 ? 'text-red-600' : 'text-green-600'}`}>{fmtCLP(anual.totales.resultado)}</td>
+                      <td className="py-2 text-right text-neutral-400">{fmtCLP(anual.totales.costoHsH)}</td>
+                      <td className={`py-2 text-right ${anual.totales.resultado - anual.totales.costoHsH < 0 ? 'text-red-500' : 'text-neutral-500'}`}>{fmtCLP(anual.totales.resultado - anual.totales.costoHsH)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+                <p className="text-[11px] text-neutral-400 mt-2">Resultado tributario = ventas − compras − BH. Las columnas grises son de gestión interna (HsH a tarifa de pago) y no van al contador.</p>
+              </Card>
+            </div>
+          );
+        })()}
       </div>
     );
   };

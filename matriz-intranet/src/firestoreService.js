@@ -28,7 +28,66 @@ const COLLECTIONS = {
   TAREAS: 'tareas',
   PRESENCIA: 'presencia',
   COTIZACIONES: 'cotizaciones',
-  USUARIOS: 'usuarios'
+  USUARIOS: 'usuarios',
+  MOVIMIENTOS: 'movimientos'
+};
+
+// ============================================
+// MOVIMIENTOS FINANCIEROS (BH, compras, ventas)
+// ============================================
+export const saveMovimiento = async (mov) => {
+  try {
+    if (mov._docId) {
+      const { _docId, ...data } = mov;
+      await setDoc(doc(db, COLLECTIONS.MOVIMIENTOS, _docId), data);
+    } else {
+      await addDoc(collection(db, COLLECTIONS.MOVIMIENTOS), mov);
+    }
+    return true;
+  } catch (error) {
+    console.error('Error saving movimiento:', error);
+    return false;
+  }
+};
+
+export const deleteMovimiento = async (docId) => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.MOVIMIENTOS, docId));
+    return true;
+  } catch (error) {
+    console.error('Error deleting movimiento:', error);
+    return false;
+  }
+};
+
+export const subscribeToMovimientos = (callback, onError) => {
+  return onSnapshot(collection(db, COLLECTIONS.MOVIMIENTOS), (snapshot) => {
+    const movs = snapshot.docs.map(d => ({ ...d.data(), _docId: d.id }));
+    callback(movs);
+  }, (error) => {
+    console.error('Error en suscripción movimientos:', error);
+    if (onError) onError(error);
+  });
+};
+
+// Configuración tributaria del módulo de finanzas (tasas editables)
+export const saveFinanzasConfig = async (config) => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.CONFIG, 'finanzas'), { ...config, updatedAt: new Date().toISOString() }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error('Error saving finanzas config:', error);
+    return false;
+  }
+};
+
+export const subscribeToFinanzasConfig = (callback, onError) => {
+  return onSnapshot(doc(db, COLLECTIONS.CONFIG, 'finanzas'), (docSnap) => {
+    callback(docSnap.exists() ? docSnap.data() : null);
+  }, (error) => {
+    console.error('Error en suscripción finanzas config:', error);
+    if (onError) onError(error);
+  });
 };
 
 // ============================================

@@ -74,7 +74,17 @@ export const parsearDocumentoTributario = (lineas, rutEmpresa = '') => {
   const ruts = [...texto.matchAll(/(\d{1,2}\.?\d{3}\.?\d{3}\s?-\s?[\dkK])/g)].map(x => x[1].replace(/\s/g, ''));
 
   // Emisor: primera línea "con nombre" del documento; su RUT es el primero que aparece
-  const lineaEmisor = lineas.find(l => /[A-ZÁÉÍÓÚÑ]{3,}/.test(l) && !/BOLETA|HONORARIOS|FACTURA|NOTA\s+DE|ELECTRONIC|SII|R\.?U\.?T|FECHA|N°|Nº|GIRO|CASA\s+MATRIZ/i.test(l));
+  let lineaEmisor = lineas.find(l => /[A-ZÁÉÍÓÚÑ]{3,}/.test(l) && !/BOLETA|HONORARIOS|FACTURA|NOTA\s+DE|ELECTRONIC|SII|R\.?U\.?T|FECHA|N°|Nº|GIRO|CASA\s+MATRIZ|SE[NÑ]OR/i.test(l));
+  if (!lineaEmisor && ruts.length) {
+    // fallback: la línea vecina al primer RUT (recuadro del emisor en formatos SII)
+    const idxRut = lineas.findIndex(l => l.includes(ruts[0]));
+    for (const j of [idxRut - 1, idxRut + 1, idxRut - 2]) {
+      if (j >= 0 && j < lineas.length && /[A-ZÁÉÍÓÚÑ]{3,}/.test(lineas[j]) && !/R\.?U\.?T|FACTURA|BOLETA|ELECTRONIC/i.test(lineas[j])) {
+        lineaEmisor = lineas[j];
+        break;
+      }
+    }
+  }
   const emisor = lineaEmisor ? lineaEmisor.slice(0, 60).trim() : null;
   const rutEmisor = ruts[0] || null;
   if (ruts.length < 2) avisos.push('Solo se detectó un RUT en el documento — verifica el tipo y la contraparte');
@@ -155,9 +165,7 @@ export const parsearDocumentoTributario = (lineas, rutEmpresa = '') => {
     const rutsNorm = ruts.map(norm);
     const emiteAfor = !!(propio && rutEmisor && norm(rutEmisor) === propio);
     if (!propio) avisos.push('Configura el RUT de AFOR para clasificar automáticamente');
-    if (propio && !emiteAfor && rutsNorm.includes(propio)) {
-      avisos.push('El RUT de AFOR aparece en el documento pero no como emisor — verifica si es compra o venta');
-    }
+    // (En una compra es NORMAL que el RUT de AFOR aparezca como receptor — sin aviso)
     if (propio && !rutsNorm.includes(propio)) {
       avisos.push('El RUT de AFOR no aparece en el documento — verifica que te corresponda');
     }
